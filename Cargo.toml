@@ -1,0 +1,30 @@
+[package]
+name = "ipfs-registry"
+version = "0.1.0"
+edition = "2021"
+description = "Signed package registry backed by IPFS"
+
+[dependencies]
+clap = { version = "3", features = ["derive", "wrap_help"] }
+thiserror = "1"
+axum = { version = "0.5", features = ["headers", "ws"] }
+axum-macros = { version = "0.2", optional = true }
+axum-server = { version = "0.4", features = ["tls-rustls"] }
+hyper = { version = "0.14", features = ["full"] }
+tower = { version = "0.4" }
+tower-http = { version = "0.2", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+toml = "0.5"
+serde = { version = "1", features = ["derive"] }
+url = { version = "2", features = ["serde"] }
+serde_json = "1"
+
+[[bin]]
+name = "ipkg-server"
+path = "src/bin/server.rs"
+
+[[bin]]
+name = "ipkg-client"
+path = "src/bin/client.rs"

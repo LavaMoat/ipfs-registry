@@ -1,0 +1,73 @@
+use std::path::{Path, PathBuf};
+use serde::{Serialize, Deserialize};
+use url::Url;
+
+use crate::{Error, Result};
+
+#[derive(Serialize, Deserialize)]
+pub struct ServerConfig {
+    /// Configuration for TLS encryption.
+    pub tls: Option<TlsConfig>,
+
+    /// Configuration for the API.
+    pub api: ApiConfig,
+
+    /// Path the file was loaded from used to determine
+    /// relative paths.
+    #[serde(skip)]
+    file: Option<PathBuf>,
+}
+
+impl ServerConfig {
+
+    /// Load a configuration file.
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
+        if !path.as_ref().exists() {
+            return Err(Error::NotFile(path.as_ref().to_path_buf()));
+        }
+
+        let contents = std::fs::read_to_string(path.as_ref())?;
+        let mut config: ServerConfig = toml::from_str(&contents)?;
+        config.file = Some(path.as_ref().canonicalize()?);
+
+        let dir = config.directory();
+
+        if let Some(tls) = config.tls.as_mut() {
+            if tls.cert.is_relative() {
+                tls.cert = dir.join(&tls.cert);
+            }
+            if tls.key.is_relative() {
+                tls.key = dir.join(&tls.key);
+            }
+
+            tls.cert = tls.cert.canonicalize()?;
+            tls.key = tls.key.canonicalize()?;
+        }
+
+        Ok(config)
+    }
+
+    /// Parent directory of the configuration file.
+    fn directory(&self) -> PathBuf {
+        self.file
+            .as_ref()
+            .unwrap()
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap()
+    }
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct TlsConfig {
+    /// Path to the certificate.
+    pub cert: PathBuf,
+    /// Path to the certificate key file.
+    pub key: PathBuf,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct ApiConfig {
+    /// List of additional CORS origins for the server.
+    pub origins: Vec<Url>,
+}
