@@ -209,6 +209,16 @@ impl PackageHandler {
             let descriptor = read_npm_package(&contents)
                 .map_err(|_| StatusCode::BAD_REQUEST)?;
 
+            // Check the package version does not already exist
+            let meta = Index::get_package(
+                &url,
+                &address, &descriptor.name, &descriptor.version)
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            if meta.is_some() {
+                return Err(StatusCode::CONFLICT);
+            }
+
             println!("{:#?}", descriptor);
 
             // TODO: store in the index
