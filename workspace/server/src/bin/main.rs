@@ -5,7 +5,7 @@ use std::{net::SocketAddr, path::PathBuf, str::FromStr, sync::Arc};
 use tokio::sync::RwLock;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use ipfs_registry::{Server, Result, ServerConfig, State, ServerInfo};
+use ipfs_registry_server::{Server, Result, ServerConfig, State, ServerInfo};
 
 /// Signed package registry server.
 #[derive(Parser, Debug)]

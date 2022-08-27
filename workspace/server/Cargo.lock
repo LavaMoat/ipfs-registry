@@ -550,29 +550,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ipfs-registry"
-version = "0.1.0"
-
-[[package]]
-name = "ipfs-registry-client"
-version = "0.1.0"
-dependencies = [
- "clap",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "toml",
- "tracing",
- "tracing-subscriber",
- "url",
-]
-
-[[package]]
-name = "ipfs-registry-core"
-version = "0.1.0"
-
-[[package]]
 name = "ipfs-registry-server"
 version = "0.1.0"
 dependencies = [
