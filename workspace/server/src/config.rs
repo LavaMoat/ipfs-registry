@@ -1,5 +1,5 @@
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use serde::{Serialize, Deserialize};
 use url::Url;
 
 use crate::{Error, Result};
@@ -7,7 +7,12 @@ use crate::{Error, Result};
 #[derive(Serialize, Deserialize)]
 pub struct ServerConfig {
     /// Configuration for IPFS.
-    pub ipfs: Option<IpfsConfig>,
+    #[serde(default)]
+    pub ipfs: IpfsConfig,
+
+    /// Package registry configuration.
+    #[serde(default)]
+    pub registry: RegistryConfig,
 
     /// Configuration for TLS encryption.
     pub tls: Option<TlsConfig>,
@@ -22,7 +27,6 @@ pub struct ServerConfig {
 }
 
 impl ServerConfig {
-
     /// Load a configuration file.
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
         if !path.as_ref().exists() {
@@ -32,10 +36,6 @@ impl ServerConfig {
         let contents = std::fs::read_to_string(path.as_ref())?;
         let mut config: ServerConfig = toml::from_str(&contents)?;
         config.file = Some(path.as_ref().canonicalize()?);
-
-        if config.ipfs.is_none() {
-            config.ipfs = Default::default()
-        }
 
         let dir = config.directory();
 
@@ -75,6 +75,20 @@ impl Default for IpfsConfig {
     fn default() -> Self {
         Self {
             url: Url::parse("http://localhost:5001").unwrap(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RegistryConfig {
+    /// Expected mime type for packages.
+    pub mime: String,
+}
+
+impl Default for RegistryConfig {
+    fn default() -> Self {
+        Self {
+            mime: String::from("application/gzip"),
         }
     }
 }

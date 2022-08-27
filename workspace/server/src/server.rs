@@ -6,18 +6,19 @@ use axum::{
         header::{AUTHORIZATION, CONTENT_TYPE},
         HeaderValue, Method,
     },
-    routing::{get, put},
     response::IntoResponse,
-    Router,
-    Json,
+    routing::{get, put},
+    Json, Router,
 };
 use axum_server::{tls_rustls::RustlsConfig, Handle};
-use tower_http::cors::{CorsLayer, Origin};
 use serde::Serialize;
-use tokio::sync::{RwLock, RwLockReadGuard};
 use serde_json::json;
+use tokio::sync::{RwLock, RwLockReadGuard};
+use tower_http::cors::{CorsLayer, Origin};
 
-use crate::{Result, ServerConfig, config::TlsConfig, handlers::PackageHandler};
+use crate::{
+    config::TlsConfig, handlers::PackageHandler, Result, ServerConfig,
+};
 
 /// Server state.
 pub struct State {
@@ -118,15 +119,13 @@ impl Server {
         let cors = CorsLayer::new()
             .allow_methods(vec![Method::GET, Method::POST])
             .allow_credentials(true)
-            .allow_headers(vec![
-                AUTHORIZATION,
-                CONTENT_TYPE,
-            ])
+            .allow_headers(vec![AUTHORIZATION, CONTENT_TYPE])
             .expose_headers(vec![])
             .allow_origin(Origin::list(origins));
 
         let mut app = Router::new()
             .route("/api", get(api))
+            .route("/api/package/:name/:version", get(PackageHandler::get))
             .route("/api/package", put(PackageHandler::put));
 
         app = app.layer(cors).layer(Extension(state));

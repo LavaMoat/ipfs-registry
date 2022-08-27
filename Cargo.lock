@@ -804,6 +804,7 @@ dependencies = [
  "ipfs-api-backend-hyper",
  "ipfs-registry-core",
  "mime",
+ "semver",
  "serde",
  "serde_json",
  "thiserror",

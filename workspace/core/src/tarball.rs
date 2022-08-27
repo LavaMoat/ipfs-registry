@@ -1,8 +1,8 @@
-use std::{io::prelude::*, path::PathBuf};
 use flate2::read::GzDecoder;
+use std::{io::prelude::*, path::PathBuf};
 use tar::Archive;
 
-use crate::{Error, Result, Descriptor};
+use crate::{Descriptor, Error, Result};
 
 /// Decompress a gzip buffer.
 pub fn decompress(buffer: &[u8]) -> Result<Vec<u8>> {
@@ -24,9 +24,8 @@ pub fn read_npm_package(buffer: &[u8]) -> Result<Descriptor> {
             let entry_size = entry.header().entry_size()? as usize;
             let end_byte = start_byte + entry_size;
             let file_bytes = &buffer[start_byte..end_byte];
-            let descriptor: Descriptor = 
-                serde_json::from_slice(file_bytes)?;
-            return Ok(descriptor)
+            let descriptor: Descriptor = serde_json::from_slice(file_bytes)?;
+            return Ok(descriptor);
         }
     }
     Err(Error::NoNpmPackage)

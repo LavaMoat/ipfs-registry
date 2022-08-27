@@ -3,16 +3,16 @@ mod package;
 mod tarball;
 
 pub use error::Error;
+pub use package::{Descriptor, Definition};
 pub use tarball::{decompress, read_npm_package};
-pub use package::Descriptor;
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use anyhow::Result;
     use std::path::PathBuf;
-    use super::*;
 
     #[test]
     fn decompress_tarball() -> Result<()> {
