@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
     extract::Extension,
@@ -6,7 +6,7 @@ use axum::{
         header::{AUTHORIZATION, CONTENT_TYPE},
         HeaderValue, Method,
     },
-    routing::{get, post},
+    routing::{get, put},
     response::IntoResponse,
     Router,
     Json,
@@ -17,7 +17,7 @@ use serde::Serialize;
 use tokio::sync::{RwLock, RwLockReadGuard};
 use serde_json::json;
 
-use crate::{Result, ServerConfig, config::TlsConfig};
+use crate::{Result, ServerConfig, config::TlsConfig, handlers::PackageHandler};
 
 /// Server state.
 pub struct State {
@@ -126,7 +126,8 @@ impl Server {
             .allow_origin(Origin::list(origins));
 
         let mut app = Router::new()
-            .route("/api", get(api));
+            .route("/api", get(api))
+            .route("/api/package", put(PackageHandler::put));
 
         app = app.layer(cors).layer(Extension(state));
 

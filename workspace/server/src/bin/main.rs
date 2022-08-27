@@ -25,16 +25,12 @@ async fn run() -> Result<()> {
 
     let name = env!("CARGO_PKG_NAME").to_string();
     let version = env!("CARGO_PKG_VERSION").to_string();
-
-    let mut config = ServerConfig::load(&args.config)?;
-
+    let config = ServerConfig::load(&args.config)?;
     let handle = Handle::new();
-
     let state = Arc::new(RwLock::new(State {
         info: ServerInfo { name, version },
         config,
     }));
-
     let addr = SocketAddr::from_str(&args.bind)?;
     let server = Server::new();
     server.start(addr, state, handle).await?;

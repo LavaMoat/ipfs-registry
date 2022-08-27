@@ -6,6 +6,9 @@ use crate::{Error, Result};
 
 #[derive(Serialize, Deserialize)]
 pub struct ServerConfig {
+    /// Configuration for IPFS.
+    pub ipfs: Option<IpfsConfig>,
+
     /// Configuration for TLS encryption.
     pub tls: Option<TlsConfig>,
 
@@ -29,6 +32,10 @@ impl ServerConfig {
         let contents = std::fs::read_to_string(path.as_ref())?;
         let mut config: ServerConfig = toml::from_str(&contents)?;
         config.file = Some(path.as_ref().canonicalize()?);
+
+        if config.ipfs.is_none() {
+            config.ipfs = Default::default()
+        }
 
         let dir = config.directory();
 
@@ -55,6 +62,20 @@ impl ServerConfig {
             .parent()
             .map(|p| p.to_path_buf())
             .unwrap()
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct IpfsConfig {
+    /// URL for the IPFS node.
+    pub url: Url,
+}
+
+impl Default for IpfsConfig {
+    fn default() -> Self {
+        Self {
+            url: Url::parse("http://localhost:5001").unwrap(),
+        }
     }
 }
 

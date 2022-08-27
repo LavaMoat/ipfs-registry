@@ -5,10 +5,13 @@ edition = "2021"
 description = "Signed package registry server for IPFS"
 
 [dependencies]
+
+ipfs-registry-core = { version = "*", path = "../core" }
+
 clap = { version = "3", features = ["derive", "wrap_help"] }
 thiserror = "1"
 axum = { version = "0.5", features = ["headers", "ws"] }
-axum-macros = { version = "0.2", optional = true }
+axum-macros = { version = "0.2" }
 axum-server = { version = "0.4", features = ["tls-rustls"] }
 hyper = { version = "0.14", features = ["full"] }
 tower = { version = "0.4" }
@@ -20,10 +23,14 @@ toml = "0.5"
 serde = { version = "1", features = ["derive"] }
 url = { version = "2", features = ["serde"] }
 serde_json = "1"
-ipfs-api-backend-hyper = "0.5"
+ipfs-api-backend-hyper = { version = "0.5", features = ["with-send-sync"] }
+mime = "0.3"
+futures = "0.3"
 
 #ipfs-api-backend-hyper = { version = "0.5", features = ["with-hyper-rustls"] }
 
 [[bin]]
 name = "ipkg-server"
 path = "src/bin/main.rs"
+
+

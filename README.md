@@ -24,11 +24,12 @@ cd workspace/server
 cargo run -- -c ../../sandbox/config.toml
 ```
 
-Create an NPM package tarball:
+## Upload a package
 
 ```
-cd fixtures/mock-package
-npm pack
+curl -vXPUT http://localhost:9060/api/package \
+  -H "Content-Type: application/gzip" \
+  --data-binary "@fixtures/mock-package-1.0.0.tgz"
 ```
 
 [ipfs]: https://ipfs.io/

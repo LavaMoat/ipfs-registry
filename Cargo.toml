@@ -10,3 +10,6 @@ members = [
   "workspace/core",
   "workspace/server",
 ]
+
+#[patch.crates-io]
+ #ipfs-api-backend-hyper= { path = "../../forks/rust-ipfs-api/ipfs-api-backend-hyper" }

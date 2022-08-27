@@ -18,6 +18,9 @@ mod tests {
     fn decompress_tarball() -> Result<()> {
         let file = PathBuf::from("../../fixtures/mock-package-1.0.0.tgz");
         let contents = std::fs::read(&file)?;
+
+        println!("{:#?}", contents);
+
         let decompressed = decompress(&contents)?;
         let descriptor = read_npm_package(&decompressed)?;
         assert_eq!("mock-package", &descriptor.name);
