@@ -41,3 +41,9 @@ impl Header for Signature {
         values.extend(std::iter::once(value));
     }
 }
+
+impl From<Signature> for [u8; 65] {
+    fn from(value: Signature) -> Self {
+        value.0
+    }
+}

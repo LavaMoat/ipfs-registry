@@ -13,12 +13,26 @@ use semver::Version;
 use std::{io::Cursor, sync::Arc};
 use tokio::sync::RwLock;
 use url::Url;
+use k256::ecdsa::recoverable;
+use web3_address::ethereum::Address;
 
-use crate::{Error, Result, State};
 use ipfs_registry_core::{decompress, read_npm_package, Descriptor, Definition};
+
+use crate::{Error, Result, State, headers::Signature};
 
 const REGISTRY: &str = "registry";
 const NAME: &str = "meta.json";
+
+/// Verify a signature against a message and return the address.
+fn verify_signature(signature: [u8; 65], message: &[u8]) -> Result<Address> {
+    let recoverable: recoverable::Signature = signature
+        .as_slice().try_into()?;
+    let public_key = recoverable.recover_verifying_key(message)?;
+    let public_key: [u8; 33] =
+        public_key.to_bytes().as_slice().try_into()?;
+    let address: Address = (&public_key).try_into()?;
+    Ok(address)
+}
 
 struct Ipfs;
 
@@ -72,7 +86,7 @@ impl Index {
     /// Add a package to the index.
     async fn add_package(
         url: &Url,
-        address: &str,
+        address: &Address,
         descriptor: Descriptor,
         cid: String,
     ) -> Result<()> {
@@ -110,7 +124,7 @@ impl Index {
     /// Get a package from the index.
     async fn get_package(
         url: &Url,
-        address: &str,
+        address: &Address,
         name: &str,
         version: &Version,
     ) -> Result<Option<Definition>> {
@@ -144,14 +158,14 @@ impl PackageHandler {
     /// Get a package.
     pub(crate) async fn get(
         Extension(state): Extension<Arc<RwLock<State>>>,
-        Path((name, version)): Path<(String, Version)>
+        Path((address, name, version)): Path<(Address, String, Version)>
     ) -> std::result::Result<(HeaderMap, Bytes), StatusCode> {
         let reader = state.read().await;
         let url = reader.config.ipfs.url.clone();
         let mime_type = reader.config.registry.mime.clone();
         drop(reader);
 
-        let address = String::from("mock-address");
+        //let address = String::from("mock-address");
 
         tracing::debug!(
             address = %address,
@@ -185,8 +199,13 @@ impl PackageHandler {
     pub(crate) async fn put(
         Extension(state): Extension<Arc<RwLock<State>>>,
         TypedHeader(mime): TypedHeader<ContentType>,
+        TypedHeader(signature): TypedHeader<Signature>,
         body: Bytes,
     ) -> std::result::Result<StatusCode, StatusCode> {
+
+        // Verify the signature header against the payload bytes
+        let address = verify_signature(signature.into(), &body)
+            .map_err(|_| StatusCode::BAD_REQUEST)?;
 
         let reader = state.read().await;
         let url = reader.config.ipfs.url.clone();
@@ -195,9 +214,7 @@ impl PackageHandler {
 
         tracing::debug!(mime = ?mime_type);
 
-        // TODO: validate signature
         // TODO: ensure approval signatures
-        let address = String::from("mock-address");
 
         let gzip: mime::Mime = mime_type.parse()
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
