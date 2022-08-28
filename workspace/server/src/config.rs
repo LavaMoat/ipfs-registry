@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use url::Url;
 
+use ipfs_registry_core::RegistryKind;
 use crate::{Error, Result};
 
 #[derive(Serialize, Deserialize)]
@@ -86,12 +87,15 @@ impl Default for IpfsConfig {
 pub struct RegistryConfig {
     /// Expected mime type for packages.
     pub mime: String,
+    /// Indicate the kind of registry.
+    pub kind: RegistryKind,
 }
 
 impl Default for RegistryConfig {
     fn default() -> Self {
         Self {
             mime: String::from("application/gzip"),
+            kind: RegistryKind::Npm,
         }
     }
 }

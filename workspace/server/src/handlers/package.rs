@@ -16,7 +16,7 @@ use url::Url;
 use k256::ecdsa::recoverable;
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{decompress, read_npm_package, Descriptor, Definition};
+use ipfs_registry_core::{PackageReader, Descriptor, Definition};
 
 use crate::{Error, Result, State, headers::Signature};
 
@@ -60,9 +60,6 @@ impl Ipfs {
         let client = Ipfs::new_client(url)?;
         let data = Cursor::new(data);
         let add_res = client.add(data).await?;
-
-        //println!("{:#?}", add_res);
-
         let _pin_res = client.pin_add(&add_res.hash, true).await?;
         Ok(add_res.hash)
     }
@@ -210,6 +207,7 @@ impl PackageHandler {
         let reader = state.read().await;
         let url = reader.config.ipfs.url.clone();
         let mime_type = reader.config.registry.mime.clone();
+        let kind = reader.config.registry.kind.clone();
         drop(reader);
 
         tracing::debug!(mime = ?mime_type);
@@ -221,9 +219,7 @@ impl PackageHandler {
         let gzip_ct = ContentType::from(gzip);
 
         if mime == gzip_ct {
-            let contents =
-                decompress(&body).map_err(|_| StatusCode::BAD_REQUEST)?;
-            let descriptor = read_npm_package(&contents)
+            let descriptor = PackageReader::read(kind, &body)
                 .map_err(|_| StatusCode::BAD_REQUEST)?;
 
             // Check the package version does not already exist
@@ -235,8 +231,6 @@ impl PackageHandler {
             if meta.is_some() {
                 return Err(StatusCode::CONFLICT);
             }
-
-            println!("{:#?}", descriptor);
 
             // TODO: store in the index
 
