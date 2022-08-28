@@ -15,11 +15,11 @@ pub(crate) fn decompress(buffer: &[u8]) -> Result<Vec<u8>> {
 }
 
 /// Read a package descriptor from an NPM compatible tarball.
-pub(crate) fn read_npm_package(buffer: &[u8]) -> Result<Descriptor> {
+pub(crate) fn read_npm_package(buffer: &[u8]) -> Result<(Descriptor, &[u8])> {
     let package_path = PathBuf::from(NPM);
     let buffer = find_tar_entry(package_path, buffer)?;
     let descriptor: Descriptor = serde_json::from_slice(buffer)?;
-    return Ok(descriptor);
+    Ok((descriptor, buffer))
 }
 
 /// Find the file data for a specific entry in a tarball.

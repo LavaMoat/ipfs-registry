@@ -87,6 +87,7 @@ impl Index {
         address: &Address,
         descriptor: Descriptor,
         cid: String,
+        document: Vec<u8>,
     ) -> Result<Definition> {
         // TODO: unpin an existing version?
 
@@ -97,15 +98,20 @@ impl Index {
         );
 
         let client = Ipfs::new_client(&url)?;
-
         client.files_mkdir(&dir, true).await?;
 
+        // Write out the meta data definition
         let definition = Definition { descriptor, cid };
-
         let data = serde_json::to_vec(&definition)?;
         let path = format!("{}/{}", dir, NAME);
 
         let data = Cursor::new(data);
+        client.files_write(&path, true, true, data).await?;
+        client.files_flush(Some(&path)).await?;
+
+        // Write out the raw document
+        let path = format!("{}/{}", dir, kind.document_name());
+        let data = Cursor::new(document);
         client.files_write(&path, true, true, data).await?;
         client.files_flush(Some(&path)).await?;
 
@@ -213,7 +219,7 @@ impl PackageHandler {
         let gzip_ct = ContentType::from(gzip);
 
         if mime == gzip_ct {
-            let descriptor = PackageReader::read(kind, &body)
+            let (descriptor, document) = PackageReader::read(kind, &body)
                 .map_err(|_| StatusCode::BAD_REQUEST)?;
 
             // Check the package version does not already exist
@@ -239,7 +245,8 @@ impl PackageHandler {
             tracing::debug!(cid = %cid, "added package");
 
             // Store the package meta data
-            let definition = Index::add_package(&url, kind, &address, descriptor, cid)
+            let definition = Index::add_package(
+                &url, kind, &address, descriptor, cid, document)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

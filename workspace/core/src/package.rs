@@ -27,6 +27,15 @@ impl fmt::Display for RegistryKind {
     }
 }
 
+impl RegistryKind {
+    /// Get the document name for this kind of registry.
+    pub fn document_name(&self) -> &str {
+        match self {
+            Self::Npm => "package.json",
+        }
+    }
+}
+
 /// Describes a package.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Descriptor {
@@ -48,11 +57,12 @@ pub struct PackageReader;
 
 impl PackageReader {
     /// Read a descriptor from file content.
-    pub fn read(kind: RegistryKind, buffer: &[u8]) -> Result<Descriptor> {
+    pub fn read(kind: RegistryKind, buffer: &[u8]) -> Result<(Descriptor, Vec<u8>)> {
         match kind {
             RegistryKind::Npm => {
                 let contents = decompress(buffer)?;
-                read_npm_package(&contents)
+                let (descriptor, buffer) = read_npm_package(&contents)?;
+                Ok((descriptor, buffer.to_vec()))
             }
         }
     }
