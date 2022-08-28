@@ -43,7 +43,7 @@ If a file already exists for the given package a 409 CONFLICT response is return
 ## Download a package
 
 ```
-PUT /api/package/:address/:name/:version
+GET /api/package/:address/:name/:version
 ```
 
 To download a package construct a URL containing the Ethereum-style address that was used when the package was uploaded along with the package name and semver.
