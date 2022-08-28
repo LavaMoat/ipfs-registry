@@ -102,7 +102,7 @@ async fn main() -> Result<()> {
         .with(tracing_subscriber::EnvFilter::new(
             std::env::var("RUST_LOG").unwrap_or_else(|_| "info".into()),
         ))
-        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_subscriber::fmt::layer().without_time())
         .init();
 
     match run().await {

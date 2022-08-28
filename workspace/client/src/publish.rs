@@ -20,6 +20,8 @@ pub async fn publish(
         return Err(Error::NotFile(file));
     }
 
+    // TODO: read from the keystore and sign
+
     let client = Client::new();
     let url = server.join("api/package")?;
     let body = file_to_body(File::from_std(std::fs::File::open(file)?));
@@ -27,6 +29,7 @@ pub async fn publish(
     let response = client
         .put(url)
         .header(X_SIGNATURE, "")
+        .header("content-type", mime.to_string())
         .body(body)
         .send()
         .await?;

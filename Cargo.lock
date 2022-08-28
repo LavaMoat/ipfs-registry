@@ -1029,6 +1029,7 @@ dependencies = [
  "ipfs-registry-core",
  "k256",
  "mime",
+ "rand",
  "reqwest",
  "semver",
  "serde",
@@ -2617,9 +2618,9 @@ dependencies = [
 
 [[package]]
 name = "web3-address"
-version = "0.2.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61f244b53e972710c4ab0f9b53337d1a4dece4779e3b9a35315768f4cfd789bf"
+checksum = "bb43db12a4fb39394482f27956028bf506f03b92b005ce72d209d9e3b6e646dd"
 dependencies = [
  "hex",
  "k256",
