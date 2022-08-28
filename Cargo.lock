@@ -935,7 +935,7 @@ dependencies = [
  "axum",
  "axum-macros",
  "axum-server",
- "bs58",
+ "base64",
  "clap",
  "futures",
  "hyper",

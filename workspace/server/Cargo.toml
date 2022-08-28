@@ -29,7 +29,7 @@ futures = "0.3"
 semver = { version = "1", features = ["serde"] }
 k256 = { version = "0.11", features = ["ecdsa", "sha256", "keccak256"] }
 once_cell = "1"
-bs58 = "0.4"
+base64 = "0.13"
 web3-address = { version = "0.2", features = ["ethereum"] }
 
 #ipfs-api-backend-hyper = { version = "0.5", features = ["with-hyper-rustls"] }

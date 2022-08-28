@@ -23,8 +23,7 @@ impl Header for Signature {
         let value = values.next().ok_or_else(headers::Error::invalid)?;
         let value = value.to_str().map_err(|_| headers::Error::invalid())?;
         let value =
-            bs58::decode(value)
-                .into_vec()
+            base64::decode(value)
                 .map_err(|_| headers::Error::invalid())?;
         let value: [u8; 65] = value.as_slice().try_into()
             .map_err(|_| headers::Error::invalid())?;
@@ -35,7 +34,7 @@ impl Header for Signature {
     where
         E: Extend<HeaderValue>,
     {
-        let s = bs58::encode(self.0).into_string();
+        let s = base64::encode(self.0);
         let value = HeaderValue::from_str(&s)
             .expect("failed to create signature header");
         values.extend(std::iter::once(value));

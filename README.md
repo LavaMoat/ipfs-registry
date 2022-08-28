@@ -34,7 +34,7 @@ The default mime type the server respects for packages is `application/gzip` so 
 
 To upload a package it MUST be signed and the signature given in the `x-signature` header.
 
-The `x-signature` header MUST be a base58 encoded string of a 65-byte Ethereum-style ECDSA recoverable signature.
+The `x-signature` header MUST be a base64 encoded string of a 65-byte Ethereum-style ECDSA recoverable signature.
 
 The server will compute the address from the public key recovered from the signature and use that as the namespace for packages.
 
