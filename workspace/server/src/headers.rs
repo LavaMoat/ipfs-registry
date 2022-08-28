@@ -3,10 +3,8 @@ use axum::headers::{self, Header, HeaderName, HeaderValue};
 
 use once_cell::sync::Lazy;
 
-const X_SIGNATURE_NAME: &str = "x-signature";
-
 pub static X_SIGNATURE: Lazy<HeaderName> =
-    Lazy::new(|| HeaderName::from_static(X_SIGNATURE_NAME));
+    Lazy::new(|| HeaderName::from_static(ipfs_registry_core::X_SIGNATURE));
 
 /// Represents the `x-signature` header.
 pub struct Signature([u8; 65]);
@@ -23,9 +21,10 @@ impl Header for Signature {
         let value = values.next().ok_or_else(headers::Error::invalid)?;
         let value = value.to_str().map_err(|_| headers::Error::invalid())?;
         let value =
-            base64::decode(value)
-                .map_err(|_| headers::Error::invalid())?;
-        let value: [u8; 65] = value.as_slice().try_into()
+            base64::decode(value).map_err(|_| headers::Error::invalid())?;
+        let value: [u8; 65] = value
+            .as_slice()
+            .try_into()
             .map_err(|_| headers::Error::invalid())?;
         Ok(Signature(value))
     }

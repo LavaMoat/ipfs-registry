@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use url::Url;
 
-use ipfs_registry_core::RegistryKind;
 use crate::{Error, Result};
+use ipfs_registry_core::RegistryKind;
 
 #[derive(Serialize, Deserialize)]
 pub struct ServerConfig {

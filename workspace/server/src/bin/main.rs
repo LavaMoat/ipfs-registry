@@ -7,7 +7,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use ipfs_registry_server::{Result, Server, ServerConfig, ServerInfo, State};
 
-/// Signed package registry server.
+/// Server for the IPFS package registry.
 #[derive(Parser, Debug)]
 #[clap(name = "ipkg-server", author, version, about, long_about = None)]
 struct Cli {

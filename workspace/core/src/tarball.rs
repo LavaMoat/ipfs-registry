@@ -23,8 +23,7 @@ pub(crate) fn read_npm_package(buffer: &[u8]) -> Result<Descriptor> {
 }
 
 /// Find the file data for a specific entry in a tarball.
-fn find_tar_entry(
-    package_path: PathBuf, buffer: &[u8]) -> Result<&[u8]> {
+fn find_tar_entry(package_path: PathBuf, buffer: &[u8]) -> Result<&[u8]> {
     let mut archive = Archive::new(buffer);
     for entry in archive.entries()? {
         let entry = entry?;
@@ -34,7 +33,7 @@ fn find_tar_entry(
             let entry_size = entry.header().entry_size()? as usize;
             let end_byte = start_byte + entry_size;
             let file_bytes = &buffer[start_byte..end_byte];
-            return Ok(file_bytes)
+            return Ok(file_bytes);
         }
     }
     Err(Error::NoPackage(package_path))

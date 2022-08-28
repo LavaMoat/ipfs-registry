@@ -5,6 +5,8 @@ edition = "2021"
 description = "Signed package registry client for IPFS"
 
 [dependencies]
+ipfs-registry-core = { version = "*", path = "../core" }
+
 clap = { version = "3", features = ["derive", "wrap_help"] }
 thiserror = "1"
 tokio = { version = "1", features = ["full"] }
@@ -14,6 +16,13 @@ toml = "0.5"
 serde = { version = "1", features = ["derive"] }
 url = { version = "2", features = ["serde"] }
 serde_json = "1"
+web3-keystore = "0.4"
+k256 = { version = "0.11", features = ["ecdsa", "sha256", "keccak256"] }
+mime = "0.3"
+web3-address = { version = "0.2", features = ["ethereum"] }
+semver = { version = "1", features = ["serde"] }
+reqwest = { version = "0.11", features = ["rustls", "json", "stream"] }
+tokio-util = "0.7"
 
 [[bin]]
 name = "ipkg-client"

@@ -1,9 +1,12 @@
 //! Types for package definitions.
-use std::fmt;
 use semver::Version;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
-use crate::{Result, tarball::{decompress, read_npm_package}};
+use crate::{
+    tarball::{decompress, read_npm_package},
+    Result,
+};
 
 /// Kinds or supported registries.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -14,9 +17,13 @@ pub enum RegistryKind {
 }
 impl fmt::Display for RegistryKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            Self::Npm => "npm",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Npm => "npm",
+            }
+        )
     }
 }
 
@@ -45,7 +52,7 @@ impl PackageReader {
         match kind {
             RegistryKind::Npm => {
                 let contents = decompress(buffer)?;
-                read_npm_package(&contents) 
+                read_npm_package(&contents)
             }
         }
     }

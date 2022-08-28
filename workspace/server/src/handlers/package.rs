@@ -1,35 +1,34 @@
 use axum::{
     body::Bytes,
-    extract::{Extension, TypedHeader, Path},
+    extract::{Extension, Path, TypedHeader},
     headers::ContentType,
-    http::{uri::Scheme, StatusCode, HeaderMap},
+    http::{uri::Scheme, HeaderMap, StatusCode},
 };
 
 //use axum_macros::debug_handler;
 
 use futures::TryStreamExt;
 use ipfs_api_backend_hyper::{IpfsApi, IpfsClient, TryFromUri};
+use k256::ecdsa::recoverable;
 use semver::Version;
 use std::{io::Cursor, sync::Arc};
 use tokio::sync::RwLock;
 use url::Url;
-use k256::ecdsa::recoverable;
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{PackageReader, Descriptor, Definition};
+use ipfs_registry_core::{Definition, Descriptor, PackageReader};
 
-use crate::{Error, Result, State, headers::Signature};
+use crate::{headers::Signature, Error, Result, State};
 
 const REGISTRY: &str = "registry";
 const NAME: &str = "meta.json";
 
 /// Verify a signature against a message and return the address.
 fn verify_signature(signature: [u8; 65], message: &[u8]) -> Result<Address> {
-    let recoverable: recoverable::Signature = signature
-        .as_slice().try_into()?;
+    let recoverable: recoverable::Signature =
+        signature.as_slice().try_into()?;
     let public_key = recoverable.recover_verifying_key(message)?;
-    let public_key: [u8; 33] =
-        public_key.to_bytes().as_slice().try_into()?;
+    let public_key: [u8; 33] = public_key.to_bytes().as_slice().try_into()?;
     let address: Address = (&public_key).try_into()?;
     Ok(address)
 }
@@ -87,24 +86,18 @@ impl Index {
         descriptor: Descriptor,
         cid: String,
     ) -> Result<()> {
-
         // TODO: unpin an existing version?
 
-        let dir = 
-            format!("/{}/{}/{}/{}",
-                REGISTRY,
-                address,
-                descriptor.name,
-                descriptor.version);
+        let dir = format!(
+            "/{}/{}/{}/{}",
+            REGISTRY, address, descriptor.name, descriptor.version
+        );
 
         let client = Ipfs::new_client(&url)?;
 
         client.files_mkdir(&dir, true).await?;
 
-        let definition = Definition {
-            descriptor,
-            cid,
-        };
+        let definition = Definition { descriptor, cid };
 
         let data = serde_json::to_vec(&definition)?;
         let path = format!("{}/{}", dir, NAME);
@@ -127,18 +120,17 @@ impl Index {
     ) -> Result<Option<Definition>> {
         let client = Ipfs::new_client(&url)?;
 
-        let path = 
-            format!("/{}/{}/{}/{}/{}",
-                REGISTRY,
-                address,
-                name,
-                version,
-                NAME);
+        let path = format!(
+            "/{}/{}/{}/{}/{}",
+            REGISTRY, address, name, version, NAME
+        );
 
-        let result = if let Ok(res) = client.files_read(&path)
+        let result = if let Ok(res) = client
+            .files_read(&path)
             .map_ok(|chunk| chunk.to_vec())
             .try_concat()
-            .await {
+            .await
+        {
             let doc: Definition = serde_json::from_slice(&res)?;
             Some(doc)
         } else {
@@ -151,11 +143,10 @@ impl Index {
 
 pub(crate) struct PackageHandler;
 impl PackageHandler {
-
     /// Get a package.
     pub(crate) async fn get(
         Extension(state): Extension<Arc<RwLock<State>>>,
-        Path((address, name, version)): Path<(Address, String, Version)>
+        Path((address, name, version)): Path<(Address, String, Version)>,
     ) -> std::result::Result<(HeaderMap, Bytes), StatusCode> {
         let reader = state.read().await;
         let url = reader.config.ipfs.url.clone();
@@ -182,14 +173,12 @@ impl PackageHandler {
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
             let mut headers = HeaderMap::new();
-            headers.insert(
-                "content-type", mime_type.parse().unwrap());
-            
+            headers.insert("content-type", mime_type.parse().unwrap());
+
             Ok((headers, Bytes::from(body)))
         } else {
             Err(StatusCode::NOT_FOUND)
         }
-
     }
 
     /// Create a new package.
@@ -199,7 +188,6 @@ impl PackageHandler {
         TypedHeader(signature): TypedHeader<Signature>,
         body: Bytes,
     ) -> std::result::Result<StatusCode, StatusCode> {
-
         // Verify the signature header against the payload bytes
         let address = verify_signature(signature.into(), &body)
             .map_err(|_| StatusCode::BAD_REQUEST)?;
@@ -214,7 +202,8 @@ impl PackageHandler {
 
         // TODO: ensure approval signatures
 
-        let gzip: mime::Mime = mime_type.parse()
+        let gzip: mime::Mime = mime_type
+            .parse()
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         let gzip_ct = ContentType::from(gzip);
 
@@ -225,9 +214,12 @@ impl PackageHandler {
             // Check the package version does not already exist
             let meta = Index::get_package(
                 &url,
-                &address, &descriptor.name, &descriptor.version)
-                .await
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+                &address,
+                &descriptor.name,
+                &descriptor.version,
+            )
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
             if meta.is_some() {
                 return Err(StatusCode::CONFLICT);
             }

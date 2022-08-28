@@ -125,8 +125,10 @@ impl Server {
 
         let mut app = Router::new()
             .route("/api", get(api))
-            .route("/api/package/:address/:name/:version",
-                get(PackageHandler::get))
+            .route(
+                "/api/package/:address/:name/:version",
+                get(PackageHandler::get),
+            )
             .route("/api/package", put(PackageHandler::put));
 
         app = app.layer(cors).layer(Extension(state));
