@@ -22,8 +22,8 @@ mime = "0.3"
 web3-address = { version = "0.4", features = ["ethereum"] }
 semver = { version = "1", features = ["serde"] }
 reqwest = { version = "0.11", features = ["rustls", "json", "stream"] }
-tokio-util = "0.7"
 rand = "0.8"
+base64 = "0.13"
 
 [[bin]]
 name = "ipkg-client"

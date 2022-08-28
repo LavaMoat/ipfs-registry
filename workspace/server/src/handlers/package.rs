@@ -16,11 +16,11 @@ use tokio::sync::RwLock;
 use url::Url;
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{Definition, Descriptor, PackageReader};
+use ipfs_registry_core::{Definition, Descriptor, PackageReader, RegistryKind};
 
 use crate::{headers::Signature, Error, Result, State};
 
-const REGISTRY: &str = "registry";
+const ROOT: &str = "ipfs-registry";
 const NAME: &str = "meta.json";
 
 /// Verify a signature against a message and return the address.
@@ -82,6 +82,7 @@ impl Index {
     /// Add a package to the index.
     async fn add_package(
         url: &Url,
+        kind: RegistryKind,
         address: &Address,
         descriptor: Descriptor,
         cid: String,
@@ -89,8 +90,9 @@ impl Index {
         // TODO: unpin an existing version?
 
         let dir = format!(
-            "/{}/{}/{}/{}",
-            REGISTRY, address, descriptor.name, descriptor.version
+            "/{}/{}/{}/{}/{}",
+            ROOT,
+            kind, address, descriptor.name, descriptor.version
         );
 
         let client = Ipfs::new_client(&url)?;
@@ -114,6 +116,7 @@ impl Index {
     /// Get a package from the index.
     async fn get_package(
         url: &Url,
+        kind: RegistryKind,
         address: &Address,
         name: &str,
         version: &Version,
@@ -121,8 +124,8 @@ impl Index {
         let client = Ipfs::new_client(&url)?;
 
         let path = format!(
-            "/{}/{}/{}/{}/{}",
-            REGISTRY, address, name, version, NAME
+            "/{}/{}/{}/{}/{}/{}",
+            ROOT, kind, address, name, version, NAME
         );
 
         let result = if let Ok(res) = client
@@ -151,6 +154,7 @@ impl PackageHandler {
         let reader = state.read().await;
         let url = reader.config.ipfs.url.clone();
         let mime_type = reader.config.registry.mime.clone();
+        let kind = reader.config.registry.kind.clone();
         drop(reader);
 
         //let address = String::from("mock-address");
@@ -161,7 +165,7 @@ impl PackageHandler {
             version = ?version);
 
         // Get the package meta data
-        let meta = Index::get_package(&url, &address, &name, &version)
+        let meta = Index::get_package(&url, kind, &address, &name, &version)
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -214,6 +218,7 @@ impl PackageHandler {
             // Check the package version does not already exist
             let meta = Index::get_package(
                 &url,
+                kind,
                 &address,
                 &descriptor.name,
                 &descriptor.version,
@@ -233,7 +238,7 @@ impl PackageHandler {
             tracing::debug!(cid = %cid, "added package");
 
             // Store the package meta data
-            Index::add_package(&url, &address, descriptor, cid)
+            Index::add_package(&url, kind, &address, descriptor, cid)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

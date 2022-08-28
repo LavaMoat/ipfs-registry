@@ -1,9 +1,9 @@
 use mime::Mime;
 use reqwest::{Body, Client};
 use std::path::PathBuf;
-use tokio::fs::File;
-use tokio_util::codec::{BytesCodec, FramedRead};
 use url::Url;
+use k256::ecdsa::{SigningKey, signature::Signer, recoverable};
+use web3_keystore::{KeyStore, decrypt};
 
 use ipfs_registry_core::X_SIGNATURE;
 
@@ -20,15 +20,25 @@ pub async fn publish(
         return Err(Error::NotFile(file));
     }
 
-    // TODO: read from the keystore and sign
+    let buffer = std::fs::read(key)?;
+    let keystore: KeyStore = serde_json::from_slice(&buffer)?;
+
+    // TODO: get password from stdin
+    let password = String::from("");
+
+    let key = decrypt(&keystore, &password)?;
+    let signing_key = SigningKey::from_bytes(&key)?;
+
+    let body = std::fs::read(file)?;
+    let signature: recoverable::Signature = signing_key.sign(&body);
+    let sign_bytes = &signature;
 
     let client = Client::new();
     let url = server.join("api/package")?;
-    let body = file_to_body(File::from_std(std::fs::File::open(file)?));
 
     let response = client
         .put(url)
-        .header(X_SIGNATURE, "")
+        .header(X_SIGNATURE, base64::encode(sign_bytes))
         .header("content-type", mime.to_string())
         .body(body)
         .send()
@@ -41,10 +51,4 @@ pub async fn publish(
         .ok_or(Error::ResponseCode(response.status().into()))?;
 
     Ok(())
-}
-
-fn file_to_body(file: File) -> Body {
-    let stream = FramedRead::new(file, BytesCodec::new());
-    let body = Body::wrap_stream(stream);
-    body
 }

@@ -1,4 +1,3 @@
-use mime::Mime;
 use semver::Version;
 use std::path::PathBuf;
 use url::Url;
