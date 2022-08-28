@@ -51,6 +51,9 @@ impl ServerConfig {
             tls.key = tls.key.canonicalize()?;
         }
 
+        // Sanity check the MIME type
+        let _: mime::Mime = config.registry.mime.parse()?;
+
         Ok(config)
     }
 
