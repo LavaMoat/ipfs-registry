@@ -1,11 +1,11 @@
 use mime::Mime;
-use reqwest::{Body, Client};
+use reqwest::Client;
 use std::path::PathBuf;
 use url::Url;
 use k256::ecdsa::{SigningKey, signature::Signer, recoverable};
 use web3_keystore::{KeyStore, decrypt};
 
-use ipfs_registry_core::X_SIGNATURE;
+use ipfs_registry_core::{X_SIGNATURE, Definition};
 
 use crate::{Error, Result};
 
@@ -50,5 +50,7 @@ pub async fn publish(
         .then_some(())
         .ok_or(Error::ResponseCode(response.status().into()))?;
 
+    let definition: Definition = response.json().await?;
+    tracing::info!(definition = ?definition);
     Ok(())
 }

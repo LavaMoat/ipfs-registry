@@ -1,4 +1,5 @@
 use axum::{
+    Json,
     body::Bytes,
     extract::{Extension, Path, TypedHeader},
     headers::ContentType,
@@ -86,7 +87,7 @@ impl Index {
         address: &Address,
         descriptor: Descriptor,
         cid: String,
-    ) -> Result<()> {
+    ) -> Result<Definition> {
         // TODO: unpin an existing version?
 
         let dir = format!(
@@ -110,7 +111,7 @@ impl Index {
 
         // TODO: pin the new version
 
-        Ok(())
+        Ok(definition)
     }
 
     /// Get a package from the index.
@@ -191,7 +192,7 @@ impl PackageHandler {
         TypedHeader(mime): TypedHeader<ContentType>,
         TypedHeader(signature): TypedHeader<Signature>,
         body: Bytes,
-    ) -> std::result::Result<StatusCode, StatusCode> {
+    ) -> std::result::Result<Json<Definition>, StatusCode> {
         // Verify the signature header against the payload bytes
         let address = verify_signature(signature.into(), &body)
             .map_err(|_| StatusCode::BAD_REQUEST)?;
@@ -238,11 +239,11 @@ impl PackageHandler {
             tracing::debug!(cid = %cid, "added package");
 
             // Store the package meta data
-            Index::add_package(&url, kind, &address, descriptor, cid)
+            let definition = Index::add_package(&url, kind, &address, descriptor, cid)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            Ok(StatusCode::OK)
+            Ok(Json(definition))
         } else {
             Err(StatusCode::BAD_REQUEST)
         }
