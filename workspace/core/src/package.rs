@@ -50,6 +50,8 @@ pub struct Definition {
     pub cid: String,
     /// Package descriptor.
     pub descriptor: Descriptor,
+    /// Signature encoded as base64.
+    pub signature: String,
 }
 
 /// Read a descriptor from a package.

@@ -73,5 +73,9 @@ GET /api/package/:address/:name/:version
 
 To download a package construct a URL containing the Ethereum-style address that was used when the package was uploaded along with the package name and semver.
 
+## Bugs
+
+The package meta data is not immutable and theoretically the meta data could be modified to point to a different `cid` which could allow an attacker to replace the file pointer. This could be mitigated by storing the package meta data in a blockchain.
+
 [ipfs]: https://ipfs.io/
 [rust]: https://www.rust-lang.org/

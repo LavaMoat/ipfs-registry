@@ -41,7 +41,9 @@ struct Ipfs;
 impl Ipfs {
     /// Create a new IPFS client from the configuration URL.
     fn new_client(url: &Url) -> Result<IpfsClient> {
-        let host = url.host_str().ok_or_else(|| Error::InvalidHost(url.clone()))?;
+        let host = url
+            .host_str()
+            .ok_or_else(|| Error::InvalidHost(url.clone()))?;
         let port = url
             .port_or_known_default()
             .ok_or_else(|| Error::InvalidPort(url.clone()))?;
@@ -86,6 +88,7 @@ impl Index {
     async fn add_package(
         url: &Url,
         kind: RegistryKind,
+        signature: String,
         address: &Address,
         descriptor: Descriptor,
         cid: String,
@@ -102,7 +105,11 @@ impl Index {
         client.files_mkdir(&dir, true).await?;
 
         // Write out the meta data definition
-        let definition = Definition { descriptor, cid };
+        let definition = Definition {
+            descriptor,
+            cid,
+            signature,
+        };
         let data = serde_json::to_vec(&definition)?;
         let path = format!("{}/{}", dir, NAME);
 
@@ -198,6 +205,8 @@ impl PackageHandler {
         TypedHeader(signature): TypedHeader<Signature>,
         body: Bytes,
     ) -> std::result::Result<Json<Definition>, StatusCode> {
+        let encoded_signature = base64::encode(signature.as_ref());
+
         // Verify the signature header against the payload bytes
         let address = verify_signature(signature.into(), &body)
             .map_err(|_| StatusCode::BAD_REQUEST)?;
@@ -245,7 +254,13 @@ impl PackageHandler {
 
             // Store the package meta data
             let definition = Index::add_package(
-                &url, kind, &address, descriptor, cid, document,
+                &url,
+                kind,
+                encoded_signature,
+                &address,
+                descriptor,
+                cid,
+                document,
             )
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
