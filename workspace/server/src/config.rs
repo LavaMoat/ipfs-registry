@@ -8,6 +8,7 @@ use ipfs_registry_core::RegistryKind;
 
 #[derive(Serialize, Deserialize)]
 pub struct ServerConfig {
+
     /// Configuration for IPFS.
     #[serde(default)]
     pub ipfs: IpfsConfig,
@@ -86,6 +87,8 @@ impl Default for IpfsConfig {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegistryConfig {
+    /// Maximum size of body requests.
+    pub body_limit: usize,
     /// Expected mime type for packages.
     pub mime: String,
     /// Indicate the kind of registry.
@@ -99,6 +102,7 @@ pub struct RegistryConfig {
 impl Default for RegistryConfig {
     fn default() -> Self {
         Self {
+            body_limit: 1024 * 1024 * 16,
             mime: String::from("application/gzip"),
             kind: RegistryKind::Npm,
             allow: None,

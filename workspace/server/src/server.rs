@@ -14,7 +14,7 @@ use axum_server::{tls_rustls::RustlsConfig, Handle};
 use serde::Serialize;
 use serde_json::json;
 use tokio::sync::{RwLock, RwLockReadGuard};
-use tower_http::cors::{CorsLayer, Origin};
+use tower_http::{cors::{CorsLayer}, limit::RequestBodyLimitLayer};
 
 use crate::{
     config::TlsConfig, handlers::PackageHandler, Result, ServerConfig,
@@ -50,13 +50,14 @@ impl Server {
     ) -> Result<()> {
         let reader = state.read().await;
         let origins = Server::read_origins(&reader)?;
+        let limit = reader.config.registry.body_limit;
         let tls = reader.config.tls.as_ref().cloned();
         drop(reader);
 
         if let Some(tls) = tls {
-            self.run_tls(addr, state, handle, origins, tls).await
+            self.run_tls(addr, state, handle, origins, limit, tls).await
         } else {
-            self.run(addr, state, handle, origins).await
+            self.run(addr, state, handle, origins, limit).await
         }
     }
 
@@ -67,10 +68,11 @@ impl Server {
         state: Arc<RwLock<State>>,
         handle: Handle,
         origins: Vec<HeaderValue>,
+        limit: usize,
         tls: TlsConfig,
     ) -> Result<()> {
         let tls = RustlsConfig::from_pem_file(&tls.cert, &tls.key).await?;
-        let app = Server::router(state, origins)?;
+        let app = Server::router(state, origins, limit)?;
         tracing::info!("listening on {}", addr);
         axum_server::bind_rustls(addr, tls)
             .handle(handle)
@@ -86,8 +88,9 @@ impl Server {
         state: Arc<RwLock<State>>,
         handle: Handle,
         origins: Vec<HeaderValue>,
+        limit: usize,
     ) -> Result<()> {
-        let app = Server::router(state, origins)?;
+        let app = Server::router(state, origins, limit)?;
         tracing::info!("listening on {}", addr);
         axum_server::bind(addr)
             .handle(handle)
@@ -111,23 +114,25 @@ impl Server {
     fn router(
         state: Arc<RwLock<State>>,
         origins: Vec<HeaderValue>,
+        limit: usize,
     ) -> Result<Router> {
         let cors = CorsLayer::new()
             .allow_methods(vec![Method::GET, Method::POST])
             .allow_credentials(true)
             .allow_headers(vec![AUTHORIZATION, CONTENT_TYPE])
             .expose_headers(vec![])
-            .allow_origin(Origin::list(origins));
+            .allow_origin(origins);
 
-        let mut app = Router::new()
+        let app = Router::new()
             .route("/api", get(api))
             .route(
                 "/api/package/:address/:name/:version",
                 get(PackageHandler::get),
             )
-            .route("/api/package", put(PackageHandler::put));
-
-        app = app.layer(cors).layer(Extension(state));
+            .route("/api/package", put(PackageHandler::put))
+            .layer(RequestBodyLimitLayer::new(limit))
+            .layer(cors)
+            .layer(Extension(state));
 
         Ok(app)
     }

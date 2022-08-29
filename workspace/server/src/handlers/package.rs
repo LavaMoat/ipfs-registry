@@ -25,6 +25,7 @@ use crate::{headers::Signature, Error, Result, State};
 
 const ROOT: &str = "ipfs-registry";
 const NAME: &str = "meta.json";
+//const LIMIT: u64 = 1024 * 1024 * 16;
 
 /// Verify a signature against a message and return the address.
 fn verify_signature(signature: [u8; 65], message: &[u8]) -> Result<Address> {
@@ -203,6 +204,7 @@ impl PackageHandler {
         TypedHeader(mime): TypedHeader<ContentType>,
         TypedHeader(signature): TypedHeader<Signature>,
         body: Bytes,
+        //body: ContentLengthLimit<Bytes, LIMIT>
     ) -> std::result::Result<Json<Definition>, StatusCode> {
         let encoded_signature = base64::encode(signature.as_ref());
 
@@ -256,8 +258,6 @@ impl PackageHandler {
             if meta.is_some() {
                 return Err(StatusCode::CONFLICT);
             }
-
-            // TODO: store in the index
 
             let cid = Ipfs::add(&url, body)
                 .await
