@@ -1,11 +1,11 @@
 [ipfs]
 url = "http://localhost:5001"
 
-[api]
-origins = [
-  "https://localhost:9060",
-  "https://localhost:9060",
-]
+#[cors]
+#origins = [
+  #"https://localhost:9060",
+  #"https://localhost:9060",
+#]
 
 #[tls]
 #cert = "cert.pem"

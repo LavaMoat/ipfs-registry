@@ -127,6 +127,17 @@ deny = [
 ]
 ```
 
+### CORS
+
+The default CORS configuration is very permissive, if you wish to restrict to certain origins:
+
+```toml
+[cors]
+origins = [
+  "https://example.com"
+]
+```
+
 ### TLS
 
 To run the server over HTTPS specify certificate and key files:

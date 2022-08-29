@@ -67,7 +67,7 @@ impl Server {
         addr: SocketAddr,
         state: Arc<RwLock<State>>,
         handle: Handle,
-        origins: Vec<HeaderValue>,
+        origins: Option<Vec<HeaderValue>>,
         limit: usize,
         tls: TlsConfig,
     ) -> Result<()> {
@@ -87,7 +87,7 @@ impl Server {
         addr: SocketAddr,
         state: Arc<RwLock<State>>,
         handle: Handle,
-        origins: Vec<HeaderValue>,
+        origins: Option<Vec<HeaderValue>>,
         limit: usize,
     ) -> Result<()> {
         let app = Server::router(state, origins, limit)?;
@@ -101,27 +101,34 @@ impl Server {
 
     fn read_origins(
         reader: &RwLockReadGuard<'_, State>,
-    ) -> Result<Vec<HeaderValue>> {
-        let mut origins = Vec::new();
-        for url in reader.config.api.origins.iter() {
-            origins.push(HeaderValue::from_str(
-                url.as_str().trim_end_matches('/'),
-            )?);
+    ) -> Result<Option<Vec<HeaderValue>>> {
+        if let Some(cors) = &reader.config.cors {
+            let mut origins = Vec::new();
+            for url in cors.origins.iter() {
+                origins.push(HeaderValue::from_str(
+                    url.as_str().trim_end_matches('/'),
+                )?);
+            }
+            Ok(Some(origins))
+        } else {
+            Ok(None)
         }
-        Ok(origins)
     }
 
     fn router(
         state: Arc<RwLock<State>>,
-        origins: Vec<HeaderValue>,
+        origins: Option<Vec<HeaderValue>>,
         limit: usize,
     ) -> Result<Router> {
-        let cors = CorsLayer::new()
-            .allow_methods(vec![Method::GET, Method::POST])
-            .allow_credentials(true)
-            .allow_headers(vec![AUTHORIZATION, CONTENT_TYPE])
-            .expose_headers(vec![])
-            .allow_origin(origins);
+
+        let cors = if let Some(origins) = origins {
+            CorsLayer::new()
+                .allow_methods(vec![Method::GET, Method::POST])
+                .allow_headers(vec![AUTHORIZATION, CONTENT_TYPE])
+                .allow_origin(origins)
+        } else {
+            CorsLayer::very_permissive()
+        };
 
         let app = Router::new()
             .route("/api", get(api))

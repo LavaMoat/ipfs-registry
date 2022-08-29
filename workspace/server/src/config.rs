@@ -8,7 +8,6 @@ use ipfs_registry_core::RegistryKind;
 
 #[derive(Serialize, Deserialize)]
 pub struct ServerConfig {
-
     /// Configuration for IPFS.
     #[serde(default)]
     pub ipfs: IpfsConfig,
@@ -20,8 +19,8 @@ pub struct ServerConfig {
     /// Configuration for TLS encryption.
     pub tls: Option<TlsConfig>,
 
-    /// Configuration for the API.
-    pub api: ApiConfig,
+    /// Configuration for CORS.
+    pub cors: Option<CorsConfig>,
 
     /// Path the file was loaded from used to determine
     /// relative paths.
@@ -120,7 +119,7 @@ pub struct TlsConfig {
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub struct ApiConfig {
+pub struct CorsConfig {
     /// List of additional CORS origins for the server.
     pub origins: Vec<Url>,
 }
