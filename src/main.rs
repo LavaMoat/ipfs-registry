@@ -9,9 +9,9 @@ use web3_address::ethereum::Address;
 
 use ipfs_registry::Result;
 
-/// Client for the IPFS package registry server.
+/// Signed package registry server.
 #[derive(Parser, Debug)]
-#[clap(name = "ipkg-client", author, version, about, long_about = None)]
+#[clap(name = "ipkg", author, version, about, long_about = None)]
 struct Cli {
     #[clap(subcommand)]
     command: Command,
@@ -21,9 +21,9 @@ struct Cli {
 enum Command {
     /// Generate a signing key.
     Keygen {
-        /// Write the keystore to file.
+        /// Write the keystore file to directory.
         #[clap(parse(from_os_str))]
-        file: PathBuf,
+        dir: PathBuf,
     },
     /// Publish a package.
     Publish {
@@ -81,8 +81,8 @@ async fn run() -> Result<()> {
     let args = Cli::parse();
 
     match args.command {
-        Command::Keygen { file } => {
-            let address = ipfs_registry_client::keygen(file).await?;
+        Command::Keygen { dir } => {
+            let address = ipfs_registry_client::keygen(dir).await?;
             tracing::info!(address = %address);
         }
         Command::Publish {
@@ -124,7 +124,7 @@ async fn main() -> Result<()> {
         .with(tracing_subscriber::EnvFilter::new(
             std::env::var("RUST_LOG").unwrap_or_else(|_| "info".into()),
         ))
-        .with(tracing_subscriber::fmt::layer().without_time())
+        .with(tracing_subscriber::fmt::layer())
         .init();
 
     match run().await {

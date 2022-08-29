@@ -7,9 +7,17 @@ pub enum Error {
     #[error("path {0} is not a file")]
     NotFile(PathBuf),
 
+    /// Error generated when a path is not a directory.
+    #[error("path {0} is not a directory")]
+    NotDirectory(PathBuf),
+
     /// Error generated when a file already exists.
     #[error("file already exists {0}")]
     FileExists(PathBuf),
+
+    /// Error generated when passwords do not match.
+    #[error("passwords do not match, try again")]
+    PasswordMismatch,
 
     /// Error generated on unexpected HTTP response code.
     #[error("unexpected response code {0}")]
