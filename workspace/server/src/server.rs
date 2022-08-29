@@ -17,7 +17,8 @@ use tokio::sync::{RwLock, RwLockReadGuard};
 use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
 
 use crate::{
-    config::TlsConfig, handlers::PackageHandler, Result, ServerConfig,
+    config::TlsConfig, handlers::PackageHandler, headers::X_SIGNATURE,
+    Result, ServerConfig,
 };
 
 /// Server state.
@@ -123,7 +124,11 @@ impl Server {
         let cors = if let Some(origins) = origins {
             CorsLayer::new()
                 .allow_methods(vec![Method::GET, Method::POST])
-                .allow_headers(vec![AUTHORIZATION, CONTENT_TYPE])
+                .allow_headers(vec![
+                    AUTHORIZATION,
+                    CONTENT_TYPE,
+                    X_SIGNATURE.clone(),
+                ])
                 .allow_origin(origins)
         } else {
             CorsLayer::very_permissive()
