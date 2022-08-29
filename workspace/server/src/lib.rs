@@ -25,7 +25,7 @@ pub async fn start(bind: String, config: PathBuf) -> Result<()> {
         config,
     }));
     let addr = SocketAddr::from_str(&bind)?;
-    let server = Server::new();
+    let server: Server = Default::default();
     server.start(addr, state, handle).await?;
     Ok(())
 }

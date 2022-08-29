@@ -41,10 +41,10 @@ struct Ipfs;
 impl Ipfs {
     /// Create a new IPFS client from the configuration URL.
     fn new_client(url: &Url) -> Result<IpfsClient> {
-        let host = url.host_str().ok_or(Error::InvalidHost(url.clone()))?;
+        let host = url.host_str().ok_or_else(|| Error::InvalidHost(url.clone()))?;
         let port = url
             .port_or_known_default()
-            .ok_or(Error::InvalidPort(url.clone()))?;
+            .ok_or_else(|| Error::InvalidPort(url.clone()))?;
 
         let scheme = if url.scheme() == "http" {
             Scheme::HTTP
@@ -98,7 +98,7 @@ impl Index {
             ROOT, kind, address, descriptor.name, descriptor.version
         );
 
-        let client = Ipfs::new_client(&url)?;
+        let client = Ipfs::new_client(url)?;
         client.files_mkdir(&dir, true).await?;
 
         // Write out the meta data definition
@@ -129,7 +129,7 @@ impl Index {
         name: &str,
         version: &Version,
     ) -> Result<Option<Definition>> {
-        let client = Ipfs::new_client(&url)?;
+        let client = Ipfs::new_client(url)?;
 
         let path = format!(
             "/{}/{}/{}/{}/{}/{}",
@@ -162,10 +162,8 @@ impl PackageHandler {
         let reader = state.read().await;
         let url = reader.config.ipfs.url.clone();
         let mime_type = reader.config.registry.mime.clone();
-        let kind = reader.config.registry.kind.clone();
+        let kind = reader.config.registry.kind;
         drop(reader);
-
-        //let address = String::from("mock-address");
 
         tracing::debug!(
             address = %address,
@@ -207,7 +205,7 @@ impl PackageHandler {
         let reader = state.read().await;
         let url = reader.config.ipfs.url.clone();
         let mime_type = reader.config.registry.mime.clone();
-        let kind = reader.config.registry.kind.clone();
+        let kind = reader.config.registry.kind;
         drop(reader);
 
         tracing::debug!(mime = ?mime_type);

@@ -38,3 +38,21 @@ fn find_tar_entry(package_path: PathBuf, buffer: &[u8]) -> Result<&[u8]> {
     }
     Err(Error::NoPackage(package_path))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+    use std::path::PathBuf;
+
+    #[test]
+    fn decompress_tarball() -> Result<()> {
+        let file = PathBuf::from("../../fixtures/mock-package-1.0.0.tgz");
+        let contents = std::fs::read(&file)?;
+        let decompressed = decompress(&contents)?;
+        let (descriptor, _) = read_npm_package(&decompressed)?;
+        assert_eq!("mock-package", &descriptor.name);
+        assert_eq!(1u64, descriptor.version.major);
+        Ok(())
+    }
+}

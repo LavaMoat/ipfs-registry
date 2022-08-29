@@ -1,23 +1,23 @@
 use k256::ecdsa::SigningKey;
 use std::path::PathBuf;
-use web3_keystore::encrypt;
 use web3_address::ethereum::Address;
+use web3_keystore::encrypt;
 
 use secrecy::ExposeSecret;
 
-use crate::{Error, Result, input::read_password};
+use crate::{input::read_password, Error, Result};
 
 /// Generate a signing key and write the result to file.
 pub async fn keygen(dir: PathBuf) -> Result<Address> {
     if !dir.is_dir() {
-        return Err(Error::NotDirectory(dir))
+        return Err(Error::NotDirectory(dir));
     }
 
     let password = read_password(None)?;
     let confirm = read_password(Some("Confirm password: "))?;
 
     if password.expose_secret() != confirm.expose_secret() {
-        return Err(Error::PasswordMismatch)
+        return Err(Error::PasswordMismatch);
     }
 
     let key = SigningKey::random(&mut rand::thread_rng());

@@ -37,14 +37,10 @@ pub struct ServerInfo {
     pub version: String,
 }
 
+#[derive(Default)]
 pub struct Server;
 
 impl Server {
-    /// Create a new server.
-    pub fn new() -> Self {
-        Self
-    }
-
     /// Start the server.
     pub async fn start(
         &self,
@@ -100,8 +96,8 @@ impl Server {
         Ok(())
     }
 
-    fn read_origins<'a>(
-        reader: &RwLockReadGuard<'a, State>,
+    fn read_origins(
+        reader: &RwLockReadGuard<'_, State>,
     ) -> Result<Vec<HeaderValue>> {
         let mut origins = Vec::new();
         for url in reader.config.api.origins.iter() {

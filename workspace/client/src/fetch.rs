@@ -31,7 +31,7 @@ pub async fn fetch(
         .status()
         .is_success()
         .then_some(())
-        .ok_or(Error::ResponseCode(response.status().into()))?;
+        .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
 
     let mut fd = tokio::fs::File::create(&file).await?;
     while let Some(mut item) = response.chunk().await? {

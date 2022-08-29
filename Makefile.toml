@@ -1,0 +1,80 @@
+extend= [
+  { path = "coverage_grcov.makefile.toml" }
+]
+[config]
+default_to_workspace = false
+
+[env]
+RUST_BACKTRACE = 0
+#RUST_LOG = 0
+BUILD_TARGET = "${CARGO_MAKE_RUST_TARGET_TRIPLE}"
+
+[tasks.format]
+workspace = true
+command = "cargo"
+args = ["fmt"]
+
+[tasks.format-check]
+command = "cargo"
+args = ["fmt", "--all", "--", "--check"]
+
+[tasks.check]
+workspace = true
+command = "cargo"
+args = ["check"]
+
+[tasks.clippy]
+workspace = true
+command = "cargo"
+args = ["clippy"]
+
+[tasks.clean]
+workspace = true
+command = "cargo"
+args = ["clean"]
+
+[tasks.build]
+workspace = true
+command = "cargo"
+args = ["build"]
+dependencies = ["clean"]
+
+[tasks.release]
+command = "cargo"
+args = ["build", "--bins", "--all", "--release"]
+
+[tasks.docs]
+command = "cargo"
+args = ["doc", "--all", "--open", "--no-deps"]
+
+[tasks.unit]
+command = "cargo"
+args = ["test", "--all", "--lib", "--", "--nocapture"]
+
+[tasks.integration]
+command = "cargo"
+args = ["test", "integration"]
+
+[tasks.test]
+dependencies = ["unit", "integration"]
+
+[tasks.dev]
+dependencies = ["test", "format"]
+
+[tasks.clean-coverage]
+script = '''
+#rm -rf ./target/cover
+rm -rf ./target/coverage
+rm -f ./target/lcov.info
+'''
+
+[tasks.genhtml]
+script = '''
+grcov . -s . --binary-path ./target/debug -t html --branch --ignore-not-existing -o ./target/coverage/ --ignore 'src/*' --ignore 'tests/*' --ignore 'target/*'
+'''
+
+[tasks.cover]
+alias = "coverage_grcov"
+
+[tasks.coverage]
+dependencies = ["clean-coverage", "cover", "genhtml"]

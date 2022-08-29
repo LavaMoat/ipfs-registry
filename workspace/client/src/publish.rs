@@ -1,14 +1,14 @@
 use k256::ecdsa::{recoverable, signature::Signer, SigningKey};
 use mime::Mime;
 use reqwest::Client;
+use secrecy::ExposeSecret;
 use std::path::PathBuf;
 use url::Url;
 use web3_keystore::{decrypt, KeyStore};
-use secrecy::ExposeSecret;
 
 use ipfs_registry_core::{Definition, X_SIGNATURE};
 
-use crate::{Error, Result, input::read_password};
+use crate::{input::read_password, Error, Result};
 
 /// Publish a package.
 pub async fn publish(
@@ -48,7 +48,7 @@ pub async fn publish(
         .status()
         .is_success()
         .then_some(())
-        .ok_or(Error::ResponseCode(response.status().into()))?;
+        .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
 
     let definition: Definition = response.json().await?;
     Ok(definition)

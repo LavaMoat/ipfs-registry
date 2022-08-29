@@ -2,7 +2,7 @@
 
 Signed package registry backed by IPFS for storage.
 
-## Preqrequsites
+## Prerequisites
 
 * [ipfs][]
 * [rust][]
@@ -10,6 +10,12 @@ Signed package registry backed by IPFS for storage.
 Minimum supported rust version (MSRV) is 1.63.0.
 
 ## Getting Started
+
+Install the binary:
+
+```
+cargo install --path .
+```
 
 Ensure a local IPFS node is running:
 
@@ -20,8 +26,27 @@ ipfs daemon
 Start the server:
 
 ```
-cd workspace/server
-cargo run -- -c ../../sandbox/config.toml
+ipkg server -c ./sandbox/config.toml
+```
+
+Generate a signing key; you will be prompted to choose a password for the keystore:
+
+```
+ipkg keygen ./sandbox
+```
+
+Publish a package:
+
+```
+ipkg publish -k ./sandbox/<addr>.json fixtures/mock-package-1.0.0.tgz
+```
+
+Replace `<addr>` with the address for the key and enter the password for the keystore when prompted.
+
+Download the package to a file:
+
+```
+ipkg fetch -a <addr> -n mock-package -v 1.0.0 sandbox/package.tgz
 ```
 
 ## Upload a package
