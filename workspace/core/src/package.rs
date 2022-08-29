@@ -57,7 +57,10 @@ pub struct PackageReader;
 
 impl PackageReader {
     /// Read a descriptor from file content.
-    pub fn read(kind: RegistryKind, buffer: &[u8]) -> Result<(Descriptor, Vec<u8>)> {
+    pub fn read(
+        kind: RegistryKind,
+        buffer: &[u8],
+    ) -> Result<(Descriptor, Vec<u8>)> {
         match kind {
             RegistryKind::Npm => {
                 let contents = decompress(buffer)?;

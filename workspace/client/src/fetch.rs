@@ -1,12 +1,11 @@
-use std::path::PathBuf;
 use std::borrow::BorrowMut;
+use std::path::PathBuf;
 
+use reqwest::Client;
 use semver::Version;
+use tokio::io::AsyncWriteExt;
 use url::Url;
 use web3_address::ethereum::Address;
-use reqwest::Client;
-use tokio::io::AsyncWriteExt;
-use human_bytes::human_bytes;
 
 use crate::{Error, Result};
 
@@ -17,13 +16,13 @@ pub async fn fetch(
     name: String,
     version: Version,
     file: PathBuf,
-) -> Result<()> {
+) -> Result<PathBuf> {
     if file.exists() {
         return Err(Error::FileExists(file));
     }
 
-    let url = server.join(
-        &format!("api/package/{}/{}/{}", address, name, version))?;
+    let url = server
+        .join(&format!("api/package/{}/{}/{}", address, name, version))?;
 
     let client = Client::new();
     let mut response = client.get(url).send().await?;
@@ -41,8 +40,5 @@ pub async fn fetch(
 
     fd.flush().await?;
 
-    let size = file.metadata()?.len();
-    tracing::info!(file = ?file, size = ?human_bytes(size as f64));
-
-    Ok(())
+    Ok(file)
 }

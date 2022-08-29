@@ -1,11 +1,11 @@
+use k256::ecdsa::{recoverable, signature::Signer, SigningKey};
 use mime::Mime;
 use reqwest::Client;
 use std::path::PathBuf;
 use url::Url;
-use k256::ecdsa::{SigningKey, signature::Signer, recoverable};
-use web3_keystore::{KeyStore, decrypt};
+use web3_keystore::{decrypt, KeyStore};
 
-use ipfs_registry_core::{X_SIGNATURE, Definition};
+use ipfs_registry_core::{Definition, X_SIGNATURE};
 
 use crate::{Error, Result};
 
@@ -15,7 +15,7 @@ pub async fn publish(
     mime: Mime,
     key: PathBuf,
     file: PathBuf,
-) -> Result<()> {
+) -> Result<Definition> {
     if !file.is_file() {
         return Err(Error::NotFile(file));
     }
@@ -51,6 +51,5 @@ pub async fn publish(
         .ok_or(Error::ResponseCode(response.status().into()))?;
 
     let definition: Definition = response.json().await?;
-    tracing::info!(definition = ?definition);
-    Ok(())
+    Ok(definition)
 }

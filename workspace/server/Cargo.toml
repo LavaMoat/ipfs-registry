@@ -33,9 +33,3 @@ base64 = "0.13"
 web3-address = { version = "0.4", features = ["ethereum"] }
 
 #ipfs-api-backend-hyper = { version = "0.5", features = ["with-hyper-rustls"] }
-
-[[bin]]
-name = "ipkg-server"
-path = "src/bin/main.rs"
-
-

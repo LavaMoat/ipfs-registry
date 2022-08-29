@@ -1,9 +1,9 @@
 use axum::{
-    Json,
     body::Bytes,
     extract::{Extension, Path, TypedHeader},
     headers::ContentType,
     http::{uri::Scheme, HeaderMap, StatusCode},
+    Json,
 };
 
 //use axum_macros::debug_handler;
@@ -17,7 +17,9 @@ use tokio::sync::RwLock;
 use url::Url;
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{Definition, Descriptor, PackageReader, RegistryKind};
+use ipfs_registry_core::{
+    Definition, Descriptor, PackageReader, RegistryKind,
+};
 
 use crate::{headers::Signature, Error, Result, State};
 
@@ -93,8 +95,7 @@ impl Index {
 
         let dir = format!(
             "/{}/{}/{}/{}/{}",
-            ROOT,
-            kind, address, descriptor.name, descriptor.version
+            ROOT, kind, address, descriptor.name, descriptor.version
         );
 
         let client = Ipfs::new_client(&url)?;
@@ -246,9 +247,10 @@ impl PackageHandler {
 
             // Store the package meta data
             let definition = Index::add_package(
-                &url, kind, &address, descriptor, cid, document)
-                .await
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+                &url, kind, &address, descriptor, cid, document,
+            )
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
             Ok(Json(definition))
         } else {

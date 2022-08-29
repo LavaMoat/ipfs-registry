@@ -888,12 +888,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4a1e36c821dbe04574f602848a19f742f4fb3c98d40449f11bcad18d6b17421"
 
 [[package]]
-name = "human_bytes"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88a0d4dc39ec942e44c1c306aa196da67f2bd6a30dc7b4a475465c13ccf28817"
-
-[[package]]
 name = "hyper"
 version = "0.14.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1026,6 +1020,19 @@ dependencies = [
 [[package]]
 name = "ipfs-registry"
 version = "0.1.0"
+dependencies = [
+ "clap",
+ "ipfs-registry-client",
+ "ipfs-registry-server",
+ "mime",
+ "semver",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "web3-address",
+]
 
 [[package]]
 name = "ipfs-registry-client"
@@ -1033,7 +1040,6 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "clap",
- "human_bytes",
  "ipfs-registry-core",
  "k256",
  "mime",
@@ -1044,7 +1050,6 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
- "toml",
  "tracing",
  "tracing-subscriber",
  "url",

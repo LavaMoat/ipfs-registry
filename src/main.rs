@@ -1,12 +1,13 @@
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
 use mime::Mime;
 use semver::Version;
-use std::path::PathBuf;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use url::Url;
 use web3_address::ethereum::Address;
 
-use ipfs_registry_client::Result;
+use ipfs_registry::Result;
 
 /// Client for the IPFS package registry server.
 #[derive(Parser, Debug)]
@@ -64,6 +65,16 @@ enum Command {
         #[clap(parse(from_os_str))]
         file: PathBuf,
     },
+    /// Start a server.
+    Server {
+        /// Bind to host:port.
+        #[clap(short, long, default_value = "127.0.0.1:9060")]
+        bind: String,
+
+        /// Config file to load.
+        #[clap(short, long, parse(from_os_str))]
+        config: PathBuf,
+    },
 }
 
 async fn run() -> Result<()> {
@@ -71,7 +82,8 @@ async fn run() -> Result<()> {
 
     match args.command {
         Command::Keygen { file } => {
-            ipfs_registry_client::keygen(file).await?;
+            let address = ipfs_registry_client::keygen(file).await?;
+            tracing::info!(address = %address);
         }
         Command::Publish {
             server,
@@ -79,7 +91,10 @@ async fn run() -> Result<()> {
             key,
             file,
         } => {
-            ipfs_registry_client::publish(server, mime, key, file).await?;
+            let definition =
+                ipfs_registry_client::publish(server, mime, key, file)
+                    .await?;
+            tracing::info!(definition = ?definition);
         }
         Command::Fetch {
             server,
@@ -88,8 +103,15 @@ async fn run() -> Result<()> {
             version,
             file,
         } => {
-            ipfs_registry_client::fetch(server, address, name, version, file)
-                .await?;
+            let file = ipfs_registry_client::fetch(
+                server, address, name, version, file,
+            )
+            .await?;
+            let size = file.metadata()?.len();
+            tracing::info!(file = ?file, size = ?size);
+        }
+        Command::Server { bind, config } => {
+            ipfs_registry_server::start(bind, config).await?;
         }
     }
 
