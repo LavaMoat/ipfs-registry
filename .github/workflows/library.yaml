@@ -1,0 +1,25 @@
+name: Library
+
+on: [pull_request]
+
+env:
+  RUST_LOG: "0"
+
+jobs:
+  library:
+    name: library
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          components: clippy
+      - name: Install cargo make
+        run: cargo install cargo-make
+      - name: Check cargo fmt
+        run: cargo make format-check
+      - name: Check cargo clippy
+        run: cargo make clippy
+      - name: Run tests
+        run: cargo make test

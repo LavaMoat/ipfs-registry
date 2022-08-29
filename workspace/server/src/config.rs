@@ -1,5 +1,8 @@
-use std::{path::{Path, PathBuf}, collections::HashSet};
 use serde::{Deserialize, Serialize};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 use url::Url;
 use web3_address::ethereum::Address;
 

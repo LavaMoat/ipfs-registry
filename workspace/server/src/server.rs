@@ -14,7 +14,7 @@ use axum_server::{tls_rustls::RustlsConfig, Handle};
 use serde::Serialize;
 use serde_json::json;
 use tokio::sync::{RwLock, RwLockReadGuard};
-use tower_http::{cors::{CorsLayer}, limit::RequestBodyLimitLayer};
+use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
 
 use crate::{
     config::TlsConfig, handlers::PackageHandler, Result, ServerConfig,
@@ -120,7 +120,6 @@ impl Server {
         origins: Option<Vec<HeaderValue>>,
         limit: usize,
     ) -> Result<Router> {
-
         let cors = if let Some(origins) = origins {
             CorsLayer::new()
                 .allow_methods(vec![Method::GET, Method::POST])

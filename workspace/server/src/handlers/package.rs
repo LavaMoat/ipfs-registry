@@ -214,18 +214,18 @@ impl PackageHandler {
 
         let reader = state.read().await;
 
-        // Check if the author is denied 
+        // Check if the author is denied
         if let Some(deny) = &reader.config.registry.deny {
             if deny.contains(&address) {
-                return Err(StatusCode::UNAUTHORIZED)
-            } 
+                return Err(StatusCode::UNAUTHORIZED);
+            }
         }
 
         // Check if the author is allowed
         if let Some(allow) = &reader.config.registry.allow {
             if !allow.contains(&address) {
-                return Err(StatusCode::UNAUTHORIZED)
-            } 
+                return Err(StatusCode::UNAUTHORIZED);
+            }
         }
 
         let url = reader.config.ipfs.url.clone();
