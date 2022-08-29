@@ -69,6 +69,8 @@ If a file already exists for the given package a 409 CONFLICT response is return
 
 If the address of the publisher has been denied based on the server configuration's `allow` and `deny` sets then a 401 UNAUTHORIZED response is returned.
 
+The default configuration limits requests to 16MiB so if the package is too large a 413 PAYLOAD TOO LARGE response is returned.
+
 ### Download a package
 
 ```
@@ -93,6 +95,15 @@ url = "http://localhost:7007"
 Note that currently HTTPS connections to IPFS are not supported.
 
 ### Registry
+
+#### Body Limit
+
+If you need to allow packages larger than the default 16MiB use `body-limit`:
+
+```toml
+[registry]
+body-limit = 33554432   # 32MiB
+```
 
 #### Allow
 
