@@ -1,6 +1,7 @@
+use std::{path::{Path, PathBuf}, collections::HashSet};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
 use url::Url;
+use web3_address::ethereum::Address;
 
 use crate::{Error, Result};
 use ipfs_registry_core::RegistryKind;
@@ -89,6 +90,10 @@ pub struct RegistryConfig {
     pub mime: String,
     /// Indicate the kind of registry.
     pub kind: RegistryKind,
+    /// Set of addresses that are allow to publish.
+    pub allow: Option<HashSet<Address>>,
+    /// Set of addresses that are not allowed to publish.
+    pub deny: Option<HashSet<Address>>,
 }
 
 impl Default for RegistryConfig {
@@ -96,6 +101,8 @@ impl Default for RegistryConfig {
         Self {
             mime: String::from("application/gzip"),
             kind: RegistryKind::Npm,
+            allow: None,
+            deny: None,
         }
     }
 }

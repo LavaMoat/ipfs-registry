@@ -49,7 +49,9 @@ Download the package to a file:
 ipkg fetch -a <addr> -n mock-package -v 1.0.0 sandbox/package.tgz
 ```
 
-## Upload a package
+## API
+
+### Upload a package
 
 ```
 PUT /api/package
@@ -65,13 +67,66 @@ The server will compute the address from the public key recovered from the signa
 
 If a file already exists for the given package a 409 CONFLICT response is returned.
 
-## Download a package
+If the address of the publisher has been denied based on the server configuration's `allow` and `deny` sets then a 401 UNAUTHORIZED response is returned.
+
+### Download a package
 
 ```
 GET /api/package/:address/:name/:version
 ```
 
 To download a package construct a URL containing the Ethereum-style address that was used when the package was uploaded along with the package name and semver.
+
+## Configuration
+
+This section describes the server configuration; after making changes to the configuration you must restart the server for changes to take effect.
+
+### IPFS
+
+If the IPFS node is running on a different port to the default you can change the URL to use:
+
+```toml
+[ipfs]
+url = "http://localhost:7007"
+```
+
+Note that currently HTTPS connections to IPFS are not supported.
+
+### Registry
+
+#### Allow
+
+To restrict access to an allowed list of publishers specify addresses in the `allow` set:
+
+```toml
+[registry]
+allow = [
+  "0x1fc770ac21067a04f83101ebf19a670db9e3eb21"
+]
+```
+
+#### Deny
+
+To deny publish access use the `deny` set:
+
+```toml
+[registry]
+deny = [
+  "0x1fc770ac21067a04f83101ebf19a670db9e3eb21"
+]
+```
+
+### TLS
+
+To run the server over HTTPS specify certificate and key files:
+
+```toml
+[tls]
+cert = "cert.pem"
+key = "key.pem"
+```
+
+Relative paths are resolved from the directory containing the configuration file.
 
 ## Bugs
 
