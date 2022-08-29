@@ -1,5 +1,6 @@
 mod error;
 mod fetch;
+mod input;
 mod keygen;
 mod publish;
 

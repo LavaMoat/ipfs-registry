@@ -38,4 +38,7 @@ pub enum Error {
     /// Error generate by the ECDSA library.
     #[error(transparent)]
     Ecdsa(#[from] k256::ecdsa::Error),
+
+    #[error(transparent)]
+    Readline(#[from] rustyline::error::ReadlineError),
 }

@@ -4,10 +4,11 @@ use reqwest::Client;
 use std::path::PathBuf;
 use url::Url;
 use web3_keystore::{decrypt, KeyStore};
+use secrecy::ExposeSecret;
 
 use ipfs_registry_core::{Definition, X_SIGNATURE};
 
-use crate::{Error, Result};
+use crate::{Error, Result, input::read_password};
 
 /// Publish a package.
 pub async fn publish(
@@ -23,10 +24,9 @@ pub async fn publish(
     let buffer = std::fs::read(key)?;
     let keystore: KeyStore = serde_json::from_slice(&buffer)?;
 
-    // TODO: get password from stdin
-    let password = String::from("");
+    let password = read_password(Some("Keystore passphrase: "))?;
 
-    let key = decrypt(&keystore, &password)?;
+    let key = decrypt(&keystore, password.expose_secret())?;
     let signing_key = SigningKey::from_bytes(&key)?;
 
     let body = std::fs::read(file)?;

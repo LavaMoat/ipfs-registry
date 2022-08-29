@@ -23,3 +23,7 @@ semver = { version = "1", features = ["serde"] }
 reqwest = { version = "0.11", features = ["rustls", "json", "stream"] }
 rand = "0.8"
 base64 = "0.13"
+rustyline = "10"
+rustyline-derive = "0.7"
+unicode-width = "0.1"
+secrecy = "0.8"
