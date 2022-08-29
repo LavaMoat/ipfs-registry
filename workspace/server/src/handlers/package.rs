@@ -170,7 +170,6 @@ impl PackageHandler {
         let url = reader.config.ipfs.url.clone();
         let mime_type = reader.config.registry.mime.clone();
         let kind = reader.config.registry.kind;
-        drop(reader);
 
         tracing::debug!(
             address = %address,
@@ -212,10 +211,24 @@ impl PackageHandler {
             .map_err(|_| StatusCode::BAD_REQUEST)?;
 
         let reader = state.read().await;
+
+        // Check if the author is denied 
+        if let Some(deny) = &reader.config.registry.deny {
+            if deny.contains(&address) {
+                return Err(StatusCode::UNAUTHORIZED)
+            } 
+        }
+
+        // Check if the author is allowed
+        if let Some(allow) = &reader.config.registry.allow {
+            if !allow.contains(&address) {
+                return Err(StatusCode::UNAUTHORIZED)
+            } 
+        }
+
         let url = reader.config.ipfs.url.clone();
         let mime_type = reader.config.registry.mime.clone();
         let kind = reader.config.registry.kind;
-        drop(reader);
 
         tracing::debug!(mime = ?mime_type);
 
