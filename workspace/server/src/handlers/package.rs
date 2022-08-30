@@ -2,31 +2,20 @@ use axum::{
     body::Bytes,
     extract::{Extension, Path, TypedHeader},
     headers::ContentType,
-    http::{uri::Scheme, HeaderMap, StatusCode},
+    http::{HeaderMap, StatusCode},
     Json,
 };
 
 //use axum_macros::debug_handler;
 
-use futures::TryStreamExt;
-use ipfs_api_backend_hyper::{IpfsApi, IpfsClient, TryFromUri};
 use k256::ecdsa::recoverable;
 use semver::Version;
-use serde_json::Value;
-use std::{io::Cursor, sync::Arc};
-use tokio::sync::RwLock;
-use url::Url;
+
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{
-    Definition, Descriptor, PackagePointer, PackageReader, Receipt,
-    RegistryKind,
-};
+use ipfs_registry_core::{PackageReader, Receipt};
 
-use crate::{headers::Signature, Error, Result, State};
-
-const ROOT: &str = "ipfs-registry";
-const NAME: &str = "meta.json";
+use crate::{headers::Signature, server::ServerState, Result};
 
 /// Verify a signature against a message and return the address.
 fn verify_signature(signature: [u8; 65], message: &[u8]) -> Result<Address> {
@@ -38,140 +27,15 @@ fn verify_signature(signature: [u8; 65], message: &[u8]) -> Result<Address> {
     Ok(address)
 }
 
-struct Ipfs;
-
-impl Ipfs {
-    /// Create a new IPFS client from the configuration URL.
-    fn new_client(url: &Url) -> Result<IpfsClient> {
-        let host = url
-            .host_str()
-            .ok_or_else(|| Error::InvalidHost(url.clone()))?;
-        let port = url
-            .port_or_known_default()
-            .ok_or_else(|| Error::InvalidPort(url.clone()))?;
-
-        let scheme = if url.scheme() == "http" {
-            Scheme::HTTP
-        } else if url.scheme() == "https" {
-            Scheme::HTTPS
-        } else {
-            return Err(Error::InvalidScheme(url.scheme().to_owned()));
-        };
-
-        Ok(IpfsClient::from_host_and_port(scheme, host, port)?)
-    }
-
-    /// Add a blob to IPFS.
-    async fn add(url: &Url, data: Bytes) -> Result<String> {
-        let client = Ipfs::new_client(url)?;
-        let data = Cursor::new(data);
-        let add_res = client.add(data).await?;
-        client.pin_add(&add_res.hash, true).await?;
-        Ok(add_res.hash)
-    }
-
-    /// Get a blob from IPFS.
-    async fn get(url: &Url, cid: &str) -> Result<Vec<u8>> {
-        let client = Ipfs::new_client(url)?;
-        let res = client
-            .cat(cid)
-            .map_ok(|chunk| chunk.to_vec())
-            .try_concat()
-            .await?;
-        Ok(res)
-    }
-}
-
-/// Manage access to the package index.
-struct Index;
-
-impl Index {
-    /// Add a pointer to the index.
-    async fn add_pointer(
-        url: &Url,
-        kind: RegistryKind,
-        signature: String,
-        address: &Address,
-        descriptor: Descriptor,
-        archive: String,
-        package: Value,
-    ) -> Result<Receipt> {
-        let dir = format!(
-            "/{}/{}/{}/{}/{}",
-            ROOT, kind, address, descriptor.name, descriptor.version
-        );
-
-        let client = Ipfs::new_client(url)?;
-        client.files_mkdir(&dir, true).await?;
-
-        let definition = Definition {
-            descriptor,
-            archive,
-            signature,
-        };
-
-        let doc = PackagePointer {
-            definition: definition.clone(),
-            package,
-        };
-        let data = serde_json::to_vec_pretty(&doc)?;
-        let path = format!("{}/{}", dir, NAME);
-
-        let data = Cursor::new(data);
-        client.files_write(&path, true, true, data).await?;
-        client.files_flush(Some(&path)).await?;
-
-        let stat = client.files_stat(&path).await?;
-        client.pin_add(&stat.hash, true).await?;
-
-        let receipt = Receipt {
-            pointer: stat.hash,
-            definition,
-        };
-
-        Ok(receipt)
-    }
-
-    /// Get a pointer from the index.
-    async fn get_pointer(
-        url: &Url,
-        kind: RegistryKind,
-        address: &Address,
-        name: &str,
-        version: &Version,
-    ) -> Result<Option<PackagePointer>> {
-        let client = Ipfs::new_client(url)?;
-
-        let path = format!(
-            "/{}/{}/{}/{}/{}/{}",
-            ROOT, kind, address, name, version, NAME
-        );
-
-        let result = if let Ok(res) = client
-            .files_read(&path)
-            .map_ok(|chunk| chunk.to_vec())
-            .try_concat()
-            .await
-        {
-            let doc: PackagePointer = serde_json::from_slice(&res)?;
-            Some(doc)
-        } else {
-            None
-        };
-
-        Ok(result)
-    }
-}
-
 pub(crate) struct PackageHandler;
 impl PackageHandler {
     /// Get a package.
     pub(crate) async fn get(
-        Extension(state): Extension<Arc<RwLock<State>>>,
+        Extension(state): Extension<ServerState>,
         Path((address, name, version)): Path<(Address, String, Version)>,
     ) -> std::result::Result<(HeaderMap, Bytes), StatusCode> {
         let reader = state.read().await;
-        let url = reader.config.ipfs.url.clone();
+        let _url = reader.config.ipfs.url.clone();
         let mime_type = reader.config.registry.mime.clone();
         let kind = reader.config.registry.kind;
 
@@ -181,14 +45,20 @@ impl PackageHandler {
             version = ?version);
 
         // Get the package meta data
-        let meta = Index::get_pointer(&url, kind, &address, &name, &version)
+        let meta = reader
+            .layers
+            .primary
+            .get_pointer(kind, &address, &name, &version)
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
         tracing::debug!(meta = ?meta);
 
         if let Some(doc) = meta {
-            let body = Ipfs::get(&url, &doc.definition.archive)
+            let body = reader
+                .layers
+                .primary
+                .get_blob(&doc.definition.archive)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -203,7 +73,7 @@ impl PackageHandler {
 
     /// Create a new package.
     pub(crate) async fn put(
-        Extension(state): Extension<Arc<RwLock<State>>>,
+        Extension(state): Extension<ServerState>,
         TypedHeader(mime): TypedHeader<ContentType>,
         TypedHeader(signature): TypedHeader<Signature>,
         body: Bytes,
@@ -230,7 +100,6 @@ impl PackageHandler {
             }
         }
 
-        let url = reader.config.ipfs.url.clone();
         let mime_type = reader.config.registry.mime.clone();
         let kind = reader.config.registry.kind;
 
@@ -248,37 +117,44 @@ impl PackageHandler {
                 .map_err(|_| StatusCode::BAD_REQUEST)?;
 
             // Check the package version does not already exist
-            let meta = Index::get_pointer(
-                &url,
-                kind,
-                &address,
-                &descriptor.name,
-                &descriptor.version,
-            )
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            let meta = reader
+                .layers
+                .primary
+                .get_pointer(
+                    kind,
+                    &address,
+                    &descriptor.name,
+                    &descriptor.version,
+                )
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
             if meta.is_some() {
                 return Err(StatusCode::CONFLICT);
             }
 
-            let cid = Ipfs::add(&url, body)
+            let id = reader
+                .layers
+                .primary
+                .add_blob(body)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            tracing::debug!(cid = %cid, "added package");
+            tracing::debug!(id = %id, "added package");
 
             // Store the package meta data
-            let receipt = Index::add_pointer(
-                &url,
-                kind,
-                encoded_signature,
-                &address,
-                descriptor,
-                cid,
-                package_meta,
-            )
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            let receipt = reader
+                .layers
+                .primary
+                .add_pointer(
+                    kind,
+                    encoded_signature,
+                    &address,
+                    descriptor,
+                    id,
+                    package_meta,
+                )
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
             Ok(Json(receipt))
         } else {

@@ -14,8 +14,8 @@ use crate::Result;
 
 /// Type for a primary and backup layer.
 pub(crate) struct Layers {
-    pub primary: Box<dyn Layer>,
-    pub backup: Option<Box<dyn Layer>>,
+    pub primary: Box<dyn Layer + Send + Sync + 'static>,
+    pub backup: Option<Box<dyn Layer + Send + Sync + 'static>>,
 }
 
 /// Trait for a storage layer.

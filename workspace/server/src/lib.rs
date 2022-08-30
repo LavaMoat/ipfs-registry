@@ -14,7 +14,7 @@ pub type Result<T> = std::result::Result<T, error::Error>;
 pub use config::ServerConfig;
 pub use error::Error;
 pub(crate) use layer::Layers;
-pub use server::{Server, ServerInfo, State};
+pub use server::{Server, ServerInfo};
 
 fn build_layers(config: &ServerConfig) -> Result<Layers> {
     let primary = Box::new(layer::ipfs::IpfsLayer::new(&config.ipfs.url)?);
@@ -34,9 +34,10 @@ pub async fn start(bind: String, config: PathBuf) -> Result<()> {
     let config = ServerConfig::load(&config)?;
     let layers = build_layers(&config)?;
     let handle = Handle::new();
-    let state = Arc::new(RwLock::new(State {
+    let state = Arc::new(RwLock::new(server::State {
         info: ServerInfo { name, version },
         config,
+        layers,
     }));
     let addr = SocketAddr::from_str(&bind)?;
     let server: Server = Default::default();

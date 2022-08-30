@@ -29,7 +29,7 @@ pub struct IpfsLayer {
 impl IpfsLayer {
     /// Create a new IPFS storage layer.
     pub fn new(url: &Url) -> Result<Self> {
-        let client = IpfsLayer::new_client(&url)?;
+        let client = IpfsLayer::new_client(url)?;
         Ok(Self { client })
     }
 

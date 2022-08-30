@@ -18,18 +18,20 @@ use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
 
 use crate::{
     config::TlsConfig, handlers::PackageHandler, headers::X_SIGNATURE,
-    Result, ServerConfig,
+    layer::Layers, Result, ServerConfig,
 };
 
 /// Type alias for the server state.
-pub type ServerState = Arc<RwLock<State>>;
+pub(crate) type ServerState = Arc<RwLock<State>>;
 
 /// Server state.
-pub struct State {
+pub(crate) struct State {
     /// The server configuration.
     pub config: ServerConfig,
     /// Server information.
     pub info: ServerInfo,
+    /// Storage layers.
+    pub layers: Layers,
 }
 
 /// Server information.
@@ -46,7 +48,7 @@ pub struct Server;
 
 impl Server {
     /// Start the server.
-    pub async fn start(
+    pub(crate) async fn start(
         &self,
         addr: SocketAddr,
         state: ServerState,
