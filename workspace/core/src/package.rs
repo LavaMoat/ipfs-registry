@@ -28,35 +28,26 @@ impl fmt::Display for RegistryKind {
     }
 }
 
-impl RegistryKind {
-    /// Get the document name for this kind of registry.
-    pub fn document_name(&self) -> &str {
-        match self {
-            Self::Npm => "package.json",
-        }
-    }
-}
-
 /// Describes a package.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Descriptor {
     pub name: String,
     pub version: Version,
 }
 
 /// Definition of a package.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Definition {
-    /// The IPFS hash (cid) for the package blob.
-    pub cid: String,
+    /// The `cid` of the package archive.
+    pub archive: String,
     /// Package descriptor.
     pub descriptor: Descriptor,
     /// Signature of the package file encoded as base64.
     pub signature: String,
 }
 
-/// Type that defines a package and it's associated 
-/// meta data and cryptographic signature.
+/// Type that points to a package archive and wraps the meta 
+/// data extracted from the archive.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PackagePointer {
     /// The package definition.
@@ -67,13 +58,11 @@ pub struct PackagePointer {
 
 /// Receipt for a published package.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PublishReceipt {
+pub struct Receipt {
     /// The `cid` of the pointer.
     pub pointer: String,
-    /// The `cid` of the package file.
-    pub package: String,
-    /// Signature of the package file encoded as base64.
-    pub signature: String,
+    /// The package definition.
+    pub definition: Definition,
 }
 
 /// Read a descriptor from a package.

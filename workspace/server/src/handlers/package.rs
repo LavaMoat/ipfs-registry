@@ -19,7 +19,7 @@ use web3_address::ethereum::Address;
 use serde_json::Value;
 
 use ipfs_registry_core::{
-    Definition, Descriptor, PackageReader, RegistryKind, PackagePointer,
+    Definition, Descriptor, PackageReader, RegistryKind, PackagePointer, Receipt,
 };
 
 use crate::{headers::Signature, Error, Result, State};
@@ -92,11 +92,9 @@ impl Index {
         signature: String,
         address: &Address,
         descriptor: Descriptor,
-        cid: String,
+        archive: String,
         package: Value,
-    ) -> Result<PackagePointer> {
-        // TODO: unpin an existing version?
-
+    ) -> Result<Receipt> {
         let dir = format!(
             "/{}/{}/{}/{}/{}",
             ROOT, kind, address, descriptor.name, descriptor.version
@@ -107,12 +105,12 @@ impl Index {
 
         let definition = Definition {
             descriptor,
-            cid,
+            archive,
             signature,
         };
 
-        let doc = PackagePointer { definition, package };
-        let data = serde_json::to_vec(&doc)?;
+        let doc = PackagePointer { definition: definition.clone(), package };
+        let data = serde_json::to_vec_pretty(&doc)?;
         let path = format!("{}/{}", dir, NAME);
 
         let data = Cursor::new(data);
@@ -122,19 +120,12 @@ impl Index {
         let stat = client.files_stat(&path).await?;
         client.pin_add(&stat.hash, true).await?;
 
-        println!("Got files stat {:#?}", stat);
+        let receipt = Receipt {
+            pointer: stat.hash,
+            definition,
+        };
 
-        /*
-        // Write out the raw document
-        let path = format!("{}/{}", dir, kind.document_name());
-        let data = Cursor::new(document);
-        client.files_write(&path, true, true, data).await?;
-        client.files_flush(Some(&path)).await?;
-        */
-
-        // TODO: pin the new version
-
-        Ok(doc)
+        Ok(receipt)
     }
 
     /// Get a package from the index.
@@ -193,7 +184,7 @@ impl PackageHandler {
         tracing::debug!(meta = ?meta);
 
         if let Some(doc) = meta {
-            let body = Ipfs::get(&url, &doc.definition.cid)
+            let body = Ipfs::get(&url, &doc.definition.archive)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -212,7 +203,7 @@ impl PackageHandler {
         TypedHeader(mime): TypedHeader<ContentType>,
         TypedHeader(signature): TypedHeader<Signature>,
         body: Bytes,
-    ) -> std::result::Result<Json<PackagePointer>, StatusCode> {
+    ) -> std::result::Result<Json<Receipt>, StatusCode> {
         let encoded_signature = base64::encode(signature.as_ref());
 
         // Verify the signature header against the payload bytes
@@ -273,7 +264,7 @@ impl PackageHandler {
             tracing::debug!(cid = %cid, "added package");
 
             // Store the package meta data
-            let document = Index::add_package(
+            let receipt = Index::add_package(
                 &url,
                 kind,
                 encoded_signature,
@@ -285,7 +276,7 @@ impl PackageHandler {
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            Ok(Json(document))
+            Ok(Json(receipt))
         } else {
             Err(StatusCode::BAD_REQUEST)
         }
