@@ -15,7 +15,7 @@ use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{PackageReader, Receipt};
 
-use crate::{headers::Signature, server::ServerState, Result};
+use crate::{headers::Signature, server::ServerState, Result, layer::Layer};
 
 /// Verify a signature against a message and return the address.
 fn verify_signature(signature: [u8; 65], message: &[u8]) -> Result<Address> {
@@ -47,7 +47,6 @@ impl PackageHandler {
         // Get the package meta data
         let meta = reader
             .layers
-            .primary
             .get_pointer(kind, &address, &name, &version)
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -57,7 +56,6 @@ impl PackageHandler {
         if let Some(doc) = meta {
             let body = reader
                 .layers
-                .primary
                 .get_blob(&doc.definition.archive)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -119,7 +117,6 @@ impl PackageHandler {
             // Check the package version does not already exist
             let meta = reader
                 .layers
-                .primary
                 .get_pointer(
                     kind,
                     &address,
@@ -134,7 +131,6 @@ impl PackageHandler {
 
             let id = reader
                 .layers
-                .primary
                 .add_blob(body)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -144,7 +140,6 @@ impl PackageHandler {
             // Store the package meta data
             let receipt = reader
                 .layers
-                .primary
                 .add_pointer(
                     kind,
                     encoded_signature,

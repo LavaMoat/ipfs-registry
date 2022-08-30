@@ -18,6 +18,69 @@ pub(crate) struct Layers {
     pub backup: Option<Box<dyn Layer + Send + Sync + 'static>>,
 }
 
+#[async_trait]
+impl Layer for Layers {
+    async fn add_blob(&self, data: Bytes) -> Result<String> {
+        if let Some(backup) = &self.backup {
+            let id = self.primary.add_blob(data.clone()).await?;
+            backup.add_blob(data).await?;
+            Ok(id)
+        } else {
+            self.primary.add_blob(data).await
+        }
+    }
+
+    async fn get_blob(&self, id: &str) -> Result<Vec<u8>> {
+        self.primary.get_blob(id).await
+    }
+
+    async fn add_pointer(
+        &self,
+        kind: RegistryKind,
+        signature: String,
+        address: &Address,
+        descriptor: Descriptor,
+        archive_id: String,
+        package: Value,
+    ) -> Result<Receipt> {
+        if let Some(backup) = &self.backup {
+            let receipt = self
+                .primary
+                .add_pointer(
+                    kind,
+                    signature.clone(),
+                    address,
+                    descriptor.clone(),
+                    archive_id.clone(),
+                    package.clone(),
+                )
+                .await?;
+            backup
+                .add_pointer(
+                    kind, signature, address, descriptor, archive_id, package,
+                )
+                .await?;
+            Ok(receipt)
+        } else {
+            self.primary
+                .add_pointer(
+                    kind, signature, address, descriptor, archive_id, package,
+                )
+                .await
+        }
+    }
+
+    async fn get_pointer(
+        &self,
+        kind: RegistryKind,
+        address: &Address,
+        name: &str,
+        version: &Version,
+    ) -> Result<Option<PackagePointer>> {
+        self.primary.get_pointer(kind, address, name, version).await
+    }
+}
+
 /// Trait for a storage layer.
 #[async_trait]
 pub trait Layer {
