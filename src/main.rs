@@ -91,9 +91,8 @@ async fn run() -> Result<()> {
             key,
             file,
         } => {
-            let doc =
-                ipfs_registry_client::publish(server, mime, key, file)
-                    .await?;
+            let doc = ipfs_registry_client::publish(server, mime, key, file)
+                .await?;
             serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
             //tracing::info!(definition = ?definition);
         }

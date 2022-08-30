@@ -3,7 +3,10 @@ mod package;
 mod tarball;
 
 pub use error::Error;
-pub use package::{Definition, Descriptor, PackageReader, RegistryKind, PackagePointer, Receipt};
+pub use package::{
+    Definition, Descriptor, PackagePointer, PackageReader, Receipt,
+    RegistryKind,
+};
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 

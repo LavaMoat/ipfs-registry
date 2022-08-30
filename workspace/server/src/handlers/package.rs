@@ -12,14 +12,15 @@ use futures::TryStreamExt;
 use ipfs_api_backend_hyper::{IpfsApi, IpfsClient, TryFromUri};
 use k256::ecdsa::recoverable;
 use semver::Version;
+use serde_json::Value;
 use std::{io::Cursor, sync::Arc};
 use tokio::sync::RwLock;
 use url::Url;
 use web3_address::ethereum::Address;
-use serde_json::Value;
 
 use ipfs_registry_core::{
-    Definition, Descriptor, PackageReader, RegistryKind, PackagePointer, Receipt,
+    Definition, Descriptor, PackagePointer, PackageReader, Receipt,
+    RegistryKind,
 };
 
 use crate::{headers::Signature, Error, Result, State};
@@ -109,7 +110,10 @@ impl Index {
             signature,
         };
 
-        let doc = PackagePointer { definition: definition.clone(), package };
+        let doc = PackagePointer {
+            definition: definition.clone(),
+            package,
+        };
         let data = serde_json::to_vec_pretty(&doc)?;
         let path = format!("{}/{}", dir, NAME);
 

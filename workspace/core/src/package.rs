@@ -1,8 +1,8 @@
 //! Types for package definitions.
-use std::fmt;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::fmt;
 
 use crate::{
     tarball::{decompress, read_npm_package},
@@ -46,7 +46,7 @@ pub struct Definition {
     pub signature: String,
 }
 
-/// Type that points to a package archive and wraps the meta 
+/// Type that points to a package archive and wraps the meta
 /// data extracted from the archive.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PackagePointer {
