@@ -86,8 +86,8 @@ impl Ipfs {
 struct Index;
 
 impl Index {
-    /// Add a package to the index.
-    async fn add_package(
+    /// Add a pointer to the index.
+    async fn add_pointer(
         url: &Url,
         kind: RegistryKind,
         signature: String,
@@ -132,8 +132,8 @@ impl Index {
         Ok(receipt)
     }
 
-    /// Get a package from the index.
-    async fn get_package(
+    /// Get a pointer from the index.
+    async fn get_pointer(
         url: &Url,
         kind: RegistryKind,
         address: &Address,
@@ -181,7 +181,7 @@ impl PackageHandler {
             version = ?version);
 
         // Get the package meta data
-        let meta = Index::get_package(&url, kind, &address, &name, &version)
+        let meta = Index::get_pointer(&url, kind, &address, &name, &version)
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -248,7 +248,7 @@ impl PackageHandler {
                 .map_err(|_| StatusCode::BAD_REQUEST)?;
 
             // Check the package version does not already exist
-            let meta = Index::get_package(
+            let meta = Index::get_pointer(
                 &url,
                 kind,
                 &address,
@@ -268,7 +268,7 @@ impl PackageHandler {
             tracing::debug!(cid = %cid, "added package");
 
             // Store the package meta data
-            let receipt = Index::add_package(
+            let receipt = Index::add_pointer(
                 &url,
                 kind,
                 encoded_signature,

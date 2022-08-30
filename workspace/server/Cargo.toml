@@ -31,5 +31,6 @@ k256 = { version = "0.11", features = ["ecdsa", "sha256", "keccak256"] }
 once_cell = "1"
 base64 = "0.13"
 web3-address = { version = "0.4", features = ["ethereum"] }
+async-trait = "0.1"
 
 #ipfs-api-backend-hyper = { version = "0.5", features = ["with-hyper-rustls"] }

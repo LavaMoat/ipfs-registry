@@ -21,6 +21,9 @@ use crate::{
     Result, ServerConfig,
 };
 
+/// Type alias for the server state.
+pub type ServerState = Arc<RwLock<State>>;
+
 /// Server state.
 pub struct State {
     /// The server configuration.
@@ -46,7 +49,7 @@ impl Server {
     pub async fn start(
         &self,
         addr: SocketAddr,
-        state: Arc<RwLock<State>>,
+        state: ServerState,
         handle: Handle,
     ) -> Result<()> {
         let reader = state.read().await;
@@ -66,7 +69,7 @@ impl Server {
     async fn run_tls(
         &self,
         addr: SocketAddr,
-        state: Arc<RwLock<State>>,
+        state: ServerState,
         handle: Handle,
         origins: Option<Vec<HeaderValue>>,
         limit: usize,
@@ -86,7 +89,7 @@ impl Server {
     async fn run(
         &self,
         addr: SocketAddr,
-        state: Arc<RwLock<State>>,
+        state: ServerState,
         handle: Handle,
         origins: Option<Vec<HeaderValue>>,
         limit: usize,
@@ -117,7 +120,7 @@ impl Server {
     }
 
     fn router(
-        state: Arc<RwLock<State>>,
+        state: ServerState,
         origins: Option<Vec<HeaderValue>>,
         limit: usize,
     ) -> Result<Router> {
