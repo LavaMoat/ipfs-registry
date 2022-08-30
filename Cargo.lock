@@ -1112,6 +1112,7 @@ dependencies = [
  "ipfs-registry-server",
  "mime",
  "semver",
+ "serde_json",
  "thiserror",
  "tokio",
  "tracing",

@@ -91,10 +91,11 @@ async fn run() -> Result<()> {
             key,
             file,
         } => {
-            let definition =
+            let doc =
                 ipfs_registry_client::publish(server, mime, key, file)
                     .await?;
-            tracing::info!(definition = ?definition);
+            serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
+            //tracing::info!(definition = ?definition);
         }
         Command::Fetch {
             server,

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use url::Url;
 use web3_keystore::{decrypt, KeyStore};
 
-use ipfs_registry_core::{Definition, X_SIGNATURE};
+use ipfs_registry_core::{Document, X_SIGNATURE};
 
 use crate::{input::read_password, Error, Result};
 
@@ -16,7 +16,7 @@ pub async fn publish(
     mime: Mime,
     key: PathBuf,
     file: PathBuf,
-) -> Result<Definition> {
+) -> Result<Document> {
     if !file.is_file() {
         return Err(Error::NotFile(file));
     }
@@ -50,6 +50,6 @@ pub async fn publish(
         .then_some(())
         .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
 
-    let definition: Definition = response.json().await?;
-    Ok(definition)
+    let doc: Document = response.json().await?;
+    Ok(doc)
 }

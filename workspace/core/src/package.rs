@@ -1,7 +1,8 @@
 //! Types for package definitions.
+use std::fmt;
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use serde_json::Value;
 
 use crate::{
     tarball::{decompress, read_npm_package},
@@ -50,8 +51,18 @@ pub struct Definition {
     pub cid: String,
     /// Package descriptor.
     pub descriptor: Descriptor,
-    /// Signature encoded as base64.
+    /// Signature of the package file encoded as base64.
     pub signature: String,
+}
+
+/// Document that defines a package and it's associated 
+/// meta data and cryptographic signature.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Document {
+    /// The package definition.
+    pub definition: Definition,
+    /// Package meta data extracted from the archive (eg: package.json).
+    pub package: Value,
 }
 
 /// Read a descriptor from a package.
@@ -62,12 +73,13 @@ impl PackageReader {
     pub fn read(
         kind: RegistryKind,
         buffer: &[u8],
-    ) -> Result<(Descriptor, Vec<u8>)> {
+    ) -> Result<(Descriptor, Value)> {
         match kind {
             RegistryKind::Npm => {
                 let contents = decompress(buffer)?;
                 let (descriptor, buffer) = read_npm_package(&contents)?;
-                Ok((descriptor, buffer.to_vec()))
+                let value: Value = serde_json::from_slice(buffer)?;
+                Ok((descriptor, value))
             }
         }
     }

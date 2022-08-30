@@ -16,16 +16,16 @@ use std::{io::Cursor, sync::Arc};
 use tokio::sync::RwLock;
 use url::Url;
 use web3_address::ethereum::Address;
+use serde_json::Value;
 
 use ipfs_registry_core::{
-    Definition, Descriptor, PackageReader, RegistryKind,
+    Definition, Descriptor, PackageReader, RegistryKind, Document,
 };
 
 use crate::{headers::Signature, Error, Result, State};
 
 const ROOT: &str = "ipfs-registry";
 const NAME: &str = "meta.json";
-//const LIMIT: u64 = 1024 * 1024 * 16;
 
 /// Verify a signature against a message and return the address.
 fn verify_signature(signature: [u8; 65], message: &[u8]) -> Result<Address> {
@@ -93,8 +93,8 @@ impl Index {
         address: &Address,
         descriptor: Descriptor,
         cid: String,
-        document: Vec<u8>,
-    ) -> Result<Definition> {
+        package: Value,
+    ) -> Result<Document> {
         // TODO: unpin an existing version?
 
         let dir = format!(
@@ -105,28 +105,31 @@ impl Index {
         let client = Ipfs::new_client(url)?;
         client.files_mkdir(&dir, true).await?;
 
-        // Write out the meta data definition
         let definition = Definition {
             descriptor,
             cid,
             signature,
         };
-        let data = serde_json::to_vec(&definition)?;
+
+        let doc = Document { definition, package };
+        let data = serde_json::to_vec(&doc)?;
         let path = format!("{}/{}", dir, NAME);
 
         let data = Cursor::new(data);
         client.files_write(&path, true, true, data).await?;
         client.files_flush(Some(&path)).await?;
 
+        /*
         // Write out the raw document
         let path = format!("{}/{}", dir, kind.document_name());
         let data = Cursor::new(document);
         client.files_write(&path, true, true, data).await?;
         client.files_flush(Some(&path)).await?;
+        */
 
         // TODO: pin the new version
 
-        Ok(definition)
+        Ok(doc)
     }
 
     /// Get a package from the index.
@@ -136,7 +139,7 @@ impl Index {
         address: &Address,
         name: &str,
         version: &Version,
-    ) -> Result<Option<Definition>> {
+    ) -> Result<Option<Document>> {
         let client = Ipfs::new_client(url)?;
 
         let path = format!(
@@ -150,7 +153,7 @@ impl Index {
             .try_concat()
             .await
         {
-            let doc: Definition = serde_json::from_slice(&res)?;
+            let doc: Document = serde_json::from_slice(&res)?;
             Some(doc)
         } else {
             None
@@ -185,7 +188,7 @@ impl PackageHandler {
         tracing::debug!(meta = ?meta);
 
         if let Some(doc) = meta {
-            let body = Ipfs::get(&url, &doc.cid)
+            let body = Ipfs::get(&url, &doc.definition.cid)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -204,8 +207,7 @@ impl PackageHandler {
         TypedHeader(mime): TypedHeader<ContentType>,
         TypedHeader(signature): TypedHeader<Signature>,
         body: Bytes,
-        //body: ContentLengthLimit<Bytes, LIMIT>
-    ) -> std::result::Result<Json<Definition>, StatusCode> {
+    ) -> std::result::Result<Json<Document>, StatusCode> {
         let encoded_signature = base64::encode(signature.as_ref());
 
         // Verify the signature header against the payload bytes
@@ -242,7 +244,7 @@ impl PackageHandler {
         let gzip_ct = ContentType::from(gzip);
 
         if mime == gzip_ct {
-            let (descriptor, document) = PackageReader::read(kind, &body)
+            let (descriptor, package_meta) = PackageReader::read(kind, &body)
                 .map_err(|_| StatusCode::BAD_REQUEST)?;
 
             // Check the package version does not already exist
@@ -266,19 +268,19 @@ impl PackageHandler {
             tracing::debug!(cid = %cid, "added package");
 
             // Store the package meta data
-            let definition = Index::add_package(
+            let document = Index::add_package(
                 &url,
                 kind,
                 encoded_signature,
                 &address,
                 descriptor,
                 cid,
-                document,
+                package_meta,
             )
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            Ok(Json(definition))
+            Ok(Json(document))
         } else {
             Err(StatusCode::BAD_REQUEST)
         }
