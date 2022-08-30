@@ -154,5 +154,9 @@ Relative paths are resolved from the directory containing the configuration file
 
 The package meta data is not immutable and theoretically the meta data could be modified to point to a different `cid` which could allow an attacker to replace the file pointer. This could be mitigated by storing the package meta data in a blockchain.
 
+## License
+
+MIT or Apache-2.0
+
 [ipfs]: https://ipfs.io/
 [rust]: https://www.rust-lang.org/
