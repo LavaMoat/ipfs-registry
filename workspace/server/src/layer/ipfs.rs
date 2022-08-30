@@ -1,16 +1,15 @@
 //! IPFS backed storage layer.
+use async_trait::async_trait;
+use axum::{body::Bytes, http::uri::Scheme};
+use futures::TryStreamExt;
+use ipfs_api_backend_hyper::{IpfsApi, IpfsClient, TryFromUri};
+use semver::Version;
 use std::io::Cursor;
 use url::Url;
-use async_trait::async_trait;
-use ipfs_api_backend_hyper::{IpfsApi, IpfsClient, TryFromUri};
-use axum::{http::uri::Scheme, body::Bytes};
-use futures::TryStreamExt;
 use web3_address::ethereum::Address;
-use semver::Version;
 
 use ipfs_registry_core::{
-    Definition, Descriptor, PackagePointer, Receipt,
-    RegistryKind,
+    Definition, Descriptor, PackagePointer, Receipt, RegistryKind,
 };
 
 use serde_json::Value;
@@ -63,7 +62,8 @@ impl Layer for IpfsLayer {
     }
 
     async fn get_blob(&self, id: &str) -> Result<Vec<u8>> {
-        let res = self.client
+        let res = self
+            .client
             .cat(id)
             .map_ok(|chunk| chunk.to_vec())
             .try_concat()
@@ -127,7 +127,8 @@ impl Layer for IpfsLayer {
             ROOT, kind, address, name, version, NAME
         );
 
-        let result = if let Ok(res) = self.client
+        let result = if let Ok(res) = self
+            .client
             .files_read(&path)
             .map_ok(|chunk| chunk.to_vec())
             .try_concat()

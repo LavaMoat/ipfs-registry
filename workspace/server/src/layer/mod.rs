@@ -1,19 +1,22 @@
 //! Traits and types for storage layers.
 use async_trait::async_trait;
 use axum::body::Bytes;
-use web3_address::ethereum::Address;
 use semver::Version;
+use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{
-    Descriptor, PackagePointer, Receipt,
-    RegistryKind,
-};
+use ipfs_registry_core::{Descriptor, PackagePointer, Receipt, RegistryKind};
 
 use serde_json::Value;
 
-mod ipfs;
+pub(crate) mod ipfs;
 
 use crate::Result;
+
+/// Type for a primary and backup layer.
+pub(crate) struct Layers {
+    pub primary: Box<dyn Layer>,
+    pub backup: Option<Box<dyn Layer>>,
+}
 
 /// Trait for a storage layer.
 #[async_trait]
@@ -34,7 +37,6 @@ pub trait Layer {
         archive_id: String,
         package: Value,
     ) -> Result<Receipt>;
-
 
     /// Get a pointer from the storage.
     async fn get_pointer(
