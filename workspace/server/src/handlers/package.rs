@@ -19,7 +19,7 @@ use web3_address::ethereum::Address;
 use serde_json::Value;
 
 use ipfs_registry_core::{
-    Definition, Descriptor, PackageReader, RegistryKind, Document,
+    Definition, Descriptor, PackageReader, RegistryKind, PackagePointer,
 };
 
 use crate::{headers::Signature, Error, Result, State};
@@ -65,7 +65,7 @@ impl Ipfs {
         let client = Ipfs::new_client(url)?;
         let data = Cursor::new(data);
         let add_res = client.add(data).await?;
-        let _pin_res = client.pin_add(&add_res.hash, true).await?;
+        client.pin_add(&add_res.hash, true).await?;
         Ok(add_res.hash)
     }
 
@@ -94,7 +94,7 @@ impl Index {
         descriptor: Descriptor,
         cid: String,
         package: Value,
-    ) -> Result<Document> {
+    ) -> Result<PackagePointer> {
         // TODO: unpin an existing version?
 
         let dir = format!(
@@ -111,13 +111,18 @@ impl Index {
             signature,
         };
 
-        let doc = Document { definition, package };
+        let doc = PackagePointer { definition, package };
         let data = serde_json::to_vec(&doc)?;
         let path = format!("{}/{}", dir, NAME);
 
         let data = Cursor::new(data);
         client.files_write(&path, true, true, data).await?;
         client.files_flush(Some(&path)).await?;
+
+        let stat = client.files_stat(&path).await?;
+        client.pin_add(&stat.hash, true).await?;
+
+        println!("Got files stat {:#?}", stat);
 
         /*
         // Write out the raw document
@@ -139,7 +144,7 @@ impl Index {
         address: &Address,
         name: &str,
         version: &Version,
-    ) -> Result<Option<Document>> {
+    ) -> Result<Option<PackagePointer>> {
         let client = Ipfs::new_client(url)?;
 
         let path = format!(
@@ -153,7 +158,7 @@ impl Index {
             .try_concat()
             .await
         {
-            let doc: Document = serde_json::from_slice(&res)?;
+            let doc: PackagePointer = serde_json::from_slice(&res)?;
             Some(doc)
         } else {
             None
@@ -207,7 +212,7 @@ impl PackageHandler {
         TypedHeader(mime): TypedHeader<ContentType>,
         TypedHeader(signature): TypedHeader<Signature>,
         body: Bytes,
-    ) -> std::result::Result<Json<Document>, StatusCode> {
+    ) -> std::result::Result<Json<PackagePointer>, StatusCode> {
         let encoded_signature = base64::encode(signature.as_ref());
 
         // Verify the signature header against the payload bytes

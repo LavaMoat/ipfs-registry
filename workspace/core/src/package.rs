@@ -55,14 +55,25 @@ pub struct Definition {
     pub signature: String,
 }
 
-/// Document that defines a package and it's associated 
+/// Type that defines a package and it's associated 
 /// meta data and cryptographic signature.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Document {
+pub struct PackagePointer {
     /// The package definition.
     pub definition: Definition,
     /// Package meta data extracted from the archive (eg: package.json).
     pub package: Value,
+}
+
+/// Receipt for a published package.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PublishReceipt {
+    /// The `cid` of the pointer.
+    pub pointer: String,
+    /// The `cid` of the package file.
+    pub package: String,
+    /// Signature of the package file encoded as base64.
+    pub signature: String,
 }
 
 /// Read a descriptor from a package.
