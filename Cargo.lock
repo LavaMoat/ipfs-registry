@@ -1252,6 +1252,7 @@ dependencies = [
  "once_cell",
  "rusoto_core",
  "rusoto_s3",
+ "rusoto_signature",
  "semver",
  "serde",
  "serde_json",

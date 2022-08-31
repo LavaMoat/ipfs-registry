@@ -13,9 +13,11 @@ use semver::Version;
 
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{PackageReader, Receipt};
+use ipfs_registry_core::{
+    Descriptor, NamespacedDescriptor, PackageReader, Receipt,
+};
 
-use crate::{headers::Signature, server::ServerState, Result, layer::Layer};
+use crate::{headers::Signature, layer::Layer, server::ServerState, Result};
 
 /// Verify a signature against a message and return the address.
 fn verify_signature(signature: [u8; 65], message: &[u8]) -> Result<Address> {
@@ -35,7 +37,6 @@ impl PackageHandler {
         Path((address, name, version)): Path<(Address, String, Version)>,
     ) -> std::result::Result<(HeaderMap, Bytes), StatusCode> {
         let reader = state.read().await;
-        let _url = reader.config.ipfs.url.clone();
         let mime_type = reader.config.registry.mime.clone();
         let kind = reader.config.registry.kind;
 
@@ -44,10 +45,16 @@ impl PackageHandler {
             name = %name,
             version = ?version);
 
+        let descriptor = NamespacedDescriptor {
+            kind,
+            namespace: address.to_string(),
+            package: Descriptor { name, version },
+        };
+
         // Get the package meta data
         let meta = reader
             .layers
-            .get_pointer(kind, &address, &name, &version)
+            .get_pointer(&descriptor)
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -111,18 +118,19 @@ impl PackageHandler {
         let gzip_ct = ContentType::from(gzip);
 
         if mime == gzip_ct {
-            let (descriptor, package_meta) = PackageReader::read(kind, &body)
+            let (package, package_meta) = PackageReader::read(kind, &body)
                 .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+            let descriptor = NamespacedDescriptor {
+                kind,
+                namespace: address.to_string(),
+                package,
+            };
 
             // Check the package version does not already exist
             let meta = reader
                 .layers
-                .get_pointer(
-                    kind,
-                    &address,
-                    &descriptor.name,
-                    &descriptor.version,
-                )
+                .get_pointer(&descriptor)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
             if meta.is_some() {
@@ -131,7 +139,7 @@ impl PackageHandler {
 
             let id = reader
                 .layers
-                .add_blob(body)
+                .add_blob(body, &descriptor)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -141,7 +149,6 @@ impl PackageHandler {
             let receipt = reader
                 .layers
                 .add_pointer(
-                    kind,
                     encoded_signature,
                     &address,
                     descriptor,

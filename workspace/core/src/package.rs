@@ -31,17 +31,33 @@ impl fmt::Display for RegistryKind {
 /// Describes a package.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Descriptor {
+    /// Name of the package.
     pub name: String,
+    /// Version of the package.
     pub version: Version,
+}
+
+/// Package descriptor in the context of a namespace.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct NamespacedDescriptor {
+    /// The kind of registry.
+    pub kind: RegistryKind,
+    /// Organization namespace.
+    pub namespace: String,
+    /// Package descriptor.
+    pub package: Descriptor,
 }
 
 /// Definition of a package.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Definition {
-    /// The `cid` of the package archive.
+    /// The id of the package archive.
+    ///
+    /// For IPFS this will be the `cid` for other layers such as
+    /// S3 it is the object key.
     pub archive: String,
     /// Package descriptor.
-    pub descriptor: Descriptor,
+    pub descriptor: NamespacedDescriptor,
     /// Signature of the package file encoded as base64.
     pub signature: String,
 }
@@ -59,7 +75,10 @@ pub struct PackagePointer {
 /// Receipt for a published package.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Receipt {
-    /// The `cid` of the pointer.
+    /// The id of the pointer.
+    ///
+    /// For IPFS this will be the `cid` for other layers such as
+    /// S3 it is the object key.
     pub pointer: String,
     /// The package definition.
     pub definition: Definition,

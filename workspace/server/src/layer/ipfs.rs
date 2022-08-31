@@ -3,23 +3,21 @@ use async_trait::async_trait;
 use axum::{body::Bytes, http::uri::Scheme};
 use futures::TryStreamExt;
 use ipfs_api_backend_hyper::{IpfsApi, IpfsClient, TryFromUri};
-use semver::Version;
 use std::io::Cursor;
 use url::Url;
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
-    Definition, Descriptor, PackagePointer, Receipt, RegistryKind,
+    Definition, Descriptor, NamespacedDescriptor, PackagePointer, Receipt,
+    RegistryKind,
 };
 
 use serde_json::Value;
 
 use super::Layer;
 
+use super::{NAME, ROOT};
 use crate::{Error, Result};
-
-const ROOT: &str = "ipfs-registry";
-const NAME: &str = "meta.json";
 
 /// Layer for IPFS backed storage.
 pub struct IpfsLayer {
@@ -54,7 +52,11 @@ impl IpfsLayer {
 
 #[async_trait]
 impl Layer for IpfsLayer {
-    async fn add_blob(&self, data: Bytes) -> Result<String> {
+    async fn add_blob(
+        &self,
+        data: Bytes,
+        _descriptor: &NamespacedDescriptor,
+    ) -> Result<String> {
         let data = Cursor::new(data);
         let add_res = self.client.add(data).await?;
         self.client.pin_add(&add_res.hash, true).await?;
@@ -73,16 +75,19 @@ impl Layer for IpfsLayer {
 
     async fn add_pointer(
         &self,
-        kind: RegistryKind,
         signature: String,
         address: &Address,
-        descriptor: Descriptor,
+        descriptor: NamespacedDescriptor,
         archive_id: String,
         package: Value,
     ) -> Result<Receipt> {
         let dir = format!(
             "/{}/{}/{}/{}/{}",
-            ROOT, kind, address, descriptor.name, descriptor.version
+            ROOT,
+            &descriptor.kind,
+            &descriptor.namespace,
+            &descriptor.package.name,
+            &descriptor.package.version
         );
 
         self.client.files_mkdir(&dir, true).await?;
@@ -117,14 +122,16 @@ impl Layer for IpfsLayer {
 
     async fn get_pointer(
         &self,
-        kind: RegistryKind,
-        address: &Address,
-        name: &str,
-        version: &Version,
+        descriptor: &NamespacedDescriptor,
     ) -> Result<Option<PackagePointer>> {
         let path = format!(
             "/{}/{}/{}/{}/{}/{}",
-            ROOT, kind, address, name, version, NAME
+            ROOT,
+            &descriptor.kind,
+            &descriptor.namespace,
+            &descriptor.package.name,
+            &descriptor.package.version,
+            NAME
         );
 
         let result = if let Ok(res) = self

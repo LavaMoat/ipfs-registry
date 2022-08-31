@@ -1,4 +1,4 @@
-[ipfs]
+[storage]
 url = "http://localhost:5001"
 
 #[cors]

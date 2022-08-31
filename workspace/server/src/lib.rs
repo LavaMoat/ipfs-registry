@@ -16,14 +16,39 @@ pub use error::Error;
 pub(crate) use layer::Layers;
 pub use server::{Server, ServerInfo};
 
-fn build_layers(config: &ServerConfig) -> Result<Layers> {
-    let primary = Box::new(layer::ipfs::IpfsLayer::new(&config.ipfs.url)?);
+fn get_layer(
+    config: &config::LayerConfig,
+    registry: &config::RegistryConfig,
+) -> Result<Box<dyn layer::Layer + Send + Sync + 'static>> {
+    match config {
+        config::LayerConfig::Ipfs { url } => {
+            Ok(Box::new(layer::ipfs::IpfsLayer::new(url)?))
+        }
+        config::LayerConfig::Aws {
+            profile,
+            region,
+            bucket,
+        } => Ok(Box::new(layer::s3::S3Layer::new(
+            profile.to_string(),
+            region.to_string(),
+            bucket.to_string(),
+            registry.mime.clone(),
+        )?)),
+    }
+}
 
-    // TODO: create backup layer if configured
+fn build_layers(config: &ServerConfig) -> Result<Layers> {
+    let storage = get_layer(&config.storage, &config.registry)?;
+
+    let mirror = if let Some(mirror) = &config.mirror {
+        Some(get_layer(mirror, &config.registry)?)
+    } else {
+        None
+    };
 
     Ok(Layers {
-        primary,
-        backup: None,
+        storage,
+        mirror,
     })
 }
 
