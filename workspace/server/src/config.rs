@@ -1,4 +1,3 @@
-use rusoto_core::Region;
 use serde::Deserialize;
 use std::{
     collections::HashSet,

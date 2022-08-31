@@ -1,7 +1,6 @@
 //! S3 backed storage layer.
 use async_trait::async_trait;
 use axum::body::Bytes;
-use semver::Version;
 use web3_address::ethereum::Address;
 
 use serde_json::Value;
@@ -12,19 +11,16 @@ use rusoto_core::{credential, request::HttpClient, ByteStream, Region};
 use rusoto_s3::{PutObjectOutput, PutObjectRequest, S3Client, S3};
 
 use ipfs_registry_core::{
-    Definition, Descriptor, NamespacedDescriptor, PackagePointer, Receipt,
-    RegistryKind,
+    Definition, NamespacedDescriptor, PackagePointer, Receipt,
 };
 
 use super::{NAME, ROOT, BLOB};
-use crate::{config::LayerConfig, Error, Result};
+use crate::Result;
 
 /// Layer for S3 backed storage.
 pub struct S3Layer {
     client: S3Client,
-    profile: String,
     bucket: String,
-    region: Region,
     content_type: String,
 }
 
@@ -40,8 +36,6 @@ impl S3Layer {
         let client = S3Layer::new_client(&profile, &region)?;
         Ok(Self {
             client,
-            profile,
-            region,
             bucket,
             content_type,
         })
@@ -96,14 +90,14 @@ impl Layer for S3Layer {
         Ok(key)
     }
 
-    async fn get_blob(&self, id: &str) -> Result<Vec<u8>> {
+    async fn get_blob(&self, _id: &str) -> Result<Vec<u8>> {
         todo!()
     }
 
     async fn add_pointer(
         &self,
         signature: String,
-        address: &Address,
+        _address: &Address,
         descriptor: NamespacedDescriptor,
         archive_id: String,
         package: Value,
@@ -142,7 +136,7 @@ impl Layer for S3Layer {
 
     async fn get_pointer(
         &self,
-        descriptor: &NamespacedDescriptor,
+        _descriptor: &NamespacedDescriptor,
     ) -> Result<Option<PackagePointer>> {
         todo!()
     }

@@ -13,7 +13,6 @@ use axum::{
 use axum_server::{tls_rustls::RustlsConfig, Handle};
 use serde::Serialize;
 use serde_json::json;
-use tokio::sync::{RwLock, RwLockReadGuard};
 use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
 
 use crate::{
@@ -154,8 +153,7 @@ impl Server {
 
 /// Serve the API identity page.
 pub(crate) async fn api(
-    Extension(state): Extension<Arc<RwLock<State>>>,
+    Extension(state): Extension<ServerState>,
 ) -> impl IntoResponse {
-    let reader = state.read().await;
-    Json(json!(&reader.info))
+    Json(json!(&state.info))
 }

@@ -4,12 +4,12 @@ use axum::body::Bytes;
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
-    Descriptor, NamespacedDescriptor, PackagePointer, Receipt, RegistryKind,
+    NamespacedDescriptor, PackagePointer, Receipt,
 };
 
 use serde_json::Value;
 
-use crate::Result;
+use crate::{Result, config::{ServerConfig, LayerConfig, RegistryConfig}};
 
 pub(crate) mod ipfs;
 pub(crate) mod s3;
@@ -17,6 +17,44 @@ pub(crate) mod s3;
 pub(crate) const ROOT: &str = "ipkg-registry";
 pub(crate) const NAME: &str = "pointer.json";
 pub(crate) const BLOB: &str = "package.tgz";
+
+/// Convert a configuration into a layer implementation.
+fn get_layer(
+    config: &LayerConfig,
+    registry: &RegistryConfig,
+) -> Result<Box<dyn Layer + Send + Sync + 'static>> {
+    match config {
+        LayerConfig::Ipfs { url } => {
+            Ok(Box::new(ipfs::IpfsLayer::new(url)?))
+        }
+        LayerConfig::Aws {
+            profile,
+            region,
+            bucket,
+        } => Ok(Box::new(s3::S3Layer::new(
+            profile.to_string(),
+            region.to_string(),
+            bucket.to_string(),
+            registry.mime.clone(),
+        )?)),
+    }
+}
+
+/// Build storage layers from the server configuration.
+pub(crate) fn build(config: &ServerConfig) -> Result<Layers> {
+    let storage = get_layer(&config.storage, &config.registry)?;
+
+    let mirror = if let Some(mirror) = &config.mirror {
+        Some(get_layer(mirror, &config.registry)?)
+    } else {
+        None
+    };
+
+    Ok(Layers {
+        storage,
+        mirror,
+    })
+}
 
 /// Type for a storage and mirror layer.
 pub(crate) struct Layers {

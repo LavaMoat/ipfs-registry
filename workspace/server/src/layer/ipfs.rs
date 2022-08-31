@@ -8,8 +8,7 @@ use url::Url;
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
-    Definition, Descriptor, NamespacedDescriptor, PackagePointer, Receipt,
-    RegistryKind,
+    Definition, NamespacedDescriptor, PackagePointer, Receipt,
 };
 
 use serde_json::Value;
@@ -76,7 +75,7 @@ impl Layer for IpfsLayer {
     async fn add_pointer(
         &self,
         signature: String,
-        address: &Address,
+        _address: &Address,
         descriptor: NamespacedDescriptor,
         archive_id: String,
         package: Value,
