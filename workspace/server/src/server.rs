@@ -22,7 +22,7 @@ use crate::{
 };
 
 /// Type alias for the server state.
-pub(crate) type ServerState = Arc<RwLock<State>>;
+pub(crate) type ServerState = Arc<State>;
 
 /// Server state.
 pub(crate) struct State {
@@ -54,11 +54,9 @@ impl Server {
         state: ServerState,
         handle: Handle,
     ) -> Result<()> {
-        let reader = state.read().await;
-        let origins = Server::read_origins(&reader)?;
-        let limit = reader.config.registry.body_limit;
-        let tls = reader.config.tls.as_ref().cloned();
-        drop(reader);
+        let origins = Server::read_origins(&state)?;
+        let limit = state.config.registry.body_limit;
+        let tls = state.config.tls.as_ref().cloned();
 
         if let Some(tls) = tls {
             self.run_tls(addr, state, handle, origins, limit, tls).await
@@ -106,9 +104,9 @@ impl Server {
     }
 
     fn read_origins(
-        reader: &RwLockReadGuard<'_, State>,
+        state: &State,
     ) -> Result<Option<Vec<HeaderValue>>> {
-        if let Some(cors) = &reader.config.cors {
+        if let Some(cors) = &state.config.cors {
             let mut origins = Vec::new();
             for url in cors.origins.iter() {
                 origins.push(HeaderValue::from_str(

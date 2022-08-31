@@ -36,9 +36,8 @@ impl PackageHandler {
         Extension(state): Extension<ServerState>,
         Path((address, name, version)): Path<(Address, String, Version)>,
     ) -> std::result::Result<(HeaderMap, Bytes), StatusCode> {
-        let reader = state.read().await;
-        let mime_type = reader.config.registry.mime.clone();
-        let kind = reader.config.registry.kind;
+        let mime_type = state.config.registry.mime.clone();
+        let kind = state.config.registry.kind;
 
         tracing::debug!(
             address = %address,
@@ -52,7 +51,7 @@ impl PackageHandler {
         };
 
         // Get the package meta data
-        let meta = reader
+        let meta = state 
             .layers
             .get_pointer(&descriptor)
             .await
@@ -61,7 +60,7 @@ impl PackageHandler {
         tracing::debug!(meta = ?meta);
 
         if let Some(doc) = meta {
-            let body = reader
+            let body = state 
                 .layers
                 .get_blob(&doc.definition.archive)
                 .await
@@ -89,24 +88,22 @@ impl PackageHandler {
         let address = verify_signature(signature.into(), &body)
             .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-        let reader = state.read().await;
-
         // Check if the author is denied
-        if let Some(deny) = &reader.config.registry.deny {
+        if let Some(deny) = &state.config.registry.deny {
             if deny.contains(&address) {
                 return Err(StatusCode::UNAUTHORIZED);
             }
         }
 
         // Check if the author is allowed
-        if let Some(allow) = &reader.config.registry.allow {
+        if let Some(allow) = &state.config.registry.allow {
             if !allow.contains(&address) {
                 return Err(StatusCode::UNAUTHORIZED);
             }
         }
 
-        let mime_type = reader.config.registry.mime.clone();
-        let kind = reader.config.registry.kind;
+        let mime_type = state.config.registry.mime.clone();
+        let kind = state.config.registry.kind;
 
         tracing::debug!(mime = ?mime_type);
 
@@ -128,7 +125,7 @@ impl PackageHandler {
             };
 
             // Check the package version does not already exist
-            let meta = reader
+            let meta = state 
                 .layers
                 .get_pointer(&descriptor)
                 .await
@@ -137,7 +134,7 @@ impl PackageHandler {
                 return Err(StatusCode::CONFLICT);
             }
 
-            let id = reader
+            let id = state 
                 .layers
                 .add_blob(body, &descriptor)
                 .await
@@ -146,7 +143,7 @@ impl PackageHandler {
             tracing::debug!(id = %id, "added package");
 
             // Store the package meta data
-            let receipt = reader
+            let receipt = state 
                 .layers
                 .add_pointer(
                     encoded_signature,
