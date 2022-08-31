@@ -9,6 +9,7 @@ use ipfs_registry_core::{Descriptor, PackagePointer, Receipt, RegistryKind};
 use serde_json::Value;
 
 pub(crate) mod ipfs;
+pub(crate) mod s3;
 
 use crate::Result;
 

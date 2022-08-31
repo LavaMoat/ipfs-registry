@@ -1,19 +1,23 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
 };
 use url::Url;
 use web3_address::ethereum::Address;
+use rusoto_core::Region;
 
 use crate::{Error, Result};
 use ipfs_registry_core::RegistryKind;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 pub struct ServerConfig {
     /// Configuration for IPFS.
     #[serde(default)]
     pub ipfs: IpfsConfig,
+
+    /// Backup configuration.
+    pub backup: BackupConfig,
 
     /// Package registry configuration.
     #[serde(default)]
@@ -73,7 +77,7 @@ impl ServerConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct IpfsConfig {
     /// URL for the IPFS node.
     pub url: Url,
@@ -87,7 +91,7 @@ impl Default for IpfsConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct RegistryConfig {
     /// Maximum size of body requests.
     pub body_limit: usize,
@@ -113,7 +117,7 @@ impl Default for RegistryConfig {
     }
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize)]
 pub struct TlsConfig {
     /// Path to the certificate.
     pub cert: PathBuf,
@@ -121,8 +125,18 @@ pub struct TlsConfig {
     pub key: PathBuf,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 pub struct CorsConfig {
     /// List of additional CORS origins for the server.
     pub origins: Vec<Url>,
+}
+
+#[derive(Debug, Default, Clone, Deserialize)]
+pub struct BackupConfig {
+    /// Profile for authentication.
+    pub profile: String,
+    /// Region of the bucket.
+    pub region: Region,
+    /// Bucket name.
+    pub bucket: String,
 }

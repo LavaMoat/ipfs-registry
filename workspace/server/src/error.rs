@@ -67,4 +67,22 @@ pub enum Error {
     /// Error generate by the ECDSA library.
     #[error(transparent)]
     Ecdsa(#[from] k256::ecdsa::Error),
+
+    #[error(transparent)]
+    Tls(#[from] rusoto_core::request::TlsError),
+
+    //#[error(transparent)]
+    //ParseRegion(#[from] rusoto_signature::region::ParseRegionError),
+
+    #[error(transparent)]
+    Credentials(#[from] rusoto_core::credential::CredentialsError),
+
+    #[error(transparent)]
+    GetObject(#[from] rusoto_core::RusotoError<rusoto_s3::GetObjectError>),
+
+    #[error(transparent)]
+    HeadBucket(#[from] rusoto_core::RusotoError<rusoto_s3::HeadBucketError>),
+
+    #[error(transparent)]
+    PutObject(#[from] rusoto_core::RusotoError<rusoto_s3::PutObjectError>),
 }
