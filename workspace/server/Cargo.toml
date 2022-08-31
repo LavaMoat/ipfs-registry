@@ -35,5 +35,6 @@ async-trait = "0.1"
 rusoto_s3 = "0.48"
 rusoto_core = "^0.48.0"
 rusoto_signature = "^0.48.0"
+indexmap = {version = "1.9", features = ["serde-1"]}
 
 #ipfs-api-backend-hyper = { version = "0.5", features = ["with-hyper-rustls"] }

@@ -11,7 +11,7 @@ use rusoto_core::{credential, request::HttpClient, ByteStream, Region};
 use rusoto_s3::{PutObjectOutput, PutObjectRequest, S3Client, S3};
 
 use ipfs_registry_core::{
-    Definition, Artifact, Pointer, Receipt, ObjectKey,
+    Definition, Artifact, Pointer, ObjectKey,
 };
 
 use super::{NAME, ROOT, BLOB};
@@ -76,7 +76,7 @@ impl Layer for S3Layer {
         &self,
         data: Bytes,
         descriptor: &Artifact,
-    ) -> Result<String> {
+    ) -> Result<Vec<ObjectKey>> {
         let key = format!(
             "{}/{}/{}/{}/{}/{}",
             ROOT,
@@ -87,7 +87,7 @@ impl Layer for S3Layer {
             BLOB,
         );
         self.put_object(key.clone(), data).await?;
-        Ok(key)
+        Ok(vec![ObjectKey::Key(key)])
     }
 
     async fn get_blob(&self, _id: &ObjectKey) -> Result<Vec<u8>> {
@@ -99,9 +99,9 @@ impl Layer for S3Layer {
         signature: String,
         _address: &Address,
         artifact: Artifact,
-        object: ObjectKey,
+        mut objects: Vec<ObjectKey>,
         package: Value,
-    ) -> Result<Receipt> {
+    ) -> Result<Vec<ObjectKey>> {
         let key = format!(
             "{}/{}/{}/{}/{}/{}",
             ROOT,
@@ -111,6 +111,8 @@ impl Layer for S3Layer {
             &artifact.package.version,
             NAME
         );
+
+        let object = objects.remove(0);
 
         let definition = Definition {
             artifact,
@@ -126,12 +128,7 @@ impl Layer for S3Layer {
         let data = serde_json::to_vec_pretty(&doc)?;
         self.put_object(key.clone(), Bytes::from(data)).await?;
 
-        let receipt = Receipt {
-            pointer: key,
-            definition,
-        };
-
-        Ok(receipt)
+        Ok(vec![ObjectKey::Key(key)])
     }
 
     async fn get_pointer(

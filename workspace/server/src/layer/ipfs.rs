@@ -8,7 +8,7 @@ use url::Url;
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
-    Definition, Artifact, Pointer, Receipt, ObjectKey,
+    Definition, Artifact, Pointer, ObjectKey,
 };
 
 use serde_json::Value;
@@ -55,17 +55,17 @@ impl Layer for IpfsLayer {
         &self,
         data: Bytes,
         _descriptor: &Artifact,
-    ) -> Result<String> {
+    ) -> Result<Vec<ObjectKey>> {
         let data = Cursor::new(data);
         let add_res = self.client.add(data).await?;
         self.client.pin_add(&add_res.hash, true).await?;
-        Ok(add_res.hash)
+        Ok(vec![ObjectKey::Cid(add_res.hash)])
     }
 
     async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>> {
         let res = self
             .client
-            .cat(id)
+            .cat(id.as_ref())
             .map_ok(|chunk| chunk.to_vec())
             .try_concat()
             .await?;
@@ -77,9 +77,9 @@ impl Layer for IpfsLayer {
         signature: String,
         _address: &Address,
         artifact: Artifact,
-        object: ObjectKey,
+        mut objects: Vec<ObjectKey>,
         package: Value,
-    ) -> Result<Receipt> {
+    ) -> Result<Vec<ObjectKey>> {
         let dir = format!(
             "/{}/{}/{}/{}/{}",
             ROOT,
@@ -90,6 +90,8 @@ impl Layer for IpfsLayer {
         );
 
         self.client.files_mkdir(&dir, true).await?;
+
+        let object = objects.remove(0);
 
         let definition = Definition {
             artifact,
@@ -111,12 +113,7 @@ impl Layer for IpfsLayer {
         let stat = self.client.files_stat(&path).await?;
         self.client.pin_add(&stat.hash, true).await?;
 
-        let receipt = Receipt {
-            pointer: stat.hash,
-            definition,
-        };
-
-        Ok(receipt)
+        Ok(vec![ObjectKey::Cid(stat.hash)])
     }
 
     async fn get_pointer(

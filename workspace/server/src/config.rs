@@ -5,6 +5,7 @@ use std::{
 };
 use url::Url;
 use web3_address::ethereum::Address;
+use indexmap::set::IndexSet;
 
 use crate::{Error, Result};
 use ipfs_registry_core::RegistryKind;
@@ -81,12 +82,12 @@ impl ServerConfig {
 #[derive(Debug, Deserialize)]
 pub struct StorageConfig {
     /// Collection of storage layers.
-    pub layers: HashSet<LayerConfig>,
+    pub layers: IndexSet<LayerConfig>,
 }
 
 impl Default for StorageConfig {
     fn default() -> Self {
-        let mut layers = HashSet::new();
+        let mut layers = IndexSet::new();
         layers.insert(Default::default());
         Self { layers }
     }

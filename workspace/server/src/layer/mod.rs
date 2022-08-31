@@ -4,7 +4,7 @@ use axum::body::Bytes;
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
-    Artifact, Pointer, Receipt, ObjectKey,
+    Artifact, Pointer, ObjectKey,
 };
 
 use serde_json::Value;
@@ -56,6 +56,11 @@ pub(crate) struct Layers {
 }
 
 impl Layers {
+
+    /// Primary storage layer.
+    ///
+    /// The configuration loader ensures we always have at least one 
+    /// layer configuration so we can be certain we have a primary layer.
     fn primary(&self) -> &Box<dyn Layer + Send + Sync + 'static> {
         self.storage.get(0).unwrap()
     }
@@ -67,14 +72,15 @@ impl Layer for Layers {
         &self,
         data: Bytes,
         descriptor: &Artifact,
-    ) -> Result<String> {
+    ) -> Result<Vec<ObjectKey>> {
         let has_mirrors = self.storage.len() > 1;
         if has_mirrors {
-            let id = self.primary().add_blob(data.clone(), descriptor).await?;
-            for mirror in self.storage.iter().skip(1) {
-                mirror.add_blob(data.clone(), descriptor).await?;
+            let mut keys = Vec::new();
+            for layer in self.storage.iter() {
+                let mut id = layer.add_blob(data.clone(), descriptor).await?;
+                keys.append(&mut id);
             }
-            Ok(id)
+            Ok(keys)
         } else {
             self.primary().add_blob(data, descriptor).await
         }
@@ -89,37 +95,30 @@ impl Layer for Layers {
         signature: String,
         address: &Address,
         descriptor: Artifact,
-        object: ObjectKey,
+        objects: Vec<ObjectKey>,
         package: Value,
-    ) -> Result<Receipt> {
-
+    ) -> Result<Vec<ObjectKey>> {
         let has_mirrors = self.storage.len() > 1;
         if has_mirrors {
-            let receipt = self
-                .primary()
-                .add_pointer(
-                    signature.clone(),
-                    address,
-                    descriptor.clone(),
-                    object.clone(),
-                    package.clone(),
-                )
-                .await?;
-            for mirror in self.storage.iter().skip(1) {
-                mirror.add_pointer(
-                    signature.clone(),
-                    address,
-                    descriptor.clone(),
-                    object.clone(),
-                    package.clone(),
-                )
-                .await?;
+            let mut keys = Vec::new();
+            for layer in self.storage.iter() {
+                let mut id = layer
+                    .add_pointer(
+                        signature.clone(),
+                        address,
+                        descriptor.clone(),
+                        objects.clone(),
+                        package.clone(),
+                    )
+                    .await?;
+
+                keys.append(&mut id);
             }
-            Ok(receipt)
+            Ok(keys)
         } else {
             self.primary()
                 .add_pointer(
-                    signature, address, descriptor, object, package,
+                    signature, address, descriptor, objects, package,
                 )
                 .await
         }
@@ -141,7 +140,7 @@ pub trait Layer {
         &self,
         data: Bytes,
         descriptor: &Artifact,
-    ) -> Result<String>;
+    ) -> Result<Vec<ObjectKey>>;
 
     /// Get a blob from storage by identifier.
     async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>>;
@@ -152,9 +151,9 @@ pub trait Layer {
         signature: String,
         address: &Address,
         descriptor: Artifact,
-        object: ObjectKey,
+        objects: Vec<ObjectKey>,
         package: Value,
-    ) -> Result<Receipt>;
+    ) -> Result<Vec<ObjectKey>>;
 
     /// Get a pointer from the storage.
     async fn get_pointer(

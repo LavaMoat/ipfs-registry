@@ -29,7 +29,23 @@ impl fmt::Display for RegistryKind {
 }
 
 /// Type that represents a reference to a file object.
-pub type ObjectKey = String;
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ObjectKey {
+    /// Reference to an IPFS content identifier.
+    Cid(String),
+    /// Reference to a bucket key.
+    Key(String),
+}
+
+impl AsRef<str> for ObjectKey {
+    fn as_ref(&self) -> &str {
+        match self {
+            Self::Cid(value) => value,
+            Self::Key(value) => value,
+        }
+    }
+}
 
 /// Meta data extracted from a package definition file.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -75,10 +91,10 @@ pub struct Pointer {
 /// Receipt for a published package.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Receipt {
-    /// The id of the pointer.
-    pub pointer: ObjectKey,
-    /// The package definition.
-    pub definition: Definition,
+    /// Collection of pointers, one for each storage layer.
+    pub pointers: Vec<ObjectKey>,
+    /// Package descriptor.
+    pub artifact: Artifact,
 }
 
 /// Read a descriptor from a package.

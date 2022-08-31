@@ -124,6 +124,8 @@ impl PackageHandler {
                 package,
             };
 
+            let artifact = descriptor.clone();
+
             // Check the package version does not already exist
             let meta = state 
                 .layers
@@ -140,10 +142,10 @@ impl PackageHandler {
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            tracing::debug!(id = %id, "added package");
+            tracing::debug!(id = ?id, "added package");
 
             // Store the package meta data
-            let receipt = state 
+            let pointers = state 
                 .layers
                 .add_pointer(
                     encoded_signature,
@@ -154,6 +156,11 @@ impl PackageHandler {
                 )
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            let receipt = Receipt {
+                pointers,
+                artifact,
+            };
 
             Ok(Json(receipt))
         } else {
