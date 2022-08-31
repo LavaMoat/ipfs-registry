@@ -13,10 +13,7 @@ use ipfs_registry_core::RegistryKind;
 pub struct ServerConfig {
     /// Configuration for the primary storage layer.
     #[serde(default)]
-    pub storage: LayerConfig,
-
-    /// Mirror configuration.
-    pub mirror: Option<LayerConfig>,
+    pub storage: StorageConfig,
 
     /// Package registry configuration.
     #[serde(default)]
@@ -44,6 +41,10 @@ impl ServerConfig {
         let contents = std::fs::read_to_string(path.as_ref())?;
         let mut config: ServerConfig = toml::from_str(&contents)?;
         config.file = Some(path.as_ref().canonicalize()?);
+
+        if config.storage.layers.is_empty() {
+            return Err(Error::NoStorageLayers)
+        }
 
         let dir = config.directory();
 
@@ -76,21 +77,20 @@ impl ServerConfig {
     }
 }
 
-/*
+/// Storage configuration.
 #[derive(Debug, Deserialize)]
-pub struct IpfsConfig {
-    /// URL for the IPFS node.
-    pub url: Url,
+pub struct StorageConfig {
+    /// Collection of storage layers.
+    pub layers: HashSet<LayerConfig>,
 }
 
-impl Default for IpfsConfig {
+impl Default for StorageConfig {
     fn default() -> Self {
-        Self {
-            url: Url::parse("http://localhost:5001").unwrap(),
-        }
+        let mut layers = HashSet::new();
+        layers.insert(Default::default());
+        Self { layers }
     }
 }
-*/
 
 #[derive(Debug, Deserialize)]
 pub struct RegistryConfig {
@@ -132,7 +132,7 @@ pub struct CorsConfig {
     pub origins: Vec<Url>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Hash, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum LayerConfig {
     Ipfs {

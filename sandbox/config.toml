@@ -1,5 +1,7 @@
-[storage]
-url = "http://localhost:5001"
+#[storage]
+#layers = [
+  #{ url = "http://localhost:5001" }
+#]
 
 #[cors]
 #origins = [

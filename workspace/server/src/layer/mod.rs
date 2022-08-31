@@ -42,24 +42,23 @@ fn get_layer(
 
 /// Build storage layers from the server configuration.
 pub(crate) fn build(config: &ServerConfig) -> Result<Layers> {
-    let storage = get_layer(&config.storage, &config.registry)?;
+    let mut storage = Vec::new();
+    for layer in &config.storage.layers {
+        storage.push(get_layer(layer, &config.registry)?);
+    }
 
-    let mirror = if let Some(mirror) = &config.mirror {
-        Some(get_layer(mirror, &config.registry)?)
-    } else {
-        None
-    };
-
-    Ok(Layers {
-        storage,
-        mirror,
-    })
+    Ok(Layers { storage })
 }
 
 /// Type for a storage and mirror layer.
 pub(crate) struct Layers {
-    pub storage: Box<dyn Layer + Send + Sync + 'static>,
-    pub mirror: Option<Box<dyn Layer + Send + Sync + 'static>>,
+    storage: Vec<Box<dyn Layer + Send + Sync + 'static>>,
+}
+
+impl Layers {
+    fn primary(&self) -> &Box<dyn Layer + Send + Sync + 'static> {
+        self.storage.get(0).unwrap()
+    }
 }
 
 #[async_trait]
@@ -69,17 +68,20 @@ impl Layer for Layers {
         data: Bytes,
         descriptor: &NamespacedDescriptor,
     ) -> Result<String> {
-        if let Some(mirror) = &self.mirror {
-            let id = self.storage.add_blob(data.clone(), descriptor).await?;
-            mirror.add_blob(data, descriptor).await?;
+        let has_mirrors = self.storage.len() > 1;
+        if has_mirrors {
+            let id = self.primary().add_blob(data.clone(), descriptor).await?;
+            for mirror in self.storage.iter().skip(1) {
+                mirror.add_blob(data.clone(), descriptor).await?;
+            }
             Ok(id)
         } else {
-            self.storage.add_blob(data, descriptor).await
+            self.primary().add_blob(data, descriptor).await
         }
     }
 
     async fn get_blob(&self, id: &str) -> Result<Vec<u8>> {
-        self.storage.get_blob(id).await
+        self.primary().get_blob(id).await
     }
 
     async fn add_pointer(
@@ -90,9 +92,11 @@ impl Layer for Layers {
         archive_id: String,
         package: Value,
     ) -> Result<Receipt> {
-        if let Some(mirror) = &self.mirror {
+
+        let has_mirrors = self.storage.len() > 1;
+        if has_mirrors {
             let receipt = self
-                .storage
+                .primary()
                 .add_pointer(
                     signature.clone(),
                     address,
@@ -101,14 +105,19 @@ impl Layer for Layers {
                     package.clone(),
                 )
                 .await?;
-            mirror
-                .add_pointer(
-                    signature, address, descriptor, archive_id, package,
+            for mirror in self.storage.iter().skip(1) {
+                mirror.add_pointer(
+                    signature.clone(),
+                    address,
+                    descriptor.clone(),
+                    archive_id.clone(),
+                    package.clone(),
                 )
                 .await?;
+            }
             Ok(receipt)
         } else {
-            self.storage
+            self.primary()
                 .add_pointer(
                     signature, address, descriptor, archive_id, package,
                 )
@@ -120,7 +129,7 @@ impl Layer for Layers {
         &self,
         descriptor: &NamespacedDescriptor,
     ) -> Result<Option<PackagePointer>> {
-        self.storage.get_pointer(descriptor).await
+        self.primary().get_pointer(descriptor).await
     }
 }
 
