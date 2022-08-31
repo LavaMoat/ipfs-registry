@@ -28,9 +28,12 @@ impl fmt::Display for RegistryKind {
     }
 }
 
-/// Describes a package.
+/// Type that represents a reference to a file object.
+pub type ObjectKey = String;
+
+/// Meta data extracted from a package definition file.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Descriptor {
+pub struct PackageMeta {
     /// Name of the package.
     pub name: String,
     /// Version of the package.
@@ -39,25 +42,22 @@ pub struct Descriptor {
 
 /// Package descriptor in the context of a namespace.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct NamespacedDescriptor {
+pub struct Artifact {
     /// The kind of registry.
     pub kind: RegistryKind,
     /// Organization namespace.
     pub namespace: String,
     /// Package descriptor.
-    pub package: Descriptor,
+    pub package: PackageMeta,
 }
 
 /// Definition of a package.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Definition {
     /// The id of the package archive.
-    ///
-    /// For IPFS this will be the `cid` for other layers such as
-    /// S3 it is the object key.
-    pub archive: String,
+    pub object: ObjectKey,
     /// Package descriptor.
-    pub descriptor: NamespacedDescriptor,
+    pub artifact: Artifact,
     /// Signature of the package file encoded as base64.
     pub signature: String,
 }
@@ -65,7 +65,7 @@ pub struct Definition {
 /// Type that points to a package archive and wraps the meta
 /// data extracted from the archive.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PackagePointer {
+pub struct Pointer {
     /// The package definition.
     pub definition: Definition,
     /// Package meta data extracted from the archive (eg: package.json).
@@ -76,10 +76,7 @@ pub struct PackagePointer {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Receipt {
     /// The id of the pointer.
-    ///
-    /// For IPFS this will be the `cid` for other layers such as
-    /// S3 it is the object key.
-    pub pointer: String,
+    pub pointer: ObjectKey,
     /// The package definition.
     pub definition: Definition,
 }
@@ -92,7 +89,7 @@ impl PackageReader {
     pub fn read(
         kind: RegistryKind,
         buffer: &[u8],
-    ) -> Result<(Descriptor, Value)> {
+    ) -> Result<(PackageMeta, Value)> {
         match kind {
             RegistryKind::Npm => {
                 let contents = decompress(buffer)?;

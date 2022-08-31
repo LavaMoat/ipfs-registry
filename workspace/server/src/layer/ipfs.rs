@@ -8,7 +8,7 @@ use url::Url;
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
-    Definition, NamespacedDescriptor, PackagePointer, Receipt,
+    Definition, Artifact, Pointer, Receipt, ObjectKey,
 };
 
 use serde_json::Value;
@@ -54,7 +54,7 @@ impl Layer for IpfsLayer {
     async fn add_blob(
         &self,
         data: Bytes,
-        _descriptor: &NamespacedDescriptor,
+        _descriptor: &Artifact,
     ) -> Result<String> {
         let data = Cursor::new(data);
         let add_res = self.client.add(data).await?;
@@ -62,7 +62,7 @@ impl Layer for IpfsLayer {
         Ok(add_res.hash)
     }
 
-    async fn get_blob(&self, id: &str) -> Result<Vec<u8>> {
+    async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>> {
         let res = self
             .client
             .cat(id)
@@ -76,28 +76,28 @@ impl Layer for IpfsLayer {
         &self,
         signature: String,
         _address: &Address,
-        descriptor: NamespacedDescriptor,
-        archive_id: String,
+        artifact: Artifact,
+        object: ObjectKey,
         package: Value,
     ) -> Result<Receipt> {
         let dir = format!(
             "/{}/{}/{}/{}/{}",
             ROOT,
-            &descriptor.kind,
-            &descriptor.namespace,
-            &descriptor.package.name,
-            &descriptor.package.version
+            &artifact.kind,
+            &artifact.namespace,
+            &artifact.package.name,
+            &artifact.package.version
         );
 
         self.client.files_mkdir(&dir, true).await?;
 
         let definition = Definition {
-            descriptor,
-            archive: archive_id,
+            artifact,
+            object,
             signature,
         };
 
-        let doc = PackagePointer {
+        let doc = Pointer {
             definition: definition.clone(),
             package,
         };
@@ -121,8 +121,8 @@ impl Layer for IpfsLayer {
 
     async fn get_pointer(
         &self,
-        descriptor: &NamespacedDescriptor,
-    ) -> Result<Option<PackagePointer>> {
+        descriptor: &Artifact,
+    ) -> Result<Option<Pointer>> {
         let path = format!(
             "/{}/{}/{}/{}/{}/{}",
             ROOT,
@@ -140,7 +140,7 @@ impl Layer for IpfsLayer {
             .try_concat()
             .await
         {
-            let doc: PackagePointer = serde_json::from_slice(&res)?;
+            let doc: Pointer = serde_json::from_slice(&res)?;
             Some(doc)
         } else {
             None

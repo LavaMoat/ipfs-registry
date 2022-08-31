@@ -14,7 +14,7 @@ use semver::Version;
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
-    Descriptor, NamespacedDescriptor, PackageReader, Receipt,
+    PackageMeta, Artifact, PackageReader, Receipt,
 };
 
 use crate::{headers::Signature, layer::Layer, server::ServerState, Result};
@@ -44,10 +44,10 @@ impl PackageHandler {
             name = %name,
             version = ?version);
 
-        let descriptor = NamespacedDescriptor {
+        let descriptor = Artifact {
             kind,
             namespace: address.to_string(),
-            package: Descriptor { name, version },
+            package: PackageMeta { name, version },
         };
 
         // Get the package meta data
@@ -62,7 +62,7 @@ impl PackageHandler {
         if let Some(doc) = meta {
             let body = state 
                 .layers
-                .get_blob(&doc.definition.archive)
+                .get_blob(&doc.definition.object)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -118,7 +118,7 @@ impl PackageHandler {
             let (package, package_meta) = PackageReader::read(kind, &body)
                 .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-            let descriptor = NamespacedDescriptor {
+            let descriptor = Artifact {
                 kind,
                 namespace: address.to_string(),
                 package,

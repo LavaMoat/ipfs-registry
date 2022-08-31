@@ -2,7 +2,7 @@ use flate2::read::GzDecoder;
 use std::{io::prelude::*, path::PathBuf};
 use tar::Archive;
 
-use crate::{Descriptor, Error, Result};
+use crate::{PackageMeta, Error, Result};
 
 const NPM: &str = "package/package.json";
 
@@ -15,10 +15,10 @@ pub(crate) fn decompress(buffer: &[u8]) -> Result<Vec<u8>> {
 }
 
 /// Read a package descriptor from an NPM compatible tarball.
-pub(crate) fn read_npm_package(buffer: &[u8]) -> Result<(Descriptor, &[u8])> {
+pub(crate) fn read_npm_package(buffer: &[u8]) -> Result<(PackageMeta, &[u8])> {
     let package_path = PathBuf::from(NPM);
     let buffer = find_tar_entry(package_path, buffer)?;
-    let descriptor: Descriptor = serde_json::from_slice(buffer)?;
+    let descriptor: PackageMeta = serde_json::from_slice(buffer)?;
     Ok((descriptor, buffer))
 }
 

@@ -11,7 +11,7 @@ use rusoto_core::{credential, request::HttpClient, ByteStream, Region};
 use rusoto_s3::{PutObjectOutput, PutObjectRequest, S3Client, S3};
 
 use ipfs_registry_core::{
-    Definition, NamespacedDescriptor, PackagePointer, Receipt,
+    Definition, Artifact, Pointer, Receipt, ObjectKey,
 };
 
 use super::{NAME, ROOT, BLOB};
@@ -75,7 +75,7 @@ impl Layer for S3Layer {
     async fn add_blob(
         &self,
         data: Bytes,
-        descriptor: &NamespacedDescriptor,
+        descriptor: &Artifact,
     ) -> Result<String> {
         let key = format!(
             "{}/{}/{}/{}/{}/{}",
@@ -90,7 +90,7 @@ impl Layer for S3Layer {
         Ok(key)
     }
 
-    async fn get_blob(&self, _id: &str) -> Result<Vec<u8>> {
+    async fn get_blob(&self, _id: &ObjectKey) -> Result<Vec<u8>> {
         todo!()
     }
 
@@ -98,27 +98,27 @@ impl Layer for S3Layer {
         &self,
         signature: String,
         _address: &Address,
-        descriptor: NamespacedDescriptor,
-        archive_id: String,
+        artifact: Artifact,
+        object: ObjectKey,
         package: Value,
     ) -> Result<Receipt> {
         let key = format!(
             "{}/{}/{}/{}/{}/{}",
             ROOT,
-            &descriptor.kind,
-            &descriptor.namespace,
-            &descriptor.package.name,
-            &descriptor.package.version,
+            &artifact.kind,
+            &artifact.namespace,
+            &artifact.package.name,
+            &artifact.package.version,
             NAME
         );
 
         let definition = Definition {
-            descriptor,
-            archive: archive_id,
+            artifact,
+            object,
             signature,
         };
 
-        let doc = PackagePointer {
+        let doc = Pointer {
             definition: definition.clone(),
             package,
         };
@@ -136,8 +136,8 @@ impl Layer for S3Layer {
 
     async fn get_pointer(
         &self,
-        _descriptor: &NamespacedDescriptor,
-    ) -> Result<Option<PackagePointer>> {
+        _descriptor: &Artifact,
+    ) -> Result<Option<Pointer>> {
         todo!()
     }
 }

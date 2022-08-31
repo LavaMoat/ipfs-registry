@@ -4,7 +4,7 @@ use axum::body::Bytes;
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
-    NamespacedDescriptor, PackagePointer, Receipt,
+    Artifact, Pointer, Receipt, ObjectKey,
 };
 
 use serde_json::Value;
@@ -50,7 +50,7 @@ pub(crate) fn build(config: &ServerConfig) -> Result<Layers> {
     Ok(Layers { storage })
 }
 
-/// Type for a storage and mirror layer.
+/// Type for a collection of storage layer implementations.
 pub(crate) struct Layers {
     storage: Vec<Box<dyn Layer + Send + Sync + 'static>>,
 }
@@ -66,7 +66,7 @@ impl Layer for Layers {
     async fn add_blob(
         &self,
         data: Bytes,
-        descriptor: &NamespacedDescriptor,
+        descriptor: &Artifact,
     ) -> Result<String> {
         let has_mirrors = self.storage.len() > 1;
         if has_mirrors {
@@ -80,7 +80,7 @@ impl Layer for Layers {
         }
     }
 
-    async fn get_blob(&self, id: &str) -> Result<Vec<u8>> {
+    async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>> {
         self.primary().get_blob(id).await
     }
 
@@ -88,8 +88,8 @@ impl Layer for Layers {
         &self,
         signature: String,
         address: &Address,
-        descriptor: NamespacedDescriptor,
-        archive_id: String,
+        descriptor: Artifact,
+        object: ObjectKey,
         package: Value,
     ) -> Result<Receipt> {
 
@@ -101,7 +101,7 @@ impl Layer for Layers {
                     signature.clone(),
                     address,
                     descriptor.clone(),
-                    archive_id.clone(),
+                    object.clone(),
                     package.clone(),
                 )
                 .await?;
@@ -110,7 +110,7 @@ impl Layer for Layers {
                     signature.clone(),
                     address,
                     descriptor.clone(),
-                    archive_id.clone(),
+                    object.clone(),
                     package.clone(),
                 )
                 .await?;
@@ -119,7 +119,7 @@ impl Layer for Layers {
         } else {
             self.primary()
                 .add_pointer(
-                    signature, address, descriptor, archive_id, package,
+                    signature, address, descriptor, object, package,
                 )
                 .await
         }
@@ -127,8 +127,8 @@ impl Layer for Layers {
 
     async fn get_pointer(
         &self,
-        descriptor: &NamespacedDescriptor,
-    ) -> Result<Option<PackagePointer>> {
+        descriptor: &Artifact,
+    ) -> Result<Option<Pointer>> {
         self.primary().get_pointer(descriptor).await
     }
 }
@@ -140,25 +140,25 @@ pub trait Layer {
     async fn add_blob(
         &self,
         data: Bytes,
-        descriptor: &NamespacedDescriptor,
+        descriptor: &Artifact,
     ) -> Result<String>;
 
     /// Get a blob from storage by identifier.
-    async fn get_blob(&self, id: &str) -> Result<Vec<u8>>;
+    async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>>;
 
     /// Add a pointer to the storage.
     async fn add_pointer(
         &self,
         signature: String,
         address: &Address,
-        descriptor: NamespacedDescriptor,
-        archive_id: String,
+        descriptor: Artifact,
+        object: ObjectKey,
         package: Value,
     ) -> Result<Receipt>;
 
     /// Get a pointer from the storage.
     async fn get_pointer(
         &self,
-        descriptor: &NamespacedDescriptor,
-    ) -> Result<Option<PackagePointer>>;
+        descriptor: &Artifact,
+    ) -> Result<Option<Pointer>>;
 }
