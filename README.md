@@ -107,7 +107,7 @@ layers = [
 ]
 ```
 
-To define a storage layer backed by an AWS S3 bucket you must specify the `profile`, `region` and `bucket`; the `profile` must be a valid profile in `~/.aws/credentials` with permissions to read and write from the bucket.
+To define a storage layer backed by an AWS S3 bucket you must specify the `profile`, `region` and `bucket`; the `profile` must be a valid profile in `~/.aws/credentials` with read and write permissions for the bucket.
 
 ```toml
 [storage]
