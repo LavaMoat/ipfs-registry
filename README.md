@@ -83,16 +83,51 @@ To download a package construct a URL containing the Ethereum-style address that
 
 This section describes the server configuration; after making changes to the configuration you must restart the server for changes to take effect.
 
-### IPFS
+### Storage
 
-If the IPFS node is running on a different port to the default you can change the URL to use:
+Storage for packages and pointers can be defined as an ordered set of layers.
+
+You must define at least one layer; to define an IPFS layer specify an object with a `url` field that points to the node URL.
 
 ```toml
-[ipfs]
-url = "http://localhost:7007"
+[storage]
+layers = [
+  { url = "https://ipfs-node1.example.com" }
+]
 ```
 
-Note that currently HTTPS connections to IPFS are not supported.
+For example, to mirror to multiple IPFS nodes:
+
+```toml
+[storage]
+layers = [
+  { url = "https://ipfs-node1.example.com" },
+  { url = "https://ipfs-node2.example.com" },
+  { url = "https://ipfs-node3.example.com" },
+]
+```
+
+To define a storage layer backed by an AWS S3 bucket you must specify the `profile`, `region` and `bucket`; the `profile` must be a valid profile in `~/.aws/credentials` with permissions to read and write from the bucket.
+
+```toml
+[storage]
+layers = [
+  { region = "ap-southeast-1", profile = "example", bucket = "registry.example.com" }
+]
+```
+
+When using an AWS S3 bucket as a storage layer in production it is ***strongly recommended*** that the bucket has [versioning][] and [object locks][] enabled. 
+Mixing layers is encouraged for redundancy:
+
+```toml
+[storage]
+layers = [
+  { url = "https://ipfs-node1.example.com" },
+  { region = "ap-southeast-1", profile = "example", bucket = "registry.example.com" },
+]
+```
+
+Note that all the downstream storage layers must be available for the service to work as intended; ie, requests must succeeed across all storage layers for the server to return a success response.
 
 ### Registry
 
@@ -160,3 +195,5 @@ MIT or Apache-2.0
 
 [ipfs]: https://ipfs.io/
 [rust]: https://www.rust-lang.org/
+[object locks]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html
+[versioning]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html
