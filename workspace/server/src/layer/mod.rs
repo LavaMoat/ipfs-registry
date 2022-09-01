@@ -3,13 +3,14 @@ use async_trait::async_trait;
 use axum::body::Bytes;
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{
-    Artifact, Pointer, ObjectKey,
-};
+use ipfs_registry_core::{Artifact, ObjectKey, Pointer};
 
 use serde_json::Value;
 
-use crate::{Result, config::{ServerConfig, LayerConfig, RegistryConfig}};
+use crate::{
+    config::{LayerConfig, RegistryConfig, ServerConfig},
+    Result,
+};
 
 pub(crate) mod ipfs;
 pub(crate) mod s3;
@@ -24,9 +25,7 @@ fn get_layer(
     registry: &RegistryConfig,
 ) -> Result<Box<dyn Layer + Send + Sync + 'static>> {
     match config {
-        LayerConfig::Ipfs { url } => {
-            Ok(Box::new(ipfs::IpfsLayer::new(url)?))
-        }
+        LayerConfig::Ipfs { url } => Ok(Box::new(ipfs::IpfsLayer::new(url)?)),
         LayerConfig::Aws {
             profile,
             region,
@@ -56,10 +55,9 @@ pub(crate) struct Layers {
 }
 
 impl Layers {
-
     /// Primary storage layer.
     ///
-    /// The configuration loader ensures we always have at least one 
+    /// The configuration loader ensures we always have at least one
     /// layer configuration so we can be certain we have a primary layer.
     fn primary(&self) -> &Box<dyn Layer + Send + Sync + 'static> {
         self.storage.get(0).unwrap()
@@ -117,9 +115,7 @@ impl Layer for Layers {
             Ok(keys)
         } else {
             self.primary()
-                .add_pointer(
-                    signature, address, descriptor, objects, package,
-                )
+                .add_pointer(signature, address, descriptor, objects, package)
                 .await
         }
     }

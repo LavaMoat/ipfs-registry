@@ -1,21 +1,22 @@
 //! S3 backed storage layer.
 use async_trait::async_trait;
 use axum::body::Bytes;
+use futures::TryStreamExt;
+use serde_json::Value;
+use tokio_util::codec;
 use web3_address::ethereum::Address;
 
-use serde_json::Value;
-
-use super::Layer;
-
-use rusoto_core::{credential, request::HttpClient, ByteStream, Region};
-use rusoto_s3::{PutObjectOutput, PutObjectRequest, S3Client, S3};
-
-use ipfs_registry_core::{
-    Definition, Artifact, Pointer, ObjectKey,
+use rusoto_core::{credential, request::HttpClient, ByteStream, Region, RusotoError};
+use rusoto_s3::{
+    GetObjectRequest, PutObjectOutput, PutObjectRequest, S3Client, S3,
+    GetObjectError,
 };
 
-use super::{NAME, ROOT, BLOB};
-use crate::Result;
+use ipfs_registry_core::{Artifact, Definition, ObjectKey, Pointer};
+
+use super::Layer;
+use super::{BLOB, NAME, ROOT};
+use crate::{Error, Result};
 
 /// Layer for S3 backed storage.
 pub struct S3Layer {
@@ -49,6 +50,30 @@ impl S3Layer {
         Ok(client)
     }
 
+    fn get_blob_key(&self, artifact: &Artifact) -> String {
+        format!(
+            "{}/{}/{}/{}/{}/{}",
+            ROOT,
+            &artifact.kind,
+            &artifact.namespace,
+            &artifact.package.name,
+            &artifact.package.version,
+            BLOB,
+        )
+    }
+
+    fn get_pointer_key(&self, artifact: &Artifact) -> String {
+        format!(
+            "{}/{}/{}/{}/{}/{}",
+            ROOT,
+            &artifact.kind,
+            &artifact.namespace,
+            &artifact.package.name,
+            &artifact.package.version,
+            NAME
+        )
+    }
+
     async fn put_object(
         &self,
         key: String,
@@ -68,6 +93,41 @@ impl S3Layer {
 
         Ok(self.client.put_object(req).await?)
     }
+
+    async fn get_object(&self, key: String) -> Result<Option<Vec<u8>>> {
+        let req = GetObjectRequest {
+            bucket: self.bucket.clone(),
+            key,
+            ..Default::default()
+        };
+
+        let result = self.client.get_object(req).await;
+
+        if let Err(RusotoError::<GetObjectError>::Service(e)) = &result {
+            if let GetObjectError::NoSuchKey(_) = e {
+                return Ok(None)
+            }
+        }
+
+        if let Some(body) = result?.body {
+            let content = codec::FramedRead::new(
+                body.into_async_read(),
+                codec::BytesCodec::new(),
+            );
+
+            let mut buf: Vec<u8> = Vec::new();
+            content
+                .try_for_each(|bytes| {
+                    buf.extend(&bytes);
+                    futures::future::ok(())
+                })
+                .await?;
+
+            Ok(Some(buf))
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 #[async_trait]
@@ -75,23 +135,23 @@ impl Layer for S3Layer {
     async fn add_blob(
         &self,
         data: Bytes,
-        descriptor: &Artifact,
+        artifact: &Artifact,
     ) -> Result<Vec<ObjectKey>> {
-        let key = format!(
-            "{}/{}/{}/{}/{}/{}",
-            ROOT,
-            &descriptor.kind,
-            &descriptor.namespace,
-            &descriptor.package.name,
-            &descriptor.package.version,
-            BLOB,
-        );
+        let key = self.get_blob_key(artifact);
         self.put_object(key.clone(), data).await?;
         Ok(vec![ObjectKey::Key(key)])
     }
 
-    async fn get_blob(&self, _id: &ObjectKey) -> Result<Vec<u8>> {
-        todo!()
+    async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>> {
+        if let ObjectKey::Key(key) = id {
+            let result = self
+                .get_object(key.to_owned())
+                .await?
+                .ok_or_else(|| Error::ObjectMissing(key.to_string()))?;
+            Ok(result)
+        } else {
+            Err(Error::BadObjectKey)
+        }
     }
 
     async fn add_pointer(
@@ -102,15 +162,7 @@ impl Layer for S3Layer {
         mut objects: Vec<ObjectKey>,
         package: Value,
     ) -> Result<Vec<ObjectKey>> {
-        let key = format!(
-            "{}/{}/{}/{}/{}/{}",
-            ROOT,
-            &artifact.kind,
-            &artifact.namespace,
-            &artifact.package.name,
-            &artifact.package.version,
-            NAME
-        );
+        let key = self.get_pointer_key(&artifact);
 
         let object = objects.remove(0);
 
@@ -133,8 +185,15 @@ impl Layer for S3Layer {
 
     async fn get_pointer(
         &self,
-        _descriptor: &Artifact,
+        artifact: &Artifact,
     ) -> Result<Option<Pointer>> {
-        todo!()
+        let key = self.get_pointer_key(artifact);
+        let result = if let Some(res) = self.get_object(key).await? {
+            let doc: Pointer = serde_json::from_slice(&res)?;
+            Some(doc)
+        } else {
+            None
+        };
+        Ok(result)
     }
 }

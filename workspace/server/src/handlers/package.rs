@@ -13,9 +13,7 @@ use semver::Version;
 
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{
-    PackageMeta, Artifact, PackageReader, Receipt,
-};
+use ipfs_registry_core::{Artifact, PackageMeta, PackageReader, Receipt};
 
 use crate::{headers::Signature, layer::Layer, server::ServerState, Result};
 
@@ -51,7 +49,7 @@ impl PackageHandler {
         };
 
         // Get the package meta data
-        let meta = state 
+        let meta = state
             .layers
             .get_pointer(&descriptor)
             .await
@@ -60,7 +58,7 @@ impl PackageHandler {
         tracing::debug!(meta = ?meta);
 
         if let Some(doc) = meta {
-            let body = state 
+            let body = state
                 .layers
                 .get_blob(&doc.definition.object)
                 .await
@@ -127,7 +125,7 @@ impl PackageHandler {
             let artifact = descriptor.clone();
 
             // Check the package version does not already exist
-            let meta = state 
+            let meta = state
                 .layers
                 .get_pointer(&descriptor)
                 .await
@@ -136,7 +134,7 @@ impl PackageHandler {
                 return Err(StatusCode::CONFLICT);
             }
 
-            let id = state 
+            let id = state
                 .layers
                 .add_blob(body, &descriptor)
                 .await
@@ -145,7 +143,7 @@ impl PackageHandler {
             tracing::debug!(id = ?id, "added package");
 
             // Store the package meta data
-            let pointers = state 
+            let pointers = state
                 .layers
                 .add_pointer(
                     encoded_signature,
@@ -157,10 +155,7 @@ impl PackageHandler {
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            let receipt = Receipt {
-                pointers,
-                artifact,
-            };
+            let receipt = Receipt { pointers, artifact };
 
             Ok(Json(receipt))
         } else {

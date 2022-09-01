@@ -102,9 +102,7 @@ impl Server {
         Ok(())
     }
 
-    fn read_origins(
-        state: &State,
-    ) -> Result<Option<Vec<HeaderValue>>> {
+    fn read_origins(state: &State) -> Result<Option<Vec<HeaderValue>>> {
         if let Some(cors) = &state.config.cors {
             let mut origins = Vec::new();
             for url in cors.origins.iter() {

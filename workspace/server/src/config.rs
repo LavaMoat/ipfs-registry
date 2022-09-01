@@ -1,3 +1,4 @@
+use indexmap::set::IndexSet;
 use serde::Deserialize;
 use std::{
     collections::HashSet,
@@ -5,7 +6,6 @@ use std::{
 };
 use url::Url;
 use web3_address::ethereum::Address;
-use indexmap::set::IndexSet;
 
 use crate::{Error, Result};
 use ipfs_registry_core::RegistryKind;
@@ -44,7 +44,7 @@ impl ServerConfig {
         config.file = Some(path.as_ref().canonicalize()?);
 
         if config.storage.layers.is_empty() {
-            return Err(Error::NoStorageLayers)
+            return Err(Error::NoStorageLayers);
         }
 
         let dir = config.directory();

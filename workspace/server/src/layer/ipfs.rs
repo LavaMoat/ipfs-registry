@@ -7,9 +7,7 @@ use std::io::Cursor;
 use url::Url;
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{
-    Definition, Artifact, Pointer, ObjectKey,
-};
+use ipfs_registry_core::{Artifact, Definition, ObjectKey, Pointer};
 
 use serde_json::Value;
 
