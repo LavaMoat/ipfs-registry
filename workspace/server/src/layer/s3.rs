@@ -6,10 +6,12 @@ use serde_json::Value;
 use tokio_util::codec;
 use web3_address::ethereum::Address;
 
-use rusoto_core::{credential, request::HttpClient, ByteStream, Region, RusotoError};
+use rusoto_core::{
+    credential, request::HttpClient, ByteStream, Region, RusotoError,
+};
 use rusoto_s3::{
-    GetObjectRequest, PutObjectOutput, PutObjectRequest, S3Client, S3,
-    GetObjectError,
+    GetObjectError, GetObjectRequest, PutObjectOutput, PutObjectRequest,
+    S3Client, S3,
 };
 
 use ipfs_registry_core::{Artifact, Definition, ObjectKey, Pointer};
@@ -103,10 +105,11 @@ impl S3Layer {
 
         let result = self.client.get_object(req).await;
 
-        if let Err(RusotoError::<GetObjectError>::Service(e)) = &result {
-            if let GetObjectError::NoSuchKey(_) = e {
-                return Ok(None)
-            }
+        if let Err(RusotoError::<GetObjectError>::Service(
+            GetObjectError::NoSuchKey(_),
+        )) = &result
+        {
+            return Ok(None);
         }
 
         if let Some(body) = result?.body {

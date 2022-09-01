@@ -59,6 +59,7 @@ impl Layers {
     ///
     /// The configuration loader ensures we always have at least one
     /// layer configuration so we can be certain we have a primary layer.
+    #[allow(clippy::borrowed_box)]
     fn primary(&self) -> &Box<dyn Layer + Send + Sync + 'static> {
         self.storage.get(0).unwrap()
     }
