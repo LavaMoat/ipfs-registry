@@ -4,3 +4,4 @@ mod fetch;
 mod fetch_not_found;
 mod publish;
 mod publish_conflict;
+mod publish_too_large;

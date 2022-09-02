@@ -34,9 +34,9 @@ async fn integration_fetch_not_found() -> Result<()> {
 
     assert!(result.is_err());
 
-    let is_not_found = if let Err(ipfs_registry_client::Error::ResponseCode(
-        code,
-    )) = result
+    let is_not_found = if let Err(
+        ipfs_registry_client::Error::ResponseCode(code),
+    ) = result
     {
         code == 404
     } else {
