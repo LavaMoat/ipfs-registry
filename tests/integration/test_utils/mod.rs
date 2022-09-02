@@ -4,7 +4,7 @@ use std::{net::SocketAddr, sync::Arc, thread};
 use tokio::sync::oneshot;
 use url::Url;
 
-use ipfs_registry_server::{Server, ServerConfig, ServerInfo, StorageConfig, State, build_layers};
+use ipfs_registry_server::{Server, config::{ServerConfig, StorageConfig, LayerConfig}, ServerInfo, State, build_layers};
 
 const ADDR: &str = "127.0.0.1:9009";
 const SERVER: &str = "http://localhost:9009";
@@ -83,7 +83,8 @@ impl Drop for ShutdownHandle {
 }
 
 pub fn default_server_config() -> ServerConfig {
-    let storage: StorageConfig = Default::default();
+    let layer = LayerConfig::Memory { memory: true };
+    let storage: StorageConfig = layer.into();
     let config = ServerConfig::new(storage);
     config
 }

@@ -105,6 +105,14 @@ impl Default for StorageConfig {
     }
 }
 
+impl From<LayerConfig> for StorageConfig {
+    fn from(layer: LayerConfig) -> Self {
+        let mut layers = IndexSet::new();
+        layers.insert(layer);
+        Self { layers }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct RegistryConfig {
     /// Maximum size of body requests.

@@ -17,7 +17,7 @@ use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
 
 use crate::{
     config::TlsConfig, handlers::PackageHandler, headers::X_SIGNATURE,
-    layer::Layers, Result, ServerConfig,
+    layer::Layers, Result, config::ServerConfig,
 };
 
 /// Type alias for the server state.
