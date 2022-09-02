@@ -13,19 +13,24 @@ use axum::{
 use axum_server::{tls_rustls::RustlsConfig, Handle};
 use serde::Serialize;
 use serde_json::json;
-use tokio::sync::{RwLock, RwLockReadGuard};
-use tower_http::{cors::{CorsLayer}, limit::RequestBodyLimitLayer};
+use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
 
 use crate::{
-    config::TlsConfig, handlers::PackageHandler, Result, ServerConfig,
+    config::TlsConfig, handlers::PackageHandler, headers::X_SIGNATURE,
+    layer::Layers, Result, ServerConfig,
 };
 
+/// Type alias for the server state.
+pub(crate) type ServerState = Arc<State>;
+
 /// Server state.
-pub struct State {
+pub(crate) struct State {
     /// The server configuration.
     pub config: ServerConfig,
     /// Server information.
     pub info: ServerInfo,
+    /// Storage layers.
+    pub layers: Layers,
 }
 
 /// Server information.
@@ -42,17 +47,15 @@ pub struct Server;
 
 impl Server {
     /// Start the server.
-    pub async fn start(
+    pub(crate) async fn start(
         &self,
         addr: SocketAddr,
-        state: Arc<RwLock<State>>,
+        state: ServerState,
         handle: Handle,
     ) -> Result<()> {
-        let reader = state.read().await;
-        let origins = Server::read_origins(&reader)?;
-        let limit = reader.config.registry.body_limit;
-        let tls = reader.config.tls.as_ref().cloned();
-        drop(reader);
+        let origins = Server::read_origins(&state)?;
+        let limit = state.config.registry.body_limit;
+        let tls = state.config.tls.as_ref().cloned();
 
         if let Some(tls) = tls {
             self.run_tls(addr, state, handle, origins, limit, tls).await
@@ -65,7 +68,7 @@ impl Server {
     async fn run_tls(
         &self,
         addr: SocketAddr,
-        state: Arc<RwLock<State>>,
+        state: ServerState,
         handle: Handle,
         origins: Option<Vec<HeaderValue>>,
         limit: usize,
@@ -85,7 +88,7 @@ impl Server {
     async fn run(
         &self,
         addr: SocketAddr,
-        state: Arc<RwLock<State>>,
+        state: ServerState,
         handle: Handle,
         origins: Option<Vec<HeaderValue>>,
         limit: usize,
@@ -99,10 +102,8 @@ impl Server {
         Ok(())
     }
 
-    fn read_origins(
-        reader: &RwLockReadGuard<'_, State>,
-    ) -> Result<Option<Vec<HeaderValue>>> {
-        if let Some(cors) = &reader.config.cors {
+    fn read_origins(state: &State) -> Result<Option<Vec<HeaderValue>>> {
+        if let Some(cors) = &state.config.cors {
             let mut origins = Vec::new();
             for url in cors.origins.iter() {
                 origins.push(HeaderValue::from_str(
@@ -116,15 +117,18 @@ impl Server {
     }
 
     fn router(
-        state: Arc<RwLock<State>>,
+        state: ServerState,
         origins: Option<Vec<HeaderValue>>,
         limit: usize,
     ) -> Result<Router> {
-
         let cors = if let Some(origins) = origins {
             CorsLayer::new()
                 .allow_methods(vec![Method::GET, Method::POST])
-                .allow_headers(vec![AUTHORIZATION, CONTENT_TYPE])
+                .allow_headers(vec![
+                    AUTHORIZATION,
+                    CONTENT_TYPE,
+                    X_SIGNATURE.clone(),
+                ])
                 .allow_origin(origins)
         } else {
             CorsLayer::very_permissive()
@@ -147,8 +151,7 @@ impl Server {
 
 /// Serve the API identity page.
 pub(crate) async fn api(
-    Extension(state): Extension<Arc<RwLock<State>>>,
+    Extension(state): Extension<ServerState>,
 ) -> impl IntoResponse {
-    let reader = state.read().await;
-    Json(json!(&reader.info))
+    Json(json!(&state.info))
 }

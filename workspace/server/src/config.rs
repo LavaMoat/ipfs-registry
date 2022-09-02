@@ -1,16 +1,20 @@
-use std::{path::{Path, PathBuf}, collections::HashSet};
-use serde::{Deserialize, Serialize};
+use indexmap::set::IndexSet;
+use serde::Deserialize;
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 use url::Url;
 use web3_address::ethereum::Address;
 
 use crate::{Error, Result};
 use ipfs_registry_core::RegistryKind;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 pub struct ServerConfig {
-    /// Configuration for IPFS.
+    /// Configuration for the primary storage layer.
     #[serde(default)]
-    pub ipfs: IpfsConfig,
+    pub storage: StorageConfig,
 
     /// Package registry configuration.
     #[serde(default)]
@@ -38,6 +42,10 @@ impl ServerConfig {
         let contents = std::fs::read_to_string(path.as_ref())?;
         let mut config: ServerConfig = toml::from_str(&contents)?;
         config.file = Some(path.as_ref().canonicalize()?);
+
+        if config.storage.layers.is_empty() {
+            return Err(Error::NoStorageLayers);
+        }
 
         let dir = config.directory();
 
@@ -70,21 +78,22 @@ impl ServerConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct IpfsConfig {
-    /// URL for the IPFS node.
-    pub url: Url,
+/// Storage configuration.
+#[derive(Debug, Deserialize)]
+pub struct StorageConfig {
+    /// Collection of storage layers.
+    pub layers: IndexSet<LayerConfig>,
 }
 
-impl Default for IpfsConfig {
+impl Default for StorageConfig {
     fn default() -> Self {
-        Self {
-            url: Url::parse("http://localhost:5001").unwrap(),
-        }
+        let mut layers = IndexSet::new();
+        layers.insert(Default::default());
+        Self { layers }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct RegistryConfig {
     /// Maximum size of body requests.
     pub body_limit: usize,
@@ -110,7 +119,7 @@ impl Default for RegistryConfig {
     }
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize)]
 pub struct TlsConfig {
     /// Path to the certificate.
     pub cert: PathBuf,
@@ -118,8 +127,33 @@ pub struct TlsConfig {
     pub key: PathBuf,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 pub struct CorsConfig {
     /// List of additional CORS origins for the server.
     pub origins: Vec<Url>,
+}
+
+#[derive(Debug, Clone, Deserialize, Hash, Eq, PartialEq)]
+#[serde(untagged)]
+pub enum LayerConfig {
+    Ipfs {
+        /// URL for the IPFS node.
+        url: Url,
+    },
+    Aws {
+        /// Profile for authentication.
+        profile: String,
+        // Region of the bucket.
+        region: String,
+        /// Bucket name.
+        bucket: String,
+    },
+}
+
+impl Default for LayerConfig {
+    fn default() -> Self {
+        Self::Ipfs {
+            url: Url::parse("http://localhost:5001").unwrap(),
+        }
+    }
 }

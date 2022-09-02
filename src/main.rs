@@ -83,7 +83,7 @@ async fn run() -> Result<()> {
     match args.command {
         Command::Keygen { dir } => {
             let address = ipfs_registry_client::keygen(dir).await?;
-            tracing::info!(address = %address);
+            serde_json::to_writer_pretty(std::io::stdout(), &address)?;
         }
         Command::Publish {
             server,
@@ -91,10 +91,10 @@ async fn run() -> Result<()> {
             key,
             file,
         } => {
-            let definition =
-                ipfs_registry_client::publish(server, mime, key, file)
-                    .await?;
-            tracing::info!(definition = ?definition);
+            let doc = ipfs_registry_client::publish(server, mime, key, file)
+                .await?;
+            serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
+            //tracing::info!(definition = ?definition);
         }
         Command::Fetch {
             server,
