@@ -24,7 +24,7 @@ use crate::{
 pub(crate) type ServerState = Arc<State>;
 
 /// Server state.
-pub(crate) struct State {
+pub struct State {
     /// The server configuration.
     pub config: ServerConfig,
     /// Server information.
@@ -47,7 +47,7 @@ pub struct Server;
 
 impl Server {
     /// Start the server.
-    pub(crate) async fn start(
+    pub async fn start(
         &self,
         addr: SocketAddr,
         state: ServerState,

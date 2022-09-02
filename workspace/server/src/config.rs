@@ -33,6 +33,18 @@ pub struct ServerConfig {
 }
 
 impl ServerConfig {
+
+    /// Create a new server config.
+    pub fn new(storage: StorageConfig) -> Self {
+        Self {
+            storage,
+            registry: Default::default(),
+            tls: None,
+            cors: None,
+            file: None,
+        }
+    }
+
     /// Load a configuration file.
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
         if !path.as_ref().exists() {

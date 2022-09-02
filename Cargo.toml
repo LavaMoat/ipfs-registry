@@ -27,6 +27,11 @@ url = { version = "2", features = ["serde"] }
 web3-address = { version = "0.4", features = ["ethereum"] }
 serde_json = "1"
 
+[dev-dependencies]
+anyhow = "1"
+axum-server = { version = "0.4", features = ["tls-rustls"] }
+serial_test = "0.8"
+
 [[bin]]
 name = "ipkg"
 path = "src/main.rs"

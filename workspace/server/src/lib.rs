@@ -10,9 +10,10 @@ mod server;
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 
-pub use config::ServerConfig;
+pub use config::{ServerConfig, StorageConfig};
 pub use error::Error;
-pub use server::{Server, ServerInfo};
+pub use layer::build as build_layers;
+pub use server::{Server, ServerInfo, State};
 
 /// Start a server using the given bind address and configuration.
 pub async fn start(bind: String, config: PathBuf) -> Result<()> {

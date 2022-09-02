@@ -40,7 +40,7 @@ fn get_layer(
 }
 
 /// Build storage layers from the server configuration.
-pub(crate) fn build(config: &ServerConfig) -> Result<Layers> {
+pub fn build(config: &ServerConfig) -> Result<Layers> {
     let mut storage = Vec::new();
     for layer in &config.storage.layers {
         storage.push(get_layer(layer, &config.registry)?);
@@ -50,7 +50,7 @@ pub(crate) fn build(config: &ServerConfig) -> Result<Layers> {
 }
 
 /// Type for a collection of storage layer implementations.
-pub(crate) struct Layers {
+pub struct Layers {
     storage: Vec<Box<dyn Layer + Send + Sync + 'static>>,
 }
 
