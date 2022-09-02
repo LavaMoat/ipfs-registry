@@ -1,3 +1,4 @@
 mod test_utils;
 
-mod package_publish;
+mod publish;
+mod fetch;

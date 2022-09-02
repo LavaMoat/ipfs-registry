@@ -46,7 +46,7 @@ Replace `<addr>` with the address for the key and enter the password for the key
 Download the package to a file:
 
 ```
-ipkg fetch -a <addr> -n mock-package -v 1.0.0 sandbox/package.tgz
+ipkg fetch -o <addr> -n mock-package -v 1.0.0 sandbox/package.tgz
 ```
 
 ## API
