@@ -13,6 +13,7 @@ use crate::{
 };
 
 pub(crate) mod ipfs;
+pub(crate) mod memory;
 pub(crate) mod s3;
 
 pub(crate) const ROOT: &str = "ipkg-registry";
@@ -36,6 +37,9 @@ fn get_layer(
             bucket.to_string(),
             registry.mime.clone(),
         )?)),
+        LayerConfig::Memory { .. } => {
+            Ok(Box::new(memory::MemoryLayer::new()))
+        }
     }
 }
 
@@ -129,6 +133,32 @@ impl Layer for Layers {
     }
 }
 
+/// Get the key for a blob in non-content addressed storage layers.
+pub(crate) fn get_blob_key(artifact: &Artifact) -> String {
+    format!(
+        "{}/{}/{}/{}/{}/{}",
+        ROOT,
+        &artifact.kind,
+        &artifact.namespace,
+        &artifact.package.name,
+        &artifact.package.version,
+        BLOB,
+    )
+}
+
+/// Get the key for a pointer in non-content addressed storage layers.
+pub(crate) fn get_pointer_key(artifact: &Artifact) -> String {
+    format!(
+        "{}/{}/{}/{}/{}/{}",
+        ROOT,
+        &artifact.kind,
+        &artifact.namespace,
+        &artifact.package.name,
+        &artifact.package.version,
+        NAME
+    )
+}
+
 /// Trait for a storage layer.
 #[async_trait]
 pub trait Layer {
@@ -136,7 +166,7 @@ pub trait Layer {
     async fn add_blob(
         &self,
         data: Bytes,
-        descriptor: &Artifact,
+        artifact: &Artifact,
     ) -> Result<Vec<ObjectKey>>;
 
     /// Get a blob from storage by identifier.
@@ -147,7 +177,7 @@ pub trait Layer {
         &self,
         signature: String,
         address: &Address,
-        descriptor: Artifact,
+        artifact: Artifact,
         objects: Vec<ObjectKey>,
         package: Value,
     ) -> Result<Vec<ObjectKey>>;
@@ -155,6 +185,6 @@ pub trait Layer {
     /// Get a pointer from the storage.
     async fn get_pointer(
         &self,
-        descriptor: &Artifact,
+        artifact: &Artifact,
     ) -> Result<Option<Pointer>>;
 }

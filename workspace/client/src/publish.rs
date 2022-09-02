@@ -21,6 +21,7 @@ pub async fn publish(
     publish_with_key(server, mime, signing_key, file).await
 }
 
+/// Publish a package with the given signing key.
 pub async fn publish_with_key(
     server: Url,
     mime: Mime,

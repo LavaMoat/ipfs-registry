@@ -160,6 +160,9 @@ pub enum LayerConfig {
         /// Bucket name.
         bucket: String,
     },
+    Memory {
+        memory: bool,
+    }
 }
 
 impl Default for LayerConfig {
