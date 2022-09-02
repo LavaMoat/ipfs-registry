@@ -16,8 +16,8 @@ use serde_json::json;
 use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
 
 use crate::{
-    config::TlsConfig, handlers::PackageHandler, headers::X_SIGNATURE,
-    layer::Layers, Result, config::ServerConfig,
+    config::ServerConfig, config::TlsConfig, handlers::PackageHandler,
+    headers::X_SIGNATURE, layer::Layers, Result,
 };
 
 /// Type alias for the server state.

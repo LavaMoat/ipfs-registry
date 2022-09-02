@@ -20,8 +20,10 @@ pub async fn fetch(
         return Err(Error::FileExists(file));
     }
 
-    let url = server
-        .join(&format!("api/package/{}/{}/{}", organization, name, version))?;
+    let url = server.join(&format!(
+        "api/package/{}/{}/{}",
+        organization, name, version
+    ))?;
 
     let client = Client::new();
     let mut response = client.get(url).send().await?;

@@ -4,7 +4,11 @@ use std::{net::SocketAddr, sync::Arc, thread};
 use tokio::sync::oneshot;
 use url::Url;
 
-use ipfs_registry_server::{Server, config::{ServerConfig, StorageConfig, LayerConfig}, ServerInfo, State, build_layers};
+use ipfs_registry_server::{
+    build_layers,
+    config::{LayerConfig, ServerConfig, StorageConfig},
+    Server, ServerInfo, State,
+};
 
 const ADDR: &str = "127.0.0.1:9009";
 const SERVER: &str = "http://localhost:9009";
@@ -41,7 +45,10 @@ impl MockServer {
     }
 
     /// Run the mock server in a separate thread.
-    fn spawn(tx: oneshot::Sender<SocketAddr>, config: ServerConfig) -> Result<ShutdownHandle> {
+    fn spawn(
+        tx: oneshot::Sender<SocketAddr>,
+        config: ServerConfig,
+    ) -> Result<ShutdownHandle> {
         let server = MockServer::new()?;
         let listen_handle = server.handle.clone();
         let user_handle = server.handle.clone();
@@ -89,7 +96,9 @@ pub fn default_server_config() -> ServerConfig {
     config
 }
 
-pub fn spawn(config: ServerConfig) -> Result<(oneshot::Receiver<SocketAddr>, ShutdownHandle)> {
+pub fn spawn(
+    config: ServerConfig,
+) -> Result<(oneshot::Receiver<SocketAddr>, ShutdownHandle)> {
     let (tx, rx) = oneshot::channel::<SocketAddr>();
     let handle = MockServer::spawn(tx, config)?;
     Ok((rx, handle))

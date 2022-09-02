@@ -1,19 +1,18 @@
-use std::path::PathBuf;
 use anyhow::Result;
 use serial_test::serial;
+use std::path::PathBuf;
 
-use semver::Version;
 use k256::ecdsa::SigningKey;
+use semver::Version;
 
+use ipfs_registry_client::{fetch, publish::publish_with_key};
 use tempfile::NamedTempFile;
-use ipfs_registry_client::{publish::publish_with_key, fetch};
 
 use crate::test_utils::*;
 
 #[tokio::test]
 #[serial]
 async fn integration_fetch() -> Result<()> {
-
     // Spawn the server
     let (rx, _handle) = spawn(default_server_config())?;
     let _ = rx.await?;
@@ -24,12 +23,8 @@ async fn integration_fetch() -> Result<()> {
     let mime: mime::Mime = "application/gzip".parse()?;
     let signing_key = SigningKey::random(&mut rand::thread_rng());
 
-    let receipt = publish_with_key(
-        server_url.clone(),
-        mime,
-        signing_key,
-        file,
-    ).await?;
+    let receipt =
+        publish_with_key(server_url.clone(), mime, signing_key, file).await?;
 
     assert_eq!("mock-package", receipt.artifact.package.name);
     assert_eq!(Version::new(1, 0, 0), receipt.artifact.package.version);
@@ -46,7 +41,8 @@ async fn integration_fetch() -> Result<()> {
         receipt.artifact.package.name.clone(),
         receipt.artifact.package.version.clone(),
         output.clone(),
-    ).await?;
+    )
+    .await?;
 
     assert_eq!(output, result);
 

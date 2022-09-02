@@ -103,7 +103,11 @@ async fn run() -> Result<()> {
             file,
         } => {
             let file = ipfs_registry_client::fetch(
-                server, organization, name, version, file,
+                server,
+                organization,
+                name,
+                version,
+                file,
             )
             .await?;
             let size = file.metadata()?.len();

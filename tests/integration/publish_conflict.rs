@@ -11,7 +11,7 @@ use k256::ecdsa::SigningKey;
 
 #[tokio::test]
 #[serial]
-async fn integration_publish() -> Result<()> {
+async fn integration_publish_conflict() -> Result<()> {
     // Spawn the server
     let (rx, _handle) = spawn(default_server_config())?;
     let _ = rx.await?;
@@ -22,11 +22,31 @@ async fn integration_publish() -> Result<()> {
     let mime: mime::Mime = "application/gzip".parse()?;
     let signing_key = SigningKey::random(&mut rand::thread_rng());
 
-    let receipt =
-        publish_with_key(server_url, mime, signing_key, file).await?;
+    let receipt = publish_with_key(
+        server_url.clone(),
+        mime.clone(),
+        signing_key.clone(),
+        file.clone(),
+    )
+    .await?;
 
     assert_eq!("mock-package", receipt.artifact.package.name);
     assert_eq!(Version::new(1, 0, 0), receipt.artifact.package.version);
+
+    let result = publish_with_key(server_url, mime, signing_key, file).await;
+
+    assert!(result.is_err());
+
+    let is_conflict = if let Err(ipfs_registry_client::Error::ResponseCode(
+        code,
+    )) = result
+    {
+        code == 409
+    } else {
+        false
+    };
+
+    assert!(is_conflict);
 
     Ok(())
 }

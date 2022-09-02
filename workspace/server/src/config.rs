@@ -33,7 +33,6 @@ pub struct ServerConfig {
 }
 
 impl ServerConfig {
-
     /// Create a new server config.
     pub fn new(storage: StorageConfig) -> Self {
         Self {
@@ -170,7 +169,7 @@ pub enum LayerConfig {
     },
     Memory {
         memory: bool,
-    }
+    },
 }
 
 impl Default for LayerConfig {

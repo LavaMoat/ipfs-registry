@@ -3,12 +3,12 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use axum::body::Bytes;
 use serde_json::Value;
-use web3_address::ethereum::Address;
 use tokio::sync::RwLock;
+use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{Artifact, Definition, ObjectKey, Pointer};
 
-use super::{Layer, get_blob_key, get_pointer_key};
+use super::{get_blob_key, get_pointer_key, Layer};
 use crate::{Error, Result};
 
 pub struct MemoryLayer {
@@ -39,8 +39,7 @@ impl Layer for MemoryLayer {
     async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>> {
         if let ObjectKey::Key(key) = id {
             let reader = self.files.read().await;
-            let result =
-                reader
+            let result = reader
                 .get(key)
                 .ok_or_else(|| Error::ObjectMissing(key.to_string()))?;
             Ok(result.clone())
@@ -87,7 +86,7 @@ impl Layer for MemoryLayer {
         let key = get_pointer_key(artifact);
         let reader = self.files.read().await;
         let result = if let Some(res) = reader.get(&key) {
-            let doc: Pointer = serde_json::from_slice(&res)?;
+            let doc: Pointer = serde_json::from_slice(res)?;
             Some(doc)
         } else {
             None

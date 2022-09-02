@@ -16,7 +16,7 @@ use rusoto_s3::{
 
 use ipfs_registry_core::{Artifact, Definition, ObjectKey, Pointer};
 
-use super::{Layer, get_blob_key, get_pointer_key};
+use super::{get_blob_key, get_pointer_key, Layer};
 use crate::{Error, Result};
 
 /// Layer for S3 backed storage.
