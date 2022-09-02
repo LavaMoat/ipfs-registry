@@ -6,7 +6,7 @@ use url::Url;
 
 use ipfs_registry_server::{
     build_layers,
-    config::{LayerConfig, ServerConfig, StorageConfig},
+    config::{LayerConfig, RegistryConfig, ServerConfig, StorageConfig},
     Server, ServerInfo, State,
 };
 
@@ -93,6 +93,12 @@ pub fn default_server_config() -> ServerConfig {
     let layer = LayerConfig::Memory { memory: true };
     let storage: StorageConfig = layer.into();
     let config = ServerConfig::new(storage);
+    config
+}
+
+pub fn registry_server_config(registry: RegistryConfig) -> ServerConfig {
+    let mut config = default_server_config();
+    config.registry = registry;
     config
 }
 

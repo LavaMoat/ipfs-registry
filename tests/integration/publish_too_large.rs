@@ -5,14 +5,18 @@ use std::path::PathBuf;
 use crate::test_utils::*;
 
 use ipfs_registry_client::publish::publish_with_key;
+use ipfs_registry_server::config::RegistryConfig;
 
 use k256::ecdsa::SigningKey;
 
 #[tokio::test]
 #[serial]
 async fn integration_publish_too_large() -> Result<()> {
+    let mut registry: RegistryConfig = Default::default();
+    registry.body_limit = 1024 * 1024 * 2;
+
     // Spawn the server
-    let (rx, _handle) = spawn(default_server_config())?;
+    let (rx, _handle) = spawn(registry_server_config(registry))?;
     let _ = rx.await?;
 
     let server_url = server();
@@ -23,7 +27,7 @@ async fn integration_publish_too_large() -> Result<()> {
 
     let result = publish_with_key(server_url, mime, signing_key, file).await;
 
-    println!("{:#?}", result);
+    //println!("{:#?}", result);
 
     assert!(result.is_err());
 
