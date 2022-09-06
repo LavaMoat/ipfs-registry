@@ -90,7 +90,7 @@ pub struct PackageSignature {
 
 /// Type that points to a package archive and wraps the meta
 /// data extracted from the archive.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Pointer {
     /// The package definition.
     pub definition: Definition,

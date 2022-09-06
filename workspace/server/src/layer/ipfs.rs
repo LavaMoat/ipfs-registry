@@ -5,13 +5,13 @@ use futures::TryStreamExt;
 use ipfs_api_backend_hyper::{IpfsApi, IpfsClient, TryFromUri};
 use std::io::Cursor;
 use url::Url;
-use web3_address::ethereum::Address;
+
 
 use ipfs_registry_core::{
-    Artifact, Definition, ObjectKey, PackageSignature, Pointer,
+    Artifact, ObjectKey, Pointer,
 };
 
-use serde_json::Value;
+
 
 use super::Layer;
 
@@ -72,14 +72,8 @@ impl Layer for IpfsLayer {
         Ok(res)
     }
 
-    async fn add_pointer(
-        &self,
-        signature: String,
-        address: &Address,
-        artifact: Artifact,
-        mut objects: Vec<ObjectKey>,
-        package: Value,
-    ) -> Result<Vec<ObjectKey>> {
+    async fn add_pointer(&self, doc: Pointer) -> Result<Vec<ObjectKey>> {
+        let artifact = &doc.definition.artifact;
         let dir = format!(
             "/{}/{}/{}/{}/{}",
             ROOT,
@@ -91,21 +85,6 @@ impl Layer for IpfsLayer {
 
         self.client.files_mkdir(&dir, true).await?;
 
-        let object = objects.remove(0);
-
-        let definition = Definition {
-            artifact,
-            object,
-            signature: PackageSignature {
-                signer: address.clone(),
-                value: signature,
-            },
-        };
-
-        let doc = Pointer {
-            definition: definition.clone(),
-            package,
-        };
         let data = serde_json::to_vec_pretty(&doc)?;
         let path = format!("{}/{}", dir, NAME);
 

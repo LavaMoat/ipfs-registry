@@ -13,7 +13,10 @@ use semver::Version;
 
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{Artifact, PackageMeta, PackageReader, Receipt};
+use ipfs_registry_core::{
+    Artifact, Definition, PackageMeta, PackageReader, PackageSignature,
+    Pointer, Receipt,
+};
 
 use crate::{headers::Signature, layer::Layer, server::ServerState, Result};
 
@@ -134,24 +137,34 @@ impl PackageHandler {
                 return Err(StatusCode::CONFLICT);
             }
 
-            let id = state
+            let mut objects = state
                 .layers
                 .add_blob(body, &descriptor)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            tracing::debug!(id = ?id, "added package");
+            tracing::debug!(id = ?objects, "added package");
+
+            let object = objects.remove(0);
+
+            let definition = Definition {
+                artifact: descriptor,
+                object,
+                signature: PackageSignature {
+                    signer: address,
+                    value: encoded_signature,
+                },
+            };
+
+            let doc = Pointer {
+                definition,
+                package: package_meta,
+            };
 
             // Store the package meta data
             let pointers = state
                 .layers
-                .add_pointer(
-                    encoded_signature,
-                    &address,
-                    descriptor,
-                    id,
-                    package_meta,
-                )
+                .add_pointer(doc)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

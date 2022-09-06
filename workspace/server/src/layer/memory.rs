@@ -2,12 +2,12 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use axum::body::Bytes;
-use serde_json::Value;
+
 use tokio::sync::RwLock;
-use web3_address::ethereum::Address;
+
 
 use ipfs_registry_core::{
-    Artifact, Definition, ObjectKey, PackageSignature, Pointer,
+    Artifact, ObjectKey, Pointer,
 };
 
 use super::{get_blob_key, get_pointer_key, Layer};
@@ -50,37 +50,11 @@ impl Layer for MemoryLayer {
         }
     }
 
-    async fn add_pointer(
-        &self,
-        signature: String,
-        address: &Address,
-        artifact: Artifact,
-        mut objects: Vec<ObjectKey>,
-        package: Value,
-    ) -> Result<Vec<ObjectKey>> {
-        let key = get_pointer_key(&artifact);
-
-        let object = objects.remove(0);
-
-        let definition = Definition {
-            artifact,
-            object,
-            signature: PackageSignature {
-                signer: address.clone(),
-                value: signature,
-            },
-        };
-
-        let doc = Pointer {
-            definition: definition.clone(),
-            package,
-        };
-
+    async fn add_pointer(&self, doc: Pointer) -> Result<Vec<ObjectKey>> {
+        let key = get_pointer_key(&doc.definition.artifact);
         let data = serde_json::to_vec_pretty(&doc)?;
-
         let mut writer = self.files.write().await;
         writer.insert(key.clone(), data);
-
         Ok(vec![ObjectKey::Key(key)])
     }
 
