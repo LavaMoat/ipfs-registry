@@ -31,6 +31,17 @@ async fn integration_publish_too_large() -> Result<()> {
 
     assert!(result.is_err());
 
+    // CI returns a broken pipe error sometimes trying to
+    // write the request body so we ignore that error
+    //
+    // Also a connection reset by peer error can occur so we
+    // guard against that
+    if let Err(ipfs_registry_client::Error::Request(e)) = &result {
+        if e.is_body() || e.is_connect() {
+            return Ok(());
+        }
+    }
+
     let is_too_large = if let Err(
         ipfs_registry_client::Error::ResponseCode(code),
     ) = result
