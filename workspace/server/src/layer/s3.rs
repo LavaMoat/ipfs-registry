@@ -16,8 +16,7 @@ use rusoto_s3::{
 
 use ipfs_registry_core::{Artifact, Definition, ObjectKey, Pointer};
 
-use super::Layer;
-use super::{BLOB, NAME, ROOT};
+use super::{get_blob_key, get_pointer_key, Layer};
 use crate::{Error, Result};
 
 /// Layer for S3 backed storage.
@@ -50,30 +49,6 @@ impl S3Layer {
         let dispatcher = HttpClient::new()?;
         let client = S3Client::new_with(dispatcher, provider, region.clone());
         Ok(client)
-    }
-
-    fn get_blob_key(&self, artifact: &Artifact) -> String {
-        format!(
-            "{}/{}/{}/{}/{}/{}",
-            ROOT,
-            &artifact.kind,
-            &artifact.namespace,
-            &artifact.package.name,
-            &artifact.package.version,
-            BLOB,
-        )
-    }
-
-    fn get_pointer_key(&self, artifact: &Artifact) -> String {
-        format!(
-            "{}/{}/{}/{}/{}/{}",
-            ROOT,
-            &artifact.kind,
-            &artifact.namespace,
-            &artifact.package.name,
-            &artifact.package.version,
-            NAME
-        )
     }
 
     async fn put_object(
@@ -140,7 +115,7 @@ impl Layer for S3Layer {
         data: Bytes,
         artifact: &Artifact,
     ) -> Result<Vec<ObjectKey>> {
-        let key = self.get_blob_key(artifact);
+        let key = get_blob_key(artifact);
         self.put_object(key.clone(), data).await?;
         Ok(vec![ObjectKey::Key(key)])
     }
@@ -165,7 +140,7 @@ impl Layer for S3Layer {
         mut objects: Vec<ObjectKey>,
         package: Value,
     ) -> Result<Vec<ObjectKey>> {
-        let key = self.get_pointer_key(&artifact);
+        let key = get_pointer_key(&artifact);
 
         let object = objects.remove(0);
 
@@ -190,7 +165,7 @@ impl Layer for S3Layer {
         &self,
         artifact: &Artifact,
     ) -> Result<Option<Pointer>> {
-        let key = self.get_pointer_key(artifact);
+        let key = get_pointer_key(artifact);
         let result = if let Some(res) = self.get_object(key).await? {
             let doc: Pointer = serde_json::from_slice(&res)?;
             Some(doc)

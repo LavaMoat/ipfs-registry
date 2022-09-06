@@ -17,17 +17,20 @@ pub async fn publish(
     key: PathBuf,
     file: PathBuf,
 ) -> Result<Receipt> {
+    let signing_key = read_keystore_file(key)?;
+    publish_with_key(server, mime, signing_key, file).await
+}
+
+/// Publish a package with the given signing key.
+pub async fn publish_with_key(
+    server: Url,
+    mime: Mime,
+    signing_key: SigningKey,
+    file: PathBuf,
+) -> Result<Receipt> {
     if !file.is_file() {
         return Err(Error::NotFile(file));
     }
-
-    let buffer = std::fs::read(key)?;
-    let keystore: KeyStore = serde_json::from_slice(&buffer)?;
-
-    let password = read_password(Some("Keystore passphrase: "))?;
-
-    let key = decrypt(&keystore, password.expose_secret())?;
-    let signing_key = SigningKey::from_bytes(&key)?;
 
     let body = std::fs::read(file)?;
     let signature: recoverable::Signature = signing_key.sign(&body);
@@ -52,4 +55,20 @@ pub async fn publish(
 
     let doc: Receipt = response.json().await?;
     Ok(doc)
+}
+
+/// Read a keystore file into a signing key.
+pub fn read_keystore_file(key: PathBuf) -> Result<SigningKey> {
+    if !key.is_file() {
+        return Err(Error::NotFile(key));
+    }
+
+    let buffer = std::fs::read(key)?;
+    let keystore: KeyStore = serde_json::from_slice(&buffer)?;
+
+    let password = read_password(Some("Keystore passphrase: "))?;
+
+    let key = decrypt(&keystore, password.expose_secret())?;
+    let signing_key = SigningKey::from_bytes(&key)?;
+    Ok(signing_key)
 }

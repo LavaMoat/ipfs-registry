@@ -2,7 +2,7 @@ mod error;
 mod fetch;
 mod input;
 mod keygen;
-mod publish;
+pub mod publish;
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 

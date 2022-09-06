@@ -33,6 +33,17 @@ pub struct ServerConfig {
 }
 
 impl ServerConfig {
+    /// Create a new server config.
+    pub fn new(storage: StorageConfig) -> Self {
+        Self {
+            storage,
+            registry: Default::default(),
+            tls: None,
+            cors: None,
+            file: None,
+        }
+    }
+
     /// Load a configuration file.
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
         if !path.as_ref().exists() {
@@ -93,6 +104,14 @@ impl Default for StorageConfig {
     }
 }
 
+impl From<LayerConfig> for StorageConfig {
+    fn from(layer: LayerConfig) -> Self {
+        let mut layers = IndexSet::new();
+        layers.insert(layer);
+        Self { layers }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct RegistryConfig {
     /// Maximum size of body requests.
@@ -147,6 +166,9 @@ pub enum LayerConfig {
         region: String,
         /// Bucket name.
         bucket: String,
+    },
+    Memory {
+        memory: bool,
     },
 }
 

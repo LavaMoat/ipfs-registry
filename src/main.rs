@@ -5,7 +5,6 @@ use mime::Mime;
 use semver::Version;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use url::Url;
-use web3_address::ethereum::Address;
 
 use ipfs_registry::Result;
 
@@ -49,9 +48,9 @@ enum Command {
         #[clap(short, long, default_value = "http://127.0.0.1:9060")]
         server: Url,
 
-        /// Address of the package owner.
+        /// Organization namespace.
         #[clap(short, long)]
-        address: Address,
+        organization: String,
 
         /// Name of the package.
         #[clap(short, long)]
@@ -98,13 +97,17 @@ async fn run() -> Result<()> {
         }
         Command::Fetch {
             server,
-            address,
+            organization,
             name,
             version,
             file,
         } => {
             let file = ipfs_registry_client::fetch(
-                server, address, name, version, file,
+                server,
+                organization,
+                name,
+                version,
+                file,
             )
             .await?;
             let size = file.metadata()?.len();
