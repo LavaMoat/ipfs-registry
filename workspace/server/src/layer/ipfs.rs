@@ -6,12 +6,7 @@ use ipfs_api_backend_hyper::{IpfsApi, IpfsClient, TryFromUri};
 use std::io::Cursor;
 use url::Url;
 
-
-use ipfs_registry_core::{
-    Artifact, ObjectKey, Pointer,
-};
-
-
+use ipfs_registry_core::{Artifact, ObjectKey, Pointer};
 
 use super::Layer;
 

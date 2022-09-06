@@ -5,7 +5,6 @@ use futures::TryStreamExt;
 
 use tokio_util::codec;
 
-
 use rusoto_core::{
     credential, request::HttpClient, ByteStream, Region, RusotoError,
 };
@@ -14,9 +13,7 @@ use rusoto_s3::{
     S3Client, S3,
 };
 
-use ipfs_registry_core::{
-    Artifact, ObjectKey, Pointer,
-};
+use ipfs_registry_core::{Artifact, ObjectKey, Pointer};
 
 use super::{get_blob_key, get_pointer_key, Layer};
 use crate::{Error, Result};

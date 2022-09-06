@@ -2,10 +2,7 @@
 use async_trait::async_trait;
 use axum::body::Bytes;
 
-
 use ipfs_registry_core::{Artifact, ObjectKey, Pointer};
-
-
 
 use crate::{
     config::{LayerConfig, RegistryConfig, ServerConfig},
