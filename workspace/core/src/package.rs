@@ -77,6 +77,12 @@ pub struct Definition {
     pub artifact: Artifact,
     /// Signature of the package.
     pub signature: PackageSignature,
+    /// SHA3-256 checksum of the package file.
+    #[serde(
+        serialize_with = "hex::serde::serialize",
+        deserialize_with = "hex::serde::deserialize"
+    )]
+    pub checksum: Vec<u8>,
 }
 
 /// Package signature and address of the verifying key.

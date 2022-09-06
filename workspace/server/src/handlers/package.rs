@@ -10,6 +10,7 @@ use axum::{
 
 use k256::ecdsa::recoverable;
 use semver::Version;
+use sha3::{Digest, Sha3_256};
 
 use web3_address::ethereum::Address;
 
@@ -148,6 +149,8 @@ impl PackageHandler {
                 return Err(StatusCode::CONFLICT);
             }
 
+            let checksum = Sha3_256::digest(&body);
+
             let mut objects = state
                 .layers
                 .add_blob(body, &descriptor)
@@ -165,6 +168,7 @@ impl PackageHandler {
                     signer: address,
                     value: encoded_signature,
                 },
+                checksum: checksum.to_vec(),
             };
 
             let doc = Pointer {
