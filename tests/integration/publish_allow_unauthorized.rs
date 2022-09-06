@@ -14,13 +14,12 @@ use k256::ecdsa::SigningKey;
 #[tokio::test]
 #[serial]
 async fn integration_publish_allow_unauthorized() -> Result<()> {
-
     // Allowed address
     let allowed_key = SigningKey::random(&mut rand::thread_rng());
     let verifying_key = allowed_key.verifying_key();
     let address: Address = verifying_key.into();
 
-    // Create a new signing key that does not exist in 
+    // Create a new signing key that does not exist in
     // the allowed address
     let file = PathBuf::from("fixtures/mock-package-1.0.0.tgz");
     let mime: mime::Mime = "application/gzip".parse()?;

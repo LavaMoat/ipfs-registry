@@ -1,6 +1,6 @@
 use anyhow::Result;
 use serial_test::serial;
-use std::{path::PathBuf, error::Error, io::ErrorKind};
+use std::{error::Error, io::ErrorKind, path::PathBuf};
 
 use crate::test_utils::*;
 
@@ -51,13 +51,13 @@ async fn integration_publish_too_large() -> Result<()> {
                         match source.downcast_ref::<std::io::Error>() {
                             Some(e) => {
                                 if e.kind() == ErrorKind::BrokenPipe {
-                                    return Ok(())
+                                    return Ok(());
                                 }
                             }
                             _ => {}
                         }
                     }
-                },
+                }
                 _ => {}
             };
         }
