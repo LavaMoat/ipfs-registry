@@ -51,21 +51,32 @@ impl PackageHandler {
             package: PackageMeta { name, version },
         };
 
-        // Get the package meta data
-        let meta = state
+        // Get the package pointer
+        let pointer = state
             .layers
             .get_pointer(&descriptor)
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-        tracing::debug!(meta = ?meta);
+        tracing::debug!(pointer = ?pointer);
 
-        if let Some(doc) = meta {
+        if let Some(doc) = pointer {
             let body = state
                 .layers
                 .get_blob(&doc.definition.object)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            let signature = doc.definition.signature;
+            let signature_bytes = base64::decode(signature.value)
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            let signature_bytes: [u8; 65] = signature_bytes
+                .as_slice()
+                .try_into()
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            verify_signature(signature_bytes, &body)
+                .map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?;
 
             let mut headers = HeaderMap::new();
             headers.insert("content-type", mime_type.parse().unwrap());
