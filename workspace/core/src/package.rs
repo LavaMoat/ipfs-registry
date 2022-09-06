@@ -3,6 +3,7 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;
+use web3_address::ethereum::Address;
 
 use crate::{
     tarball::{decompress, read_npm_package},
@@ -74,8 +75,17 @@ pub struct Definition {
     pub object: ObjectKey,
     /// Package descriptor.
     pub artifact: Artifact,
+    /// Signature of the package.
+    pub signature: PackageSignature,
+}
+
+/// Package signature and address of the verifying key.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PackageSignature {
+    /// Address of the signer.
+    pub signer: Address,
     /// Signature of the package file encoded as base64.
-    pub signature: String,
+    pub value: String,
 }
 
 /// Type that points to a package archive and wraps the meta

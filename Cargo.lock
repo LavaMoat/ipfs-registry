@@ -1239,6 +1239,7 @@ dependencies = [
  "serde_json",
  "tar",
  "thiserror",
+ "web3-address",
 ]
 
 [[package]]

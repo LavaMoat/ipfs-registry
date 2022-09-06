@@ -7,7 +7,9 @@ use std::io::Cursor;
 use url::Url;
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{Artifact, Definition, ObjectKey, Pointer};
+use ipfs_registry_core::{
+    Artifact, Definition, ObjectKey, PackageSignature, Pointer,
+};
 
 use serde_json::Value;
 
@@ -73,7 +75,7 @@ impl Layer for IpfsLayer {
     async fn add_pointer(
         &self,
         signature: String,
-        _address: &Address,
+        address: &Address,
         artifact: Artifact,
         mut objects: Vec<ObjectKey>,
         package: Value,
@@ -94,7 +96,10 @@ impl Layer for IpfsLayer {
         let definition = Definition {
             artifact,
             object,
-            signature,
+            signature: PackageSignature {
+                signer: address.clone(),
+                value: signature,
+            },
         };
 
         let doc = Pointer {
