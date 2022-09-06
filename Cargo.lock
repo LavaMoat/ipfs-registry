@@ -1183,6 +1183,7 @@ dependencies = [
  "anyhow",
  "axum-server",
  "clap",
+ "hyper",
  "ipfs-registry-client",
  "ipfs-registry-server",
  "k256",

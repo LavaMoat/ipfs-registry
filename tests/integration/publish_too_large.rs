@@ -1,6 +1,6 @@
 use anyhow::Result;
 use serial_test::serial;
-use std::path::PathBuf;
+use std::{path::PathBuf, error::Error, io::ErrorKind};
 
 use crate::test_utils::*;
 
@@ -37,8 +37,29 @@ async fn integration_publish_too_large() -> Result<()> {
     // Also a connection reset by peer error can occur so we
     // guard against that
     if let Err(ipfs_registry_client::Error::Request(e)) = &result {
-        if e.is_body() || e.is_connect() {
+        // Sometimes we get a connection reset by peer
+        if e.is_connect() {
             return Ok(());
+        }
+
+        // Ignore broken pipe error otherwise CI is flaky
+        if let Some(source) = e.source() {
+            match source.downcast_ref::<hyper::Error>() {
+                Some(e) => {
+                    println!("{:?}", e);
+                    if let Some(source) = e.source() {
+                        match source.downcast_ref::<std::io::Error>() {
+                            Some(e) => {
+                                if e.kind() == ErrorKind::BrokenPipe {
+                                    return Ok(())
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                },
+                _ => {}
+            };
         }
     }
 
