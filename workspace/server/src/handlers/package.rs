@@ -68,6 +68,13 @@ impl PackageHandler {
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
+            // Verify the checksum
+            let checksum = Sha3_256::digest(&body);
+            if checksum.as_slice() != doc.definition.checksum.as_slice() {
+                return Err(StatusCode::UNPROCESSABLE_ENTITY);
+            }
+
+            // Verify the signature
             let signature = doc.definition.signature;
             let signature_bytes = base64::decode(signature.value)
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
