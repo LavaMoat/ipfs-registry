@@ -27,7 +27,7 @@ async fn integration_publish_too_large() -> Result<()> {
 
     let result = publish_with_key(server_url, mime, signing_key, file).await;
 
-    //println!("{:#?}", result);
+    println!("{:#?}", result);
 
     assert!(result.is_err());
 
