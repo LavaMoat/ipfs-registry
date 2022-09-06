@@ -4,8 +4,8 @@ mod tarball;
 
 pub use error::Error;
 pub use package::{
-    Artifact, Definition, ObjectKey, PackageMeta, PackageReader, Pointer,
-    Receipt, RegistryKind,
+    Artifact, Definition, ObjectKey, PackageMeta, PackageReader,
+    PackageSignature, Pointer, Receipt, RegistryKind,
 };
 
 pub type Result<T> = std::result::Result<T, error::Error>;

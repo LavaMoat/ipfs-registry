@@ -37,5 +37,4 @@ rusoto_core = "^0.48.0"
 rusoto_signature = "^0.48.0"
 indexmap = {version = "1.9", features = ["serde-1"]}
 tokio-util = "0.7"
-
-#ipfs-api-backend-hyper = { version = "0.5", features = ["with-hyper-rustls"] }
+sha3 = "0.10"

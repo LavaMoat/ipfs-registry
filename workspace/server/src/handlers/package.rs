@@ -10,10 +10,14 @@ use axum::{
 
 use k256::ecdsa::recoverable;
 use semver::Version;
+use sha3::{Digest, Sha3_256};
 
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{Artifact, PackageMeta, PackageReader, Receipt};
+use ipfs_registry_core::{
+    Artifact, Definition, PackageMeta, PackageReader, PackageSignature,
+    Pointer, Receipt,
+};
 
 use crate::{headers::Signature, layer::Layer, server::ServerState, Result};
 
@@ -48,21 +52,39 @@ impl PackageHandler {
             package: PackageMeta { name, version },
         };
 
-        // Get the package meta data
-        let meta = state
+        // Get the package pointer
+        let pointer = state
             .layers
             .get_pointer(&descriptor)
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-        tracing::debug!(meta = ?meta);
+        tracing::debug!(pointer = ?pointer);
 
-        if let Some(doc) = meta {
+        if let Some(doc) = pointer {
             let body = state
                 .layers
                 .get_blob(&doc.definition.object)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            // Verify the checksum
+            let checksum = Sha3_256::digest(&body);
+            if checksum.as_slice() != doc.definition.checksum.as_slice() {
+                return Err(StatusCode::UNPROCESSABLE_ENTITY);
+            }
+
+            // Verify the signature
+            let signature = doc.definition.signature;
+            let signature_bytes = base64::decode(signature.value)
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            let signature_bytes: [u8; 65] = signature_bytes
+                .as_slice()
+                .try_into()
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            verify_signature(signature_bytes, &body)
+                .map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?;
 
             let mut headers = HeaderMap::new();
             headers.insert("content-type", mime_type.parse().unwrap());
@@ -134,24 +156,37 @@ impl PackageHandler {
                 return Err(StatusCode::CONFLICT);
             }
 
-            let id = state
+            let checksum = Sha3_256::digest(&body);
+
+            let mut objects = state
                 .layers
                 .add_blob(body, &descriptor)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            tracing::debug!(id = ?id, "added package");
+            tracing::debug!(id = ?objects, "added package");
+
+            let object = objects.remove(0);
+
+            let definition = Definition {
+                artifact: descriptor,
+                object,
+                signature: PackageSignature {
+                    signer: address,
+                    value: encoded_signature,
+                },
+                checksum: checksum.to_vec(),
+            };
+
+            let doc = Pointer {
+                definition,
+                package: package_meta,
+            };
 
             // Store the package meta data
             let pointers = state
                 .layers
-                .add_pointer(
-                    encoded_signature,
-                    &address,
-                    descriptor,
-                    id,
-                    package_meta,
-                )
+                .add_pointer(doc)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

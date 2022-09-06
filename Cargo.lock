@@ -1234,11 +1234,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "flate2",
+ "hex",
  "semver",
  "serde",
  "serde_json",
  "tar",
  "thiserror",
+ "web3-address",
 ]
 
 [[package]]
@@ -1265,6 +1267,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "sha3 0.10.2",
  "thiserror",
  "tokio",
  "tokio-util 0.7.3",

@@ -1,11 +1,8 @@
 //! Traits and types for storage layers.
 use async_trait::async_trait;
 use axum::body::Bytes;
-use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{Artifact, ObjectKey, Pointer};
-
-use serde_json::Value;
 
 use crate::{
     config::{LayerConfig, RegistryConfig, ServerConfig},
@@ -93,35 +90,18 @@ impl Layer for Layers {
         self.primary().get_blob(id).await
     }
 
-    async fn add_pointer(
-        &self,
-        signature: String,
-        address: &Address,
-        descriptor: Artifact,
-        objects: Vec<ObjectKey>,
-        package: Value,
-    ) -> Result<Vec<ObjectKey>> {
+    async fn add_pointer(&self, doc: Pointer) -> Result<Vec<ObjectKey>> {
         let has_mirrors = self.storage.len() > 1;
         if has_mirrors {
             let mut keys = Vec::new();
             for layer in self.storage.iter() {
-                let mut id = layer
-                    .add_pointer(
-                        signature.clone(),
-                        address,
-                        descriptor.clone(),
-                        objects.clone(),
-                        package.clone(),
-                    )
-                    .await?;
+                let mut id = layer.add_pointer(doc.clone()).await?;
 
                 keys.append(&mut id);
             }
             Ok(keys)
         } else {
-            self.primary()
-                .add_pointer(signature, address, descriptor, objects, package)
-                .await
+            self.primary().add_pointer(doc).await
         }
     }
 
@@ -173,14 +153,7 @@ pub trait Layer {
     async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>>;
 
     /// Add a pointer to the storage.
-    async fn add_pointer(
-        &self,
-        signature: String,
-        address: &Address,
-        artifact: Artifact,
-        objects: Vec<ObjectKey>,
-        package: Value,
-    ) -> Result<Vec<ObjectKey>>;
+    async fn add_pointer(&self, doc: Pointer) -> Result<Vec<ObjectKey>>;
 
     /// Get a pointer from the storage.
     async fn get_pointer(
