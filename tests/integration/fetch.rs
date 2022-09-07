@@ -1,10 +1,10 @@
+use std::path::PathBuf;
 use anyhow::Result;
 use serial_test::serial;
-use std::path::PathBuf;
-
-use k256::ecdsa::SigningKey;
 use semver::Version;
+use k256::ecdsa::SigningKey;
 
+use ipfs_registry_core::PackageKey;
 use ipfs_registry_client::{fetch, publish::publish_with_key};
 use tempfile::NamedTempFile;
 
@@ -12,7 +12,7 @@ use crate::test_utils::*;
 
 #[tokio::test]
 #[serial]
-async fn integration_fetch() -> Result<()> {
+async fn integration_fetch_ok() -> Result<()> {
     // Spawn the server
     let (rx, _handle) = spawn(default_server_config())?;
     let _ = rx.await?;
@@ -35,11 +35,15 @@ async fn integration_fetch() -> Result<()> {
     // Fetch expects the file not to exist
     std::fs::remove_file(&output)?;
 
-    let result = fetch(
-        server_url,
+    let key = PackageKey::Pointer(
         receipt.artifact.namespace.clone(),
         receipt.artifact.package.name.clone(),
         receipt.artifact.package.version.clone(),
+    );
+
+    let result = fetch(
+        server_url,
+        key,
         output.clone(),
     )
     .await?;

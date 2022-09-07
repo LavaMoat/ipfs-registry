@@ -1,7 +1,11 @@
 //! Types for package definitions.
 use cid::Cid;
 use semver::Version;
-use serde::{Deserialize, Serialize};
+use serde::{
+    de::{self, Deserializer, Visitor},
+    ser::Serializer,
+    Deserialize, Serialize,
+};
 use serde_json::Value;
 use std::{fmt, str::FromStr};
 use web3_address::ethereum::Address;
@@ -33,8 +37,7 @@ impl fmt::Display for RegistryKind {
 }
 
 /// Reference to a package artifact.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PackageKey {
     /// Direct artifact reference using an IPFS content identifier.
     Cid(Cid),
@@ -84,6 +87,48 @@ impl FromStr for PackageKey {
 
             Ok(Self::Pointer(org.to_owned(), name.to_owned(), version))
         }
+    }
+}
+
+impl Serialize for PackageKey {
+    fn serialize<S>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let value = self.to_string();
+        serializer.serialize_str(&value)
+    }
+}
+
+struct PackageKeyVisitor;
+
+impl<'de> Visitor<'de> for PackageKeyVisitor {
+    type Value = PackageKey;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a string for package id")
+    }
+
+    fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let package_key: PackageKey = v.parse().unwrap();
+        Ok(package_key)
+    }
+}
+
+impl<'de> Deserialize<'de> for PackageKey {
+    fn deserialize<D>(
+        deserializer: D,
+    ) -> std::result::Result<PackageKey, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(PackageKeyVisitor)
     }
 }
 
@@ -251,6 +296,26 @@ mod tests {
         let result = key.parse::<PackageKey>();
         assert!(result.is_err());
 
+        Ok(())
+    }
+
+    #[test]
+    fn serde_package_key_ipfs() -> Result<()> {
+        let key = "/ipfs/bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi";
+        let package_key: PackageKey = key.parse()?;
+        let serialized = serde_json::to_string(&package_key)?;
+        let deserialized: PackageKey = serde_json::from_str(&serialized)?;
+        assert_eq!(package_key, deserialized);
+        Ok(())
+    }
+
+    #[test]
+    fn serde_package_key_path() -> Result<()> {
+        let key = "example.com/mock-package/1.0.0";
+        let package_key: PackageKey = key.parse()?;
+        let serialized = serde_json::to_string(&package_key)?;
+        let deserialized: PackageKey = serde_json::from_str(&serialized)?;
+        assert_eq!(package_key, deserialized);
         Ok(())
     }
 }

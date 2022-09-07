@@ -2,9 +2,10 @@ use anyhow::Result;
 use serial_test::serial;
 
 use semver::Version;
-
-use ipfs_registry_client::fetch;
 use tempfile::NamedTempFile;
+
+use ipfs_registry_core::PackageKey;
+use ipfs_registry_client::fetch;
 
 use crate::test_utils::*;
 
@@ -23,11 +24,15 @@ async fn integration_fetch_not_found() -> Result<()> {
     // Fetch expects the file not to exist
     std::fs::remove_file(&output)?;
 
-    let result = fetch(
-        server_url,
+    let key = PackageKey::Pointer(
         "0x0000000000000000000000000000000000000000".to_owned(),
         "foo-name".to_owned(),
         Version::new(1, 0, 0),
+    );
+
+    let result = fetch(
+        server_url,
+        key,
         output.clone(),
     )
     .await;

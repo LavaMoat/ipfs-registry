@@ -1,6 +1,6 @@
 use axum::{
     body::Bytes,
-    extract::{Extension, Path, TypedHeader},
+    extract::{Extension, TypedHeader, Query},
     headers::ContentType,
     http::{HeaderMap, StatusCode},
     Json,
@@ -8,18 +8,23 @@ use axum::{
 
 //use axum_macros::debug_handler;
 
+use serde::Deserialize;
 use k256::ecdsa::recoverable;
-use semver::Version;
 use sha3::{Digest, Sha3_256};
 
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
     Artifact, Definition, PackageMeta, PackageReader, PackageSignature,
-    Pointer, Receipt,
+    Pointer, Receipt, PackageKey, ObjectKey,
 };
 
 use crate::{headers::Signature, layer::Layer, server::ServerState, Result};
+
+#[derive(Debug, Deserialize)]
+pub struct PackageQuery {
+    key: PackageKey,
+}
 
 /// Verify a signature against a message and return the address.
 fn verify_signature(signature: [u8; 65], message: &[u8]) -> Result<Address> {
@@ -33,66 +38,94 @@ fn verify_signature(signature: [u8; 65], message: &[u8]) -> Result<Address> {
 
 pub(crate) struct PackageHandler;
 impl PackageHandler {
+
     /// Get a package.
     pub(crate) async fn get(
         Extension(state): Extension<ServerState>,
-        Path((address, name, version)): Path<(Address, String, Version)>,
+        Query(query): Query<PackageQuery>
     ) -> std::result::Result<(HeaderMap, Bytes), StatusCode> {
         let mime_type = state.config.registry.mime.clone();
         let kind = state.config.registry.kind;
 
-        tracing::debug!(
-            address = %address,
-            name = %name,
-            version = ?version);
+        println!("PACKAGE HANDLER GET CALLED {:#?}", query);
 
-        let descriptor = Artifact {
-            kind,
-            namespace: address.to_string(),
-            package: PackageMeta { name, version },
-        };
+        todo!()
 
-        // Get the package pointer
-        let pointer = state
-            .layers
-            .get_pointer(&descriptor)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        /*
+        match &query.key {
+            PackageKey::Pointer(address, name, version) => {
+                tracing::debug!(
+                    address = %address,
+                    name = %name,
+                    version = ?version);
 
-        tracing::debug!(pointer = ?pointer);
+                let descriptor = Artifact {
+                    kind,
+                    namespace: address.to_string(),
+                    package: PackageMeta {
+                        name: name.to_owned(),
+                        version: version.clone(),
+                    },
+                };
 
-        if let Some(doc) = pointer {
-            let body = state
-                .layers
-                .get_blob(&doc.definition.object)
-                .await
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+                // Get the package pointer
+                let pointer = state
+                    .layers
+                    .get_pointer(&descriptor)
+                    .await
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            // Verify the checksum
-            let checksum = Sha3_256::digest(&body);
-            if checksum.as_slice() != doc.definition.checksum.as_slice() {
-                return Err(StatusCode::UNPROCESSABLE_ENTITY);
+                tracing::debug!(pointer = ?pointer);
+
+                if let Some(doc) = pointer {
+                    let body = state
+                        .layers
+                        .get_blob(&doc.definition.object)
+                        .await
+                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+                    // Verify the checksum
+                    let checksum = Sha3_256::digest(&body);
+                    if checksum.as_slice() != doc.definition.checksum.as_slice() {
+                        return Err(StatusCode::UNPROCESSABLE_ENTITY);
+                    }
+
+                    // Verify the signature
+                    let signature = doc.definition.signature;
+                    let signature_bytes = base64::decode(signature.value)
+                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+                    let signature_bytes: [u8; 65] = signature_bytes
+                        .as_slice()
+                        .try_into()
+                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+                    verify_signature(signature_bytes, &body)
+                        .map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?;
+
+                    let mut headers = HeaderMap::new();
+                    headers.insert("content-type", mime_type.parse().unwrap());
+
+                    Ok((headers, Bytes::from(body)))
+                } else {
+                    Err(StatusCode::NOT_FOUND)
+                }
             }
+            PackageKey::Cid(cid) => {
+                let key = ObjectKey::Cid(cid.to_string());
+                let body = state
+                    .layers
+                    .get_blob(&key)
+                    .await
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            // Verify the signature
-            let signature = doc.definition.signature;
-            let signature_bytes = base64::decode(signature.value)
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-            let signature_bytes: [u8; 65] = signature_bytes
-                .as_slice()
-                .try_into()
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+                let mut headers = HeaderMap::new();
+                headers.insert("content-type", mime_type.parse().unwrap());
 
-            verify_signature(signature_bytes, &body)
-                .map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?;
-
-            let mut headers = HeaderMap::new();
-            headers.insert("content-type", mime_type.parse().unwrap());
-
-            Ok((headers, Bytes::from(body)))
-        } else {
-            Err(StatusCode::NOT_FOUND)
+                Ok((headers, Bytes::from(body)))
+            }
         }
+
+        */
     }
 
     /// Create a new package.

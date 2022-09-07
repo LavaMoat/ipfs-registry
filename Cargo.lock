@@ -1255,6 +1255,7 @@ dependencies = [
  "clap",
  "hyper",
  "ipfs-registry-client",
+ "ipfs-registry-core",
  "ipfs-registry-server",
  "k256",
  "mime",

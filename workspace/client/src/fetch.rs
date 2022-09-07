@@ -2,31 +2,30 @@ use std::borrow::BorrowMut;
 use std::path::PathBuf;
 
 use reqwest::Client;
-use semver::Version;
 use tokio::io::AsyncWriteExt;
 use url::Url;
 
+use ipfs_registry_core::PackageKey;
 use crate::{Error, Result};
 
 /// Download a package and write it to file.
 pub async fn fetch(
     server: Url,
-    organization: String,
-    name: String,
-    version: Version,
+    key: PackageKey,
     file: PathBuf,
 ) -> Result<PathBuf> {
     if file.exists() {
         return Err(Error::FileExists(file));
     }
 
-    let url = server.join(&format!(
-        "api/package/{}/{}/{}",
-        organization, name, version
-    ))?;
+    let url = server.join("api/package")?;
 
     let client = Client::new();
-    let mut response = client.get(url).send().await?;
+    let request = client.get(url).query(&[("key", key.to_string())]);
+
+    println!("Request {:#?}", request);
+
+    let mut response = request.send().await?;
 
     response
         .status()

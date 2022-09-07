@@ -2,10 +2,10 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use mime::Mime;
-use semver::Version;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use url::Url;
 
+use ipfs_registry_core::PackageKey;
 use ipfs_registry::Result;
 
 /// Signed package registry server.
@@ -48,17 +48,8 @@ enum Command {
         #[clap(short, long, default_value = "http://127.0.0.1:9060")]
         server: Url,
 
-        /// Organization namespace.
-        #[clap(short, long)]
-        organization: String,
-
-        /// Name of the package.
-        #[clap(short, long)]
-        name: String,
-
-        /// Package version.
-        #[clap(short, long)]
-        version: Version,
+        /// Package identifier.
+        id: PackageKey,
 
         /// Write package to file.
         #[clap(parse(from_os_str))]
@@ -97,16 +88,12 @@ async fn run() -> Result<()> {
         }
         Command::Fetch {
             server,
-            organization,
-            name,
-            version,
+            id,
             file,
         } => {
             let file = ipfs_registry_client::fetch(
                 server,
-                organization,
-                name,
-                version,
+                id,
                 file,
             )
             .await?;
