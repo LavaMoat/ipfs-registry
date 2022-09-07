@@ -1,11 +1,11 @@
-use std::path::PathBuf;
 use anyhow::Result;
-use serial_test::serial;
-use semver::Version;
 use k256::ecdsa::SigningKey;
+use semver::Version;
+use serial_test::serial;
+use std::path::PathBuf;
 
-use ipfs_registry_core::PackageKey;
 use ipfs_registry_client::{fetch, publish::publish_with_key};
+use ipfs_registry_core::PackageKey;
 use tempfile::NamedTempFile;
 
 use crate::test_utils::*;
@@ -41,12 +41,7 @@ async fn integration_fetch_ok() -> Result<()> {
         receipt.artifact.package.version.clone(),
     );
 
-    let result = fetch(
-        server_url,
-        key,
-        output.clone(),
-    )
-    .await?;
+    let result = fetch(server_url, key, output.clone()).await?;
 
     assert_eq!(output, result);
 

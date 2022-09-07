@@ -5,8 +5,8 @@ use reqwest::Client;
 use tokio::io::AsyncWriteExt;
 use url::Url;
 
-use ipfs_registry_core::PackageKey;
 use crate::{Error, Result};
+use ipfs_registry_core::PackageKey;
 
 /// Download a package and write it to file.
 pub async fn fetch(
@@ -21,9 +21,7 @@ pub async fn fetch(
     let url = server.join("api/package")?;
 
     let client = Client::new();
-    let request = client.get(url).query(&[("key", key.to_string())]);
-
-    println!("Request {:#?}", request);
+    let request = client.get(url).query(&[("id", key.to_string())]);
 
     let mut response = request.send().await?;
 

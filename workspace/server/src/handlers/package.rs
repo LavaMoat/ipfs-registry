@@ -1,6 +1,6 @@
 use axum::{
     body::Bytes,
-    extract::{Extension, TypedHeader, Query},
+    extract::{Extension, Query, TypedHeader},
     headers::ContentType,
     http::{HeaderMap, StatusCode},
     Json,
@@ -8,22 +8,22 @@ use axum::{
 
 //use axum_macros::debug_handler;
 
-use serde::Deserialize;
 use k256::ecdsa::recoverable;
+use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
 
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
-    Artifact, Definition, PackageMeta, PackageReader, PackageSignature,
-    Pointer, Receipt, PackageKey, ObjectKey,
+    Artifact, Definition, ObjectKey, PackageKey, PackageMeta, PackageReader,
+    PackageSignature, Pointer, Receipt,
 };
 
 use crate::{headers::Signature, layer::Layer, server::ServerState, Result};
 
 #[derive(Debug, Deserialize)]
 pub struct PackageQuery {
-    key: PackageKey,
+    id: PackageKey,
 }
 
 /// Verify a signature against a message and return the address.
@@ -38,21 +38,15 @@ fn verify_signature(signature: [u8; 65], message: &[u8]) -> Result<Address> {
 
 pub(crate) struct PackageHandler;
 impl PackageHandler {
-
     /// Get a package.
     pub(crate) async fn get(
         Extension(state): Extension<ServerState>,
-        Query(query): Query<PackageQuery>
+        Query(query): Query<PackageQuery>,
     ) -> std::result::Result<(HeaderMap, Bytes), StatusCode> {
         let mime_type = state.config.registry.mime.clone();
         let kind = state.config.registry.kind;
 
-        println!("PACKAGE HANDLER GET CALLED {:#?}", query);
-
-        todo!()
-
-        /*
-        match &query.key {
+        match query.id {
             PackageKey::Pointer(address, name, version) => {
                 tracing::debug!(
                     address = %address,
@@ -62,10 +56,7 @@ impl PackageHandler {
                 let descriptor = Artifact {
                     kind,
                     namespace: address.to_string(),
-                    package: PackageMeta {
-                        name: name.to_owned(),
-                        version: version.clone(),
-                    },
+                    package: PackageMeta { name, version },
                 };
 
                 // Get the package pointer
@@ -86,7 +77,9 @@ impl PackageHandler {
 
                     // Verify the checksum
                     let checksum = Sha3_256::digest(&body);
-                    if checksum.as_slice() != doc.definition.checksum.as_slice() {
+                    if checksum.as_slice()
+                        != doc.definition.checksum.as_slice()
+                    {
                         return Err(StatusCode::UNPROCESSABLE_ENTITY);
                     }
 
@@ -103,7 +96,8 @@ impl PackageHandler {
                         .map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?;
 
                     let mut headers = HeaderMap::new();
-                    headers.insert("content-type", mime_type.parse().unwrap());
+                    headers
+                        .insert("content-type", mime_type.parse().unwrap());
 
                     Ok((headers, Bytes::from(body)))
                 } else {
@@ -124,8 +118,6 @@ impl PackageHandler {
                 Ok((headers, Bytes::from(body)))
             }
         }
-
-        */
     }
 
     /// Create a new package.

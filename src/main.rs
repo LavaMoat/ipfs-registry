@@ -5,8 +5,8 @@ use mime::Mime;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use url::Url;
 
-use ipfs_registry_core::PackageKey;
 use ipfs_registry::Result;
+use ipfs_registry_core::PackageKey;
 
 /// Signed package registry server.
 #[derive(Parser, Debug)]
@@ -86,17 +86,8 @@ async fn run() -> Result<()> {
             serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
             //tracing::info!(definition = ?definition);
         }
-        Command::Fetch {
-            server,
-            id,
-            file,
-        } => {
-            let file = ipfs_registry_client::fetch(
-                server,
-                id,
-                file,
-            )
-            .await?;
+        Command::Fetch { server, id, file } => {
+            let file = ipfs_registry_client::fetch(server, id, file).await?;
             let size = file.metadata()?.len();
             tracing::info!(file = ?file, size = ?size);
         }

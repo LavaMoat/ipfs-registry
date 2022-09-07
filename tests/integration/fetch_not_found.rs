@@ -4,8 +4,8 @@ use serial_test::serial;
 use semver::Version;
 use tempfile::NamedTempFile;
 
-use ipfs_registry_core::PackageKey;
 use ipfs_registry_client::fetch;
+use ipfs_registry_core::PackageKey;
 
 use crate::test_utils::*;
 
@@ -30,12 +30,7 @@ async fn integration_fetch_not_found() -> Result<()> {
         Version::new(1, 0, 0),
     );
 
-    let result = fetch(
-        server_url,
-        key,
-        output.clone(),
-    )
-    .await;
+    let result = fetch(server_url, key, output.clone()).await;
 
     assert!(result.is_err());
 
