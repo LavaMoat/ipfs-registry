@@ -46,7 +46,7 @@ Replace `<addr>` with the address for the key and enter the password for the key
 Download the package to a file:
 
 ```
-ipkg fetch -o <addr> -n mock-package -v 1.0.0 sandbox/package.tgz
+ipkg fetch <addr>/mock-package/1.0.0 sandbox/package.tgz
 ```
 
 ## API
@@ -74,10 +74,22 @@ The default configuration limits requests to 16MiB so if the package is too larg
 ### Download a package
 
 ```
-GET /api/package/:address/:name/:version
+GET /api/package?id=<package-id>
 ```
 
-To download a package construct a URL containing the Ethereum-style address that was used when the package was uploaded along with the package name and semver.
+To download a package construct a URL containing the package identifier; the identifier may be an explicit IPFS reference such as:
+
+```
+/ipfs/bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi
+```
+
+Or a package pointer:
+
+```
+example.com/mock-package/1.0.0
+```
+
+When a package pointer is used to fetch a package then the checksum and signature are verified.
 
 ## Configuration
 

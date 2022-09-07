@@ -7,7 +7,7 @@ use axum::{
         HeaderValue, Method,
     },
     response::IntoResponse,
-    routing::{get, put},
+    routing::get,
     Json, Router,
 };
 use axum_server::{tls_rustls::RustlsConfig, Handle};
@@ -137,10 +137,10 @@ impl Server {
         let app = Router::new()
             .route("/api", get(api))
             .route(
-                "/api/package/:address/:name/:version",
-                get(PackageHandler::get),
+                "/api/package",
+                get(PackageHandler::get).put(PackageHandler::put),
             )
-            .route("/api/package", put(PackageHandler::put))
+            //.route("/api/package", put(PackageHandler::put))
             .layer(RequestBodyLimitLayer::new(limit))
             .layer(cors)
             .layer(Extension(state));

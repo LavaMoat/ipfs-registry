@@ -4,7 +4,7 @@ mod tarball;
 
 pub use error::Error;
 pub use package::{
-    Artifact, Definition, ObjectKey, PackageMeta, PackageReader,
+    Artifact, Definition, ObjectKey, PackageKey, PackageMeta, PackageReader,
     PackageSignature, Pointer, Receipt, RegistryKind,
 };
 
