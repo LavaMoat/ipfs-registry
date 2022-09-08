@@ -8,10 +8,10 @@ use axum::{
 
 //use axum_macros::debug_handler;
 
+use cid::Cid;
 use k256::ecdsa::recoverable;
 use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
-use cid::Cid;
 
 use web3_address::ethereum::Address;
 
@@ -232,7 +232,8 @@ impl PackageHandler {
             let id = PackageKey::Pointer(
                 artifact.namespace.clone(),
                 artifact.package.name.clone(),
-                artifact.package.version.clone());
+                artifact.package.version.clone(),
+            );
 
             let receipt = Receipt { id, artifact, key };
 

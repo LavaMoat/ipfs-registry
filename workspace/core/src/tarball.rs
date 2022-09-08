@@ -14,6 +14,15 @@ pub(crate) fn decompress(buffer: &[u8]) -> Result<Vec<u8>> {
     Ok(result)
 }
 
+pub(crate) fn remove_npm_scope(mut descriptor: PackageMeta) -> PackageMeta {
+    let needle = "/";
+    if let Some(index) = descriptor.name.rfind(needle) {
+        let name = &descriptor.name[index + needle.len()..];
+        descriptor.name = name.to_owned();
+    }
+    descriptor
+}
+
 /// Read a package descriptor from an NPM compatible tarball.
 pub(crate) fn read_npm_package(
     buffer: &[u8],
@@ -21,6 +30,7 @@ pub(crate) fn read_npm_package(
     let package_path = PathBuf::from(NPM);
     let buffer = find_tar_entry(package_path, buffer)?;
     let descriptor: PackageMeta = serde_json::from_slice(buffer)?;
+    let descriptor = remove_npm_scope(descriptor);
     Ok((descriptor, buffer))
 }
 
@@ -45,7 +55,20 @@ fn find_tar_entry(package_path: PathBuf, buffer: &[u8]) -> Result<&[u8]> {
 mod tests {
     use super::*;
     use anyhow::Result;
+    use semver::Version;
     use std::path::PathBuf;
+
+    #[test]
+    fn scope_remove() -> Result<()> {
+        let descriptor = PackageMeta {
+            name: "@mock-scope/mock-package".to_owned(),
+            version: Version::new(1, 0, 0),
+        };
+
+        let descriptor = remove_npm_scope(descriptor);
+        assert_eq!("mock-package", &descriptor.name);
+        Ok(())
+    }
 
     #[test]
     fn decompress_tarball() -> Result<()> {
