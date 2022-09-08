@@ -8,6 +8,7 @@ description = "Signed package registry backed by IPFS"
 members = [
   "workspace/client",
   "workspace/core",
+  "workspace/database",
   "workspace/server",
 ]
 
@@ -36,6 +37,7 @@ k256 = { version = "0.11", features = ["ecdsa", "sha256", "keccak256"] }
 rand = "0.8"
 tempfile = "3"
 hyper = "0.14"
+sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "sqlite" ] }
 
 [[bin]]
 name = "ipkg"

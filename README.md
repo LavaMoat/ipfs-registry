@@ -197,6 +197,22 @@ key = "key.pem"
 
 Relative paths are resolved from the directory containing the configuration file.
 
+## Developers
+
+Install `sqlx` and `cargo make`:
+
+```
+cargo install sqlx-cli
+cargo install cargo-make
+```
+
+Then create a `.env` file from `.env.example`. Afterwards, create a database and run the migrations:
+
+```
+sqlx database create
+sqlx migrate run
+```
+
 ## Bugs
 
 The package meta data is not immutable and theoretically the meta data could be modified to point to a different `cid` which could allow an attacker to replace the file pointer. This could be mitigated by storing the package meta data in a blockchain.

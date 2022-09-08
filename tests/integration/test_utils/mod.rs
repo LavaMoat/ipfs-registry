@@ -1,5 +1,6 @@
 use anyhow::Result;
 use axum_server::Handle;
+use sqlx::Sqlite;
 use std::{net::SocketAddr, sync::Arc, thread};
 use tokio::sync::oneshot;
 use url::Url;
@@ -31,16 +32,20 @@ impl MockServer {
 
         let layers = build_layers(&config)?;
 
-        let state = Arc::new(State {
-            info: ServerInfo {
-                name: String::from("integration-test"),
-                version: String::from("0.0.0"),
-            },
-            config,
-            layers,
-        });
+        let state = Arc::new(
+            State::<Sqlite>::new_sqlite(
+                config,
+                ServerInfo {
+                    name: String::from("integration-test"),
+                    version: String::from("0.0.0"),
+                },
+                layers,
+            )
+            .await?,
+        );
 
-        Server.start(addr, state, self.handle.clone()).await?;
+        let server = Server::<Sqlite>::new();
+        server.start(addr, state, self.handle.clone()).await?;
         Ok(())
     }
 

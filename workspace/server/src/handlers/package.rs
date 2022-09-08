@@ -13,6 +13,8 @@ use k256::ecdsa::recoverable;
 use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
 
+use sqlx::Database;
+
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
@@ -37,11 +39,14 @@ fn verify_signature(signature: [u8; 65], message: &[u8]) -> Result<Address> {
     Ok(address)
 }
 
-pub(crate) struct PackageHandler;
-impl PackageHandler {
+pub(crate) struct PackageHandler<T: Database> {
+    marker: std::marker::PhantomData<T>,
+}
+
+impl<T: Database> PackageHandler<T> {
     /// Get a package.
     pub(crate) async fn get(
-        Extension(state): Extension<ServerState>,
+        Extension(state): Extension<ServerState<T>>,
         Query(query): Query<PackageQuery>,
     ) -> std::result::Result<(HeaderMap, Bytes), StatusCode> {
         let mime_type = state.config.registry.mime.clone();
@@ -123,7 +128,7 @@ impl PackageHandler {
 
     /// Create a new package.
     pub(crate) async fn put(
-        Extension(state): Extension<ServerState>,
+        Extension(state): Extension<ServerState<T>>,
         TypedHeader(mime): TypedHeader<ContentType>,
         TypedHeader(signature): TypedHeader<Signature>,
         body: Bytes,

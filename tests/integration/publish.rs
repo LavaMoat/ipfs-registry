@@ -28,7 +28,7 @@ async fn integration_publish_ok() -> Result<()> {
     assert_eq!("mock-package", receipt.artifact.package.name);
     assert_eq!(Version::new(1, 0, 0), receipt.artifact.package.version);
 
-    println!("receipt {:#?}", receipt);
+    //println!("receipt {:#?}", receipt);
 
     Ok(())
 }

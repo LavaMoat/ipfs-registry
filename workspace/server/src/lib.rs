@@ -1,4 +1,5 @@
 use axum_server::Handle;
+use sqlx::Sqlite;
 use std::{net::SocketAddr, path::PathBuf, str::FromStr, sync::Arc};
 
 pub mod config;
@@ -21,13 +22,16 @@ pub async fn start(bind: String, config: PathBuf) -> Result<()> {
     let config = config::ServerConfig::load(&config)?;
     let layers = layer::build(&config)?;
     let handle = Handle::new();
-    let state = Arc::new(server::State {
-        info: ServerInfo { name, version },
-        config,
-        layers,
-    });
+    let state = Arc::new(
+        server::State::<Sqlite>::new_sqlite(
+            config,
+            ServerInfo { name, version },
+            layers,
+        )
+        .await?,
+    );
     let addr = SocketAddr::from_str(&bind)?;
-    let server: Server = Default::default();
+    let server = Server::<Sqlite>::new();
     server.start(addr, state, handle).await?;
     Ok(())
 }

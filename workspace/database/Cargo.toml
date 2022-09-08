@@ -1,0 +1,8 @@
+[package]
+name = "ipfs-registry-database"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+thiserror = "1"
+sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "sqlite" ] }
