@@ -1370,6 +1370,7 @@ dependencies = [
  "hyper",
  "ipfs-registry-client",
  "ipfs-registry-core",
+ "ipfs-registry-database",
  "ipfs-registry-server",
  "k256",
  "mime",
@@ -1436,6 +1437,7 @@ version = "0.1.0"
 dependencies = [
  "sqlx",
  "thiserror",
+ "web3-address",
 ]
 
 [[package]]

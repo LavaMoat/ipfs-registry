@@ -16,6 +16,7 @@ members = [
 
 ipfs-registry-client = { path = "workspace/client" }
 ipfs-registry-core = { path = "workspace/core" }
+ipfs-registry-database = { path = "workspace/database" }
 ipfs-registry-server = { path = "workspace/server" }
 
 clap = { version = "3", features = ["derive", "wrap_help"] }
