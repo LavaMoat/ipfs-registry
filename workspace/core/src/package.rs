@@ -210,10 +210,12 @@ pub struct Pointer {
 /// Receipt for a published package.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Receipt {
-    /// Collection of pointers, one for each storage layer.
-    pub pointers: Vec<ObjectKey>,
+    /// Package identifier.
+    pub id: PackageKey,
     /// Package descriptor.
     pub artifact: Artifact,
+    /// Key for the IPFS package reference.
+    pub key: Option<PackageKey>,
 }
 
 /// Read a descriptor from a package.

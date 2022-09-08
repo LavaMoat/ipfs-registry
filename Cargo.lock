@@ -1324,6 +1324,7 @@ dependencies = [
  "axum-macros",
  "axum-server",
  "base64",
+ "cid",
  "clap",
  "futures",
  "hyper",

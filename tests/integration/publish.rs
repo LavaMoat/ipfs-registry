@@ -11,7 +11,7 @@ use k256::ecdsa::SigningKey;
 
 #[tokio::test]
 #[serial]
-async fn integration_publish() -> Result<()> {
+async fn integration_publish_ok() -> Result<()> {
     // Spawn the server
     let (rx, _handle) = spawn(default_server_config())?;
     let _ = rx.await?;
@@ -27,6 +27,8 @@ async fn integration_publish() -> Result<()> {
 
     assert_eq!("mock-package", receipt.artifact.package.name);
     assert_eq!(Version::new(1, 0, 0), receipt.artifact.package.version);
+
+    println!("receipt {:#?}", receipt);
 
     Ok(())
 }

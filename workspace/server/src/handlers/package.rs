@@ -11,6 +11,7 @@ use axum::{
 use k256::ecdsa::recoverable;
 use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
+use cid::Cid;
 
 use web3_address::ethereum::Address;
 
@@ -191,6 +192,19 @@ impl PackageHandler {
 
             tracing::debug!(id = ?objects, "added package");
 
+            // Direct key for the publish receipt
+            let key = objects.iter().find_map(|o| {
+                if let ObjectKey::Cid(value) = o {
+                    if let Ok(cid) = value.parse::<Cid>() {
+                        Some(PackageKey::Cid(cid))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            });
+
             let object = objects.remove(0);
 
             let definition = Definition {
@@ -208,14 +222,19 @@ impl PackageHandler {
                 package: package_meta,
             };
 
-            // Store the package meta data
-            let pointers = state
+            // Store the package pointer document
+            state
                 .layers
                 .add_pointer(doc)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            let receipt = Receipt { pointers, artifact };
+            let id = PackageKey::Pointer(
+                artifact.namespace.clone(),
+                artifact.package.name.clone(),
+                artifact.package.version.clone());
+
+            let receipt = Receipt { id, artifact, key };
 
             Ok(Json(receipt))
         } else {
