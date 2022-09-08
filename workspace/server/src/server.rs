@@ -15,7 +15,7 @@ use serde::Serialize;
 use serde_json::json;
 use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
 
-use sqlx::{sqlite::SqlitePool, Database, Pool, Sqlite};
+use sqlx::{Any, AnyPool, Database, Pool};
 
 use crate::{
     config::ServerConfig, config::TlsConfig, handlers::PackageHandler,
@@ -37,21 +37,21 @@ pub struct State<T: Database> {
     pub(crate) pool: Pool<T>,
 }
 
-impl<T: Database> State<T> {
+impl State<Any> {
     /// Create a new state.
-    pub async fn new_sqlite(
+    pub async fn new(
         config: ServerConfig,
         info: ServerInfo,
         layers: Layers,
-    ) -> Result<State<Sqlite>> {
+    ) -> Result<State<Any>> {
         let url = std::env::var("DATABASE_URL")
             .ok()
             .unwrap_or_else(|| config.database.url.clone());
 
         tracing::info!(db = %url);
 
-        let pool = SqlitePool::connect(&url).await?;
-        Ok(State::<Sqlite> {
+        let pool = AnyPool::connect(&url).await?;
+        Ok(State::<Any> {
             config,
             info,
             layers,
@@ -74,9 +74,9 @@ pub struct Server<T: Database> {
     marker: std::marker::PhantomData<T>,
 }
 
-impl Server<Sqlite> {
-    pub fn new() -> Server<Sqlite> {
-        Server::<Sqlite> {
+impl Server<Any> {
+    pub fn new() -> Server<Any> {
+        Server::<Any> {
             marker: std::marker::PhantomData,
         }
     }

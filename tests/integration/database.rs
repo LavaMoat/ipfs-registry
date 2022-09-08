@@ -3,8 +3,8 @@ use serial_test::serial;
 
 //use crate::test_utils::*;
 
+use sqlx::{Sqlite, SqlitePool};
 use web3_address::ethereum::Address;
-use sqlx::{sqlite::SqlitePool, Sqlite};
 
 use ipfs_registry_database::Namespace;
 
@@ -16,10 +16,11 @@ async fn integration_database() -> Result<()> {
     let pool = SqlitePool::connect(url).await?;
     sqlx::migrate!().run(&pool).await?;
 
-    let address: Address = "0x1fc770ac21067a04f83101ebf19a670db9e3eb21".parse()?;
+    let address: Address =
+        "0x1fc770ac21067a04f83101ebf19a670db9e3eb21".parse()?;
 
-    let id = Namespace::<Sqlite>::add(
-        &pool, "mock-namespace", &address).await?;
+    let id =
+        Namespace::<Sqlite>::add(&pool, "mock-namespace", &address).await?;
 
     assert!(id > 0);
 
