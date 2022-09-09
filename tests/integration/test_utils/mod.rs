@@ -5,6 +5,9 @@ use std::{net::SocketAddr, sync::Arc, thread};
 use tokio::sync::oneshot;
 use url::Url;
 
+use k256::ecdsa::SigningKey;
+use web3_address::ethereum::Address;
+
 use ipfs_registry_server::{
     build_layers,
     config::{LayerConfig, RegistryConfig, ServerConfig, StorageConfig},
@@ -117,4 +120,11 @@ pub fn spawn(
 
 pub fn server() -> Url {
     Url::parse(SERVER).expect("failed to parse server URL")
+}
+
+pub fn new_signing_key() -> (SigningKey, Address) {
+    let signing_key = SigningKey::random(&mut rand::thread_rng());
+    let verifying_key = signing_key.verifying_key();
+    let address: Address = verifying_key.into();
+    (signing_key, address)
 }
