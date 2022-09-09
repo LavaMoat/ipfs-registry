@@ -1435,6 +1435,8 @@ dependencies = [
 name = "ipfs-registry-database"
 version = "0.1.0"
 dependencies = [
+ "semver",
+ "serde_json",
  "sqlx",
  "thiserror",
  "web3-address",

@@ -4,8 +4,18 @@ pub use error::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+use semver::Version;
+use serde_json::Value;
 use sqlx::{Database, Sqlite, SqlitePool};
 use web3_address::ethereum::Address;
+
+#[derive(Debug)]
+pub struct PublisherRecord {
+    /// Publisher primary key.
+    pub publisher_id: i64,
+    /// Address of the publisher.
+    pub address: Address,
+}
 
 #[derive(Debug)]
 pub struct NamespaceRecord {
@@ -28,6 +38,209 @@ impl NamespaceRecord {
         } else {
             self.publishers.iter().find(|a| a == &address).is_some()
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct PackageRecord {
+    /// Namespace foreign key.
+    pub namespace_id: i64,
+    /// Package primary key.
+    pub package_id: i64,
+    /// Name of the package.
+    pub name: String,
+}
+
+#[derive(Debug)]
+pub struct VersionRecord {
+    /// Publisher foreign key.
+    pub publisher_id: i64,
+    /// Package foreign key.
+    pub package_id: i64,
+    /// Version primary key.
+    pub version_id: i64,
+    /// Version of the package.
+    pub version: Version,
+    /// Package meta data.
+    pub package: Value,
+    /// Content identifier.
+    pub content_id: Option<String>,
+}
+
+pub struct Package<T: Database> {
+    marker: std::marker::PhantomData<T>,
+}
+
+impl Package<Sqlite> {
+    /// Find a package by name.
+    pub async fn find_by_name(
+        pool: &SqlitePool,
+        namespace_id: i64,
+        name: &str,
+    ) -> Result<Option<PackageRecord>> {
+        let result = sqlx::query_as!(
+            PackageRecord,
+            r#"
+                SELECT
+                    namespace_id,
+                    package_id,
+                    name
+                FROM packages
+                WHERE namespace_id = ? AND name = ?
+            "#,
+            namespace_id,
+            name
+        )
+        .fetch_optional(pool)
+        .await?;
+        Ok(result)
+    }
+
+    /// Find a package by name and version.
+    pub async fn find_by_name_version(
+        pool: &SqlitePool,
+        namespace_id: i64,
+        name: &str,
+        version: &Version,
+    ) -> Result<Option<VersionRecord>> {
+        if let Some(package_record) =
+            Package::<Sqlite>::find_by_name(pool, namespace_id, name).await?
+        {
+            let version = version.to_string();
+
+            let result = sqlx::query!(
+                r#"
+                    SELECT
+                        version_id,
+                        publisher_id,
+                        package_id,
+                        version,
+                        package,
+                        content_id
+                    FROM versions
+                    WHERE package_id = ? AND version = ?
+                "#,
+                package_record.package_id,
+                version,
+            )
+            .fetch_optional(pool)
+            .await?;
+
+            if let Some(record) = result {
+                let version: Version = Version::parse(&record.version)?;
+                let package: Value = serde_json::from_str(&record.package)?;
+
+                Ok(Some(VersionRecord {
+                    publisher_id: record.publisher_id,
+                    version_id: record.version_id,
+                    package_id: record.package_id,
+                    content_id: record.content_id,
+                    version,
+                    package,
+                }))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Find or insert a new package.
+    pub async fn find_or_insert(
+        pool: &SqlitePool,
+        namespace_id: i64,
+        name: &str,
+    ) -> Result<PackageRecord> {
+        if let Some(record) =
+            Package::<Sqlite>::find_by_name(pool, namespace_id, name).await?
+        {
+            Ok(record)
+        } else {
+            let mut conn = pool.acquire().await?;
+            let id = sqlx::query!(
+                r#"
+                    INSERT INTO packages ( name )
+                    VALUES ( ?1 )
+                "#,
+                name,
+            )
+            .execute(&mut conn)
+            .await?
+            .last_insert_rowid();
+            Ok(PackageRecord {
+                namespace_id,
+                package_id: id,
+                name: name.to_owned(),
+            })
+        }
+    }
+
+    /// Add a package version to a namespace.
+    ///
+    /// If a package already exists for the given name
+    /// and version return `None`.
+    pub async fn add(
+        pool: &SqlitePool,
+        publisher: &Address,
+        namespace: &str,
+        name: &str,
+        version: &Version,
+        package: &Value,
+        content_id: Option<String>, // TODO: use cid::Cid
+    ) -> Result<Option<i64>> {
+        // Check the publisher exists
+        let publisher_record =
+            Publisher::<Sqlite>::find_by_address(pool, publisher)
+                .await?
+                .ok_or(Error::UnknownPublisher(publisher.clone()))?;
+
+        // Check the namespace exists
+        let namespace_record =
+            Namespace::<Sqlite>::find_by_name(pool, namespace)
+                .await?
+                .ok_or(Error::UnknownNamespace(namespace.to_string()))?;
+
+        // Check the package / version does not already exist
+        if let Some(_) = Package::<Sqlite>::find_by_name_version(
+            pool,
+            namespace_record.namespace_id,
+            name,
+            version,
+        )
+        .await?
+        {
+            return Ok(None);
+        }
+
+        // Find or insert the package
+        let package = serde_json::to_string(package)?;
+        let version = version.to_string();
+        let package_record = Package::<Sqlite>::find_or_insert(
+            pool,
+            namespace_record.namespace_id,
+            name,
+        )
+        .await?;
+
+        // Insert the package version
+        let mut conn = pool.acquire().await?;
+        let id = sqlx::query!(
+            r#"
+                INSERT INTO versions ( publisher_id, package_id, version, package, content_id )
+                VALUES ( ?1, ?2, ?3, ?4, ?5 )
+            "#,
+            publisher_record.publisher_id,
+            package_record.package_id,
+            version,
+            package,
+            content_id,
+        )
+        .execute(&mut conn)
+        .await?
+        .last_insert_rowid();
+
+        Ok(Some(id))
     }
 }
 
@@ -54,6 +267,32 @@ impl Publisher<Sqlite> {
         .last_insert_rowid();
 
         Ok(id)
+    }
+
+    /// Find a publisher by address.
+    pub async fn find_by_address(
+        pool: &SqlitePool,
+        publisher: &Address,
+    ) -> Result<Option<PublisherRecord>> {
+        let addr = publisher.as_ref();
+
+        let result = sqlx::query!(
+            r#"
+                SELECT
+                    publisher_id,
+                    address
+                FROM publishers
+                WHERE address = ?
+            "#,
+            addr
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(result.map(|r| PublisherRecord {
+            publisher_id: r.publisher_id,
+            address: publisher.clone(),
+        }))
     }
 }
 
@@ -108,8 +347,10 @@ impl Namespace<Sqlite> {
         Ok(id)
     }
 
-    /// Get a namespace by name.
-    pub async fn get_by_name(
+    // TODO: allow removing a publisher from the namespace
+
+    /// Find a namespace by name.
+    pub async fn find_by_name(
         pool: &SqlitePool,
         name: &str,
     ) -> Result<Option<NamespaceRecord>> {

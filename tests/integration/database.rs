@@ -41,7 +41,7 @@ async fn integration_database() -> Result<()> {
     .await?;
 
     let ns =
-        Namespace::<Sqlite>::get_by_name(&pool, "mock-namespace").await?;
+        Namespace::<Sqlite>::find_by_name(&pool, "mock-namespace").await?;
 
     assert!(ns.is_some());
     let ns = ns.unwrap();
