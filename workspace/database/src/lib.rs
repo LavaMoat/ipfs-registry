@@ -4,6 +4,7 @@ pub use error::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+use cid::Cid;
 use semver::Version;
 use serde_json::Value;
 use sqlx::{Database, Sqlite, SqlitePool};
@@ -64,7 +65,7 @@ pub struct VersionRecord {
     /// Package meta data.
     pub package: Value,
     /// Content identifier.
-    pub content_id: Option<String>,
+    pub content_id: Option<Cid>,
 }
 
 pub struct Package<T: Database> {
@@ -130,11 +131,18 @@ impl Package<Sqlite> {
                 let version: Version = Version::parse(&record.version)?;
                 let package: Value = serde_json::from_str(&record.package)?;
 
+                let content_id = if let Some(cid) = record.content_id {
+                    let cid: Cid = cid.try_into()?;
+                    Some(cid)
+                } else {
+                    None
+                };
+
                 Ok(Some(VersionRecord {
                     publisher_id: record.publisher_id,
                     version_id: record.version_id,
                     package_id: record.package_id,
-                    content_id: record.content_id,
+                    content_id,
                     version,
                     package,
                 }))
@@ -188,7 +196,7 @@ impl Package<Sqlite> {
         name: &str,
         version: &Version,
         package: &Value,
-        content_id: Option<&str>, // TODO: use cid::Cid
+        content_id: Option<&Cid>,
     ) -> Result<i64> {
         // Check the publisher exists
         let publisher_record =
@@ -234,6 +242,8 @@ impl Package<Sqlite> {
             name,
         )
         .await?;
+
+        let content_id = content_id.map(|cid| cid.to_string());
 
         // Insert the package version
         let mut conn = pool.acquire().await?;

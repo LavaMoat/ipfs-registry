@@ -39,6 +39,7 @@ rand = "0.8"
 tempfile = "3"
 hyper = "0.14"
 sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "sqlite", "any" ] }
+cid = { version = "0.8", features = ["serde-codec"] }
 
 [[bin]]
 name = "ipkg"

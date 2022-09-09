@@ -3,6 +3,7 @@ use serial_test::serial;
 
 use crate::test_utils::*;
 
+use cid::Cid;
 use semver::Version;
 use serde_json::Value;
 use sqlx::{Sqlite, SqlitePool};
@@ -62,7 +63,10 @@ async fn integration_database() -> Result<()> {
     let mock_package = "mock-package";
     let mock_version = Version::new(1, 0, 0);
     let mock_value = Value::Null;
-    let mock_content_id = Some("foo");
+    let cid: Cid =
+        "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+            .try_into()?;
+    let mock_content_id = Some(&cid);
 
     // Publish as the namespace owner
     let result = Package::<Sqlite>::insert(

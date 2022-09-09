@@ -1366,6 +1366,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum-server",
+ "cid",
  "clap",
  "hyper",
  "ipfs-registry-client",
@@ -1435,6 +1436,7 @@ dependencies = [
 name = "ipfs-registry-database"
 version = "0.1.0"
 dependencies = [
+ "cid",
  "semver",
  "serde_json",
  "sqlx",
