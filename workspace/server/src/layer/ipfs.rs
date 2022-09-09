@@ -54,13 +54,14 @@ impl Layer for IpfsLayer {
         let data = Cursor::new(data);
         let add_res = self.client.add(data).await?;
         self.client.pin_add(&add_res.hash, true).await?;
-        Ok(vec![ObjectKey::Cid(add_res.hash)])
+        Ok(vec![ObjectKey::Cid(add_res.hash.try_into()?)])
     }
 
     async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>> {
+        let id = id.to_string();
         let res = self
             .client
-            .cat(id.as_ref())
+            .cat(&id)
             .map_ok(|chunk| chunk.to_vec())
             .try_concat()
             .await?;
@@ -90,7 +91,7 @@ impl Layer for IpfsLayer {
         let stat = self.client.files_stat(&path).await?;
         self.client.pin_add(&stat.hash, true).await?;
 
-        Ok(vec![ObjectKey::Cid(stat.hash)])
+        Ok(vec![ObjectKey::Cid(stat.hash.try_into()?)])
     }
 
     async fn get_pointer(

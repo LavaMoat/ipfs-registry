@@ -8,7 +8,6 @@ use axum::{
 
 //use axum_macros::debug_handler;
 
-use cid::Cid;
 use k256::ecdsa::recoverable;
 use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
@@ -111,7 +110,7 @@ impl<T: Database> PackageHandler<T> {
                 }
             }
             PackageKey::Cid(cid) => {
-                let key = ObjectKey::Cid(cid.to_string());
+                let key = ObjectKey::Cid(cid);
                 let body = state
                     .layers
                     .get_blob(&key)
@@ -160,59 +159,59 @@ impl<T: Database> PackageHandler<T> {
 
         // TODO: ensure approval signatures
 
+        // Check MIME type is correct
         let gzip: mime::Mime = mime_type
             .parse()
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         let gzip_ct = ContentType::from(gzip);
+        if mime != gzip_ct {
+            return Err(StatusCode::BAD_REQUEST);
+        }
 
-        if mime == gzip_ct {
-            let (package, package_meta) = PackageReader::read(kind, &body)
-                .map_err(|_| StatusCode::BAD_REQUEST)?;
+        let (package, package_meta) = PackageReader::read(kind, &body)
+            .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-            let descriptor = Artifact {
-                kind,
-                namespace: address.to_string(),
-                package,
-            };
+        let descriptor = Artifact {
+            kind,
+            namespace: address.to_string(),
+            package,
+        };
 
-            let artifact = descriptor.clone();
+        let artifact = descriptor.clone();
 
-            // Check the package version does not already exist
-            let meta = state
-                .layers
-                .get_pointer(&descriptor)
-                .await
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-            if meta.is_some() {
-                return Err(StatusCode::CONFLICT);
+        // Check the package version does not already exist
+        let meta = state
+            .layers
+            .get_pointer(&descriptor)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        if meta.is_some() {
+            return Err(StatusCode::CONFLICT);
+        }
+
+        let checksum = Sha3_256::digest(&body);
+
+        let mut objects = state
+            .layers
+            .add_blob(body, &descriptor)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        tracing::debug!(id = ?objects, "added package");
+
+        // Direct key for the publish receipt
+        let key = objects.iter().find_map(|o| {
+            if let ObjectKey::Cid(value) = o {
+                Some(PackageKey::Cid(value.clone()))
+            } else {
+                None
             }
+        });
 
-            let checksum = Sha3_256::digest(&body);
+        let object = objects.remove(0);
 
-            let mut objects = state
-                .layers
-                .add_blob(body, &descriptor)
-                .await
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-            tracing::debug!(id = ?objects, "added package");
-
-            // Direct key for the publish receipt
-            let key = objects.iter().find_map(|o| {
-                if let ObjectKey::Cid(value) = o {
-                    if let Ok(cid) = value.parse::<Cid>() {
-                        Some(PackageKey::Cid(cid))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            });
-
-            let object = objects.remove(0);
-
-            let definition = Definition {
+        let doc = Pointer {
+            definition: Definition {
                 artifact: descriptor,
                 object,
                 signature: PackageSignature {
@@ -220,31 +219,25 @@ impl<T: Database> PackageHandler<T> {
                     value: encoded_signature,
                 },
                 checksum: checksum.to_vec(),
-            };
+            },
+            package: package_meta,
+        };
 
-            let doc = Pointer {
-                definition,
-                package: package_meta,
-            };
+        // Store the package pointer document
+        state
+            .layers
+            .add_pointer(doc)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            // Store the package pointer document
-            state
-                .layers
-                .add_pointer(doc)
-                .await
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        let id = PackageKey::Pointer(
+            artifact.namespace.clone(),
+            artifact.package.name.clone(),
+            artifact.package.version.clone(),
+        );
 
-            let id = PackageKey::Pointer(
-                artifact.namespace.clone(),
-                artifact.package.name.clone(),
-                artifact.package.version.clone(),
-            );
+        let receipt = Receipt { id, artifact, key };
 
-            let receipt = Receipt { id, artifact, key };
-
-            Ok(Json(receipt))
-        } else {
-            Err(StatusCode::BAD_REQUEST)
-        }
+        Ok(Json(receipt))
     }
 }

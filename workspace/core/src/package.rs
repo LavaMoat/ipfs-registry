@@ -24,6 +24,7 @@ pub enum RegistryKind {
     /// NPM compatible packages.
     Npm,
 }
+
 impl fmt::Display for RegistryKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -137,16 +138,16 @@ impl<'de> Deserialize<'de> for PackageKey {
 #[serde(rename_all = "lowercase")]
 pub enum ObjectKey {
     /// Reference to an IPFS content identifier.
-    Cid(String),
+    Cid(Cid),
     /// Reference to a bucket key.
     Key(String),
 }
 
-impl AsRef<str> for ObjectKey {
-    fn as_ref(&self) -> &str {
+impl fmt::Display for ObjectKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Cid(value) => value,
-            Self::Key(value) => value,
+            Self::Cid(value) => write!(f, "{}", value),
+            Self::Key(value) => write!(f, "{}", value),
         }
     }
 }

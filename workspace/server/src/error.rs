@@ -103,4 +103,7 @@ pub enum Error {
 
     #[error(transparent)]
     Migrate(#[from] sqlx::migrate::MigrateError),
+
+    #[error(transparent)]
+    Cid(#[from] cid::Error),
 }
