@@ -160,9 +160,10 @@ impl Package<Sqlite> {
             let mut conn = pool.acquire().await?;
             let id = sqlx::query!(
                 r#"
-                    INSERT INTO packages ( name )
-                    VALUES ( ?1 )
+                    INSERT INTO packages ( namespace_id, name )
+                    VALUES ( ?1, ?2 )
                 "#,
+                namespace_id,
                 name,
             )
             .execute(&mut conn)
@@ -180,15 +181,15 @@ impl Package<Sqlite> {
     ///
     /// If a package already exists for the given name
     /// and version return `None`.
-    pub async fn add(
+    pub async fn insert(
         pool: &SqlitePool,
         publisher: &Address,
         namespace: &str,
         name: &str,
         version: &Version,
         package: &Value,
-        content_id: Option<String>, // TODO: use cid::Cid
-    ) -> Result<Option<i64>> {
+        content_id: Option<&str>, // TODO: use cid::Cid
+    ) -> Result<i64> {
         // Check the publisher exists
         let publisher_record =
             Publisher::<Sqlite>::find_by_address(pool, publisher)
@@ -201,6 +202,10 @@ impl Package<Sqlite> {
                 .await?
                 .ok_or(Error::UnknownNamespace(namespace.to_string()))?;
 
+        if !namespace_record.can_publish(publisher) {
+            return Err(Error::Unauthorized(publisher.clone()));
+        }
+
         // Check the package / version does not already exist
         if let Some(_) = Package::<Sqlite>::find_by_name_version(
             pool,
@@ -210,7 +215,11 @@ impl Package<Sqlite> {
         )
         .await?
         {
-            return Ok(None);
+            return Err(Error::PackageExists(
+                namespace_record.name.clone(),
+                name.to_owned(),
+                version.clone(),
+            ));
         }
 
         // Find or insert the package
@@ -240,7 +249,7 @@ impl Package<Sqlite> {
         .await?
         .last_insert_rowid();
 
-        Ok(Some(id))
+        Ok(id)
     }
 }
 

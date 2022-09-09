@@ -1,8 +1,15 @@
+use semver::Version;
 use thiserror::Error;
 use web3_address::ethereum::Address;
 
 #[derive(Debug, Error)]
 pub enum Error {
+    #[error("package {0}/{1}/{2} already exists")]
+    PackageExists(String, String, Version),
+
+    #[error("publisher {0} is not authorized")]
+    Unauthorized(Address),
+
     #[error("unknown publisher {0}")]
     UnknownPublisher(Address),
 
