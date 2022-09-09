@@ -2,13 +2,15 @@ CREATE TABLE IF NOT EXISTS namespaces
 (
     namespace_id          INTEGER PRIMARY KEY NOT NULL,
     name                  TEXT                NOT NULL UNIQUE,
-    owner                 BLOB(20)            NOT NULL UNIQUE
+    publisher_id          INTEGER             NOT NULL,
+
+    FOREIGN KEY (publisher_id) REFERENCES publishers (publisher_id)
 );
 
 CREATE TABLE IF NOT EXISTS publishers
 (
-    id          INTEGER PRIMARY KEY NOT NULL,
-    address     BLOB(20)            NOT NULL UNIQUE
+    publisher_id          INTEGER PRIMARY KEY NOT NULL,
+    address               BLOB(20)            NOT NULL UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS namespace_publishers

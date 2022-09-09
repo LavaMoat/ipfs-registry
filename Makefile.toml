@@ -61,6 +61,11 @@ dependencies = ["unit", "integration"]
 [tasks.dev]
 dependencies = ["test", "format"]
 
+[tasks.dev-db]
+script = '''
+sqlx database drop -y && sqlx database create && sqlx migrate run
+'''
+
 [tasks.clean-coverage]
 script = '''
 #rm -rf ./target/cover
