@@ -177,5 +177,24 @@ async fn integration_database() -> Result<()> {
     };
     assert!(is_unknown_namespace);
 
+    // Check we can get the published package / version
+    let package_record = Package::<Sqlite>::find_by_name_version(
+        &pool,
+        namespace_id,
+        mock_package,
+        &mock_version,
+    )
+    .await?;
+
+    assert!(package_record.is_some());
+    let package_record = package_record.unwrap();
+
+    assert!(package_record.publisher_id > 0);
+    assert!(package_record.package_id > 0);
+    assert!(package_record.version_id > 0);
+    assert_eq!(&package_record.version, &mock_version);
+    assert_eq!(&package_record.package, &mock_value);
+    assert_eq!(&package_record.content_id, &Some(cid));
+
     Ok(())
 }
