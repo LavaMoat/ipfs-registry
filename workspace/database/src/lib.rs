@@ -160,8 +160,8 @@ impl Package<Sqlite> {
             let mut conn = pool.acquire().await?;
             let id = sqlx::query!(
                 r#"
-                    INSERT INTO packages ( namespace_id, name )
-                    VALUES ( ?1, ?2 )
+                    INSERT INTO packages ( namespace_id, name, created_at )
+                    VALUES ( ?1, ?2, datetime('now') )
                 "#,
                 namespace_id,
                 name,
@@ -239,8 +239,8 @@ impl Package<Sqlite> {
         let mut conn = pool.acquire().await?;
         let id = sqlx::query!(
             r#"
-                INSERT INTO versions ( publisher_id, package_id, version, package, content_id )
-                VALUES ( ?1, ?2, ?3, ?4, ?5 )
+                INSERT INTO versions ( publisher_id, package_id, version, package, content_id, created_at )
+                VALUES ( ?1, ?2, ?3, ?4, ?5, datetime('now') )
             "#,
             publisher_record.publisher_id,
             package_record.package_id,
@@ -269,8 +269,8 @@ impl Publisher<Sqlite> {
 
         let id = sqlx::query!(
             r#"
-                INSERT INTO publishers ( address )
-                VALUES ( ?1 )
+                INSERT INTO publishers ( address, created_at )
+                VALUES ( ?1, datetime('now') )
             "#,
             addr,
         )
@@ -323,8 +323,8 @@ impl Namespace<Sqlite> {
 
         let id = sqlx::query!(
             r#"
-                INSERT INTO namespaces ( name, publisher_id )
-                VALUES ( ?1, ?2 )
+                INSERT INTO namespaces ( name, publisher_id, created_at )
+                VALUES ( ?1, ?2, datetime('now') )
             "#,
             name,
             publisher_id,

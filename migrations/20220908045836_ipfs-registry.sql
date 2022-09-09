@@ -1,8 +1,9 @@
 CREATE TABLE IF NOT EXISTS namespaces
 (
     namespace_id          INTEGER PRIMARY KEY NOT NULL,
-    name                  TEXT                NOT NULL UNIQUE,
     publisher_id          INTEGER             NOT NULL,
+    created_at            TEXT                NOT NULL,
+    name                  TEXT                NOT NULL UNIQUE,
 
     FOREIGN KEY (publisher_id) REFERENCES publishers (publisher_id)
 );
@@ -10,6 +11,7 @@ CREATE TABLE IF NOT EXISTS namespaces
 CREATE TABLE IF NOT EXISTS publishers
 (
     publisher_id          INTEGER PRIMARY KEY NOT NULL,
+    created_at            TEXT                NOT NULL,
     address               BLOB(20)            NOT NULL UNIQUE
 );
 
@@ -26,6 +28,7 @@ CREATE TABLE IF NOT EXISTS packages
 (
     package_id            INTEGER PRIMARY KEY NOT NULL,
     namespace_id          INTEGER             NOT NULL,
+    created_at            TEXT                NOT NULL,
     name                  TEXT                NOT NULL,
 
     FOREIGN KEY (namespace_id) REFERENCES namespaces (namespace_id)
@@ -36,6 +39,7 @@ CREATE TABLE IF NOT EXISTS versions
     version_id            INTEGER PRIMARY KEY NOT NULL,
     publisher_id          INTEGER             NOT NULL,
     package_id            INTEGER             NOT NULL,
+    created_at            TEXT                NOT NULL,
     -- Semver
     version               TEXT                NOT NULL UNIQUE,
     -- Package meta data JSON
