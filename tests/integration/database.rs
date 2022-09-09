@@ -28,7 +28,7 @@ async fn integration_database() -> Result<()> {
     let user_publisher_id =
         Publisher::<Sqlite>::add(&pool, &authorized_address).await?;
 
-    let unauthorized_publisher_id =
+    let _unauthorized_publisher_id =
         Publisher::<Sqlite>::add(&pool, &unauthorized_address).await?;
 
     let namespace = "mock-namespace";

@@ -36,7 +36,7 @@ impl NamespaceRecord {
         if &self.owner == address {
             true
         } else {
-            self.publishers.iter().find(|a| a == &address).is_some()
+            self.publishers.iter().any(|a| a == address)
         }
     }
 }
@@ -194,26 +194,29 @@ impl Package<Sqlite> {
         let publisher_record =
             Publisher::<Sqlite>::find_by_address(pool, publisher)
                 .await?
-                .ok_or(Error::UnknownPublisher(publisher.clone()))?;
+                .ok_or(Error::UnknownPublisher(*publisher))?;
 
         // Check the namespace exists
         let namespace_record =
             Namespace::<Sqlite>::find_by_name(pool, namespace)
                 .await?
-                .ok_or(Error::UnknownNamespace(namespace.to_string()))?;
+                .ok_or_else(|| {
+                    Error::UnknownNamespace(namespace.to_string())
+                })?;
 
         if !namespace_record.can_publish(publisher) {
-            return Err(Error::Unauthorized(publisher.clone()));
+            return Err(Error::Unauthorized(*publisher));
         }
 
         // Check the package / version does not already exist
-        if let Some(_) = Package::<Sqlite>::find_by_name_version(
+        if Package::<Sqlite>::find_by_name_version(
             pool,
             namespace_record.namespace_id,
             name,
             version,
         )
         .await?
+        .is_some()
         {
             return Err(Error::PackageExists(
                 namespace_record.name.clone(),
@@ -300,7 +303,7 @@ impl Publisher<Sqlite> {
 
         Ok(result.map(|r| PublisherRecord {
             publisher_id: r.publisher_id,
-            address: publisher.clone(),
+            address: *publisher,
         }))
     }
 }
