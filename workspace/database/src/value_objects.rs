@@ -1,9 +1,10 @@
+use serde::Serialize;
 use cid::Cid;
 use semver::Version;
 use serde_json::Value;
 use web3_address::ethereum::Address;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct PublisherRecord {
     /// Publisher primary key.
     pub publisher_id: i64,
@@ -13,7 +14,7 @@ pub struct PublisherRecord {
     pub created_at: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct NamespaceRecord {
     /// Namespace primary key.
     pub namespace_id: i64,
@@ -39,7 +40,7 @@ impl NamespaceRecord {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct PackageRecord {
     /// Namespace foreign key.
     pub namespace_id: i64,
@@ -49,7 +50,7 @@ pub struct PackageRecord {
     pub name: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct VersionRecord {
     /// Publisher foreign key.
     pub publisher_id: i64,

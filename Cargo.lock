@@ -1438,6 +1438,7 @@ version = "0.1.0"
 dependencies = [
  "cid",
  "semver",
+ "serde",
  "serde_json",
  "sqlx",
  "thiserror",
