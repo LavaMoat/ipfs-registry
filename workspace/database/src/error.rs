@@ -31,4 +31,10 @@ pub enum Error {
 
     #[error(transparent)]
     Cid(#[from] cid::Error),
+
+    #[error(transparent)]
+    FormatDescription(#[from] time::error::InvalidFormatDescription),
+
+    #[error(transparent)]
+    TimeParse(#[from] time::error::Parse),
 }

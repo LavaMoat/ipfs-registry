@@ -1,8 +1,18 @@
-use serde::Serialize;
 use cid::Cid;
 use semver::Version;
+use serde::Serialize;
 use serde_json::Value;
 use web3_address::ethereum::Address;
+use time::{PrimitiveDateTime, OffsetDateTime, format_description};
+
+use crate::Result;
+
+pub(crate) fn parse_date_time(date_time: &str) -> Result<OffsetDateTime> {
+    let format = format_description::parse(
+        "[year]-[month]-[day] [hour]:[minute]:[second]"
+    )?;
+    Ok(PrimitiveDateTime::parse(date_time, &format)?.assume_utc())
+}
 
 #[derive(Debug, Serialize)]
 pub struct PublisherRecord {
@@ -11,7 +21,7 @@ pub struct PublisherRecord {
     /// Address of the publisher.
     pub address: Address,
     /// Creation date and time.
-    pub created_at: String,
+    pub created_at: OffsetDateTime,
 }
 
 #[derive(Debug, Serialize)]
@@ -25,7 +35,7 @@ pub struct NamespaceRecord {
     /// Additional publishers.
     pub publishers: Vec<Address>,
     /// Creation date and time.
-    pub created_at: String,
+    pub created_at: OffsetDateTime,
 }
 
 impl NamespaceRecord {
@@ -48,6 +58,8 @@ pub struct PackageRecord {
     pub package_id: i64,
     /// Name of the package.
     pub name: String,
+    /// Creation date and time.
+    pub created_at: OffsetDateTime,
 }
 
 #[derive(Debug, Serialize)]
@@ -65,5 +77,5 @@ pub struct VersionRecord {
     /// Content identifier.
     pub content_id: Option<Cid>,
     /// Creation date and time.
-    pub created_at: String,
+    pub created_at: OffsetDateTime,
 }

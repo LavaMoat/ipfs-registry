@@ -11,3 +11,5 @@ semver = { version = "1", features = ["serde"] }
 serde_json = "1"
 cid = { version = "0.8", features = ["serde-codec"] }
 serde = { version = "1", features = ["derive"] }
+time = { version = "0.3.14", features = ["serde", "formatting", "parsing"] }
+

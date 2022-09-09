@@ -3,6 +3,7 @@ use semver::Version;
 use serde_json::Value;
 use sqlx::{Database, Sqlite, SqlitePool};
 use web3_address::ethereum::Address;
+use time::OffsetDateTime;
 
 use crate::{value_objects::*, Error, Result};
 
@@ -17,12 +18,12 @@ impl Package<Sqlite> {
         namespace_id: i64,
         name: &str,
     ) -> Result<Option<PackageRecord>> {
-        let result = sqlx::query_as!(
-            PackageRecord,
+        let record = sqlx::query!(
             r#"
                 SELECT
                     namespace_id,
                     package_id,
+                    created_at,
                     name
                 FROM packages
                 WHERE namespace_id = ? AND name = ?
@@ -32,7 +33,19 @@ impl Package<Sqlite> {
         )
         .fetch_optional(pool)
         .await?;
-        Ok(result)
+
+        let record = if let Some(record) = record {
+            let created_at = parse_date_time(&record.created_at)?;
+
+            Some(PackageRecord {
+                namespace_id: record.namespace_id,
+                package_id: record.package_id,
+                name: record.name,
+                created_at
+            })
+        } else { None };
+
+        Ok(record)
     }
 
     /// Find a package by name and version.
@@ -77,8 +90,8 @@ impl Package<Sqlite> {
                     None
                 };
 
-                // TODO: parse to time type
-                let created_at = record.created_at;
+                // Parse to time type
+                let created_at = parse_date_time(&record.created_at)?;
 
                 Ok(Some(VersionRecord {
                     publisher_id: record.publisher_id,
@@ -120,10 +133,13 @@ impl Package<Sqlite> {
             .execute(&mut conn)
             .await?
             .last_insert_rowid();
+
             Ok(PackageRecord {
                 namespace_id,
                 package_id: id,
                 name: name.to_owned(),
+                // WARN: may not exactly match the database value
+                created_at: OffsetDateTime::now_utc(),
             })
         }
     }
@@ -241,11 +257,10 @@ impl Publisher<Sqlite> {
     ) -> Result<Option<PublisherRecord>> {
         let addr = publisher.as_ref();
 
-        let result = sqlx::query!(
+        let record = sqlx::query!(
             r#"
                 SELECT
                     publisher_id,
-                    address,
                     created_at
                 FROM publishers
                 WHERE address = ?
@@ -255,11 +270,16 @@ impl Publisher<Sqlite> {
         .fetch_optional(pool)
         .await?;
 
-        Ok(result.map(|r| PublisherRecord {
-            publisher_id: r.publisher_id,
-            address: *publisher,
-            created_at: r.created_at,
-        }))
+        let record = if let Some(record) = record {
+            let created_at = parse_date_time(&record.created_at)?;
+            Some(PublisherRecord {
+                publisher_id: record.publisher_id,
+                address: *publisher,
+                created_at,
+            })
+        } else { None };
+
+        Ok(record)
     }
 }
 
@@ -366,8 +386,8 @@ impl Namespace<Sqlite> {
                 publishers.push(owner);
             }
 
-            // TODO: parse to time type
-            let created_at = result.created_at;
+            // Parse to time type
+            let created_at = parse_date_time(&result.created_at)?;
 
             Ok(Some(NamespaceRecord {
                 namespace_id: result.namespace_id,
