@@ -29,13 +29,13 @@ impl<T: Database> PublisherHandler<T> {
         let address = verify_signature(signature.into(), WELL_KNOWN_MESSAGE)
             .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-        let record = 
+        let record =
             Publisher::<Sqlite>::find_by_address(&state.pool, &address)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
         if record.is_some() {
-            return Err(StatusCode::CONFLICT)
+            return Err(StatusCode::CONFLICT);
         }
 
         Publisher::<Sqlite>::add(&state.pool, &address)

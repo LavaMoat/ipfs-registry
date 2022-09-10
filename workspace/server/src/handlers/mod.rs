@@ -1,6 +1,8 @@
+mod namespace;
 mod package;
 mod publisher;
 
+pub(crate) use namespace::NamespaceHandler;
 pub(crate) use package::PackageHandler;
 pub(crate) use publisher::PublisherHandler;
 

@@ -15,11 +15,15 @@ use serde::Serialize;
 use serde_json::json;
 use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
 
-use sqlx::{Any, AnyPool, Database, Pool, Sqlite, SqlitePool};
+use sqlx::{Any, Database, Pool, Sqlite, SqlitePool};
 
 use crate::{
-    config::ServerConfig, config::TlsConfig, handlers::{PackageHandler, PublisherHandler},
-    headers::X_SIGNATURE, layer::Layers, Result,
+    config::ServerConfig,
+    config::TlsConfig,
+    handlers::{NamespaceHandler, PackageHandler, PublisherHandler},
+    headers::X_SIGNATURE,
+    layer::Layers,
+    Result,
 };
 
 /// Type alias for the server state.
@@ -36,7 +40,7 @@ pub struct State<T: Database> {
     /// Connection pool.
     pub(crate) pool: Pool<Sqlite>,
 
-    // Keeping the generics so that later we 
+    // Keeping the generics so that later we
     // can use the Any support in sqlx
     marker: std::marker::PhantomData<T>,
 }
@@ -184,13 +188,15 @@ impl<T: Database + Send + Sync> Server<T> {
 
         let app = Router::new()
             .route("/api", get(ApiHandler::<Sqlite>::get))
+            .route("/api/publisher", post(PublisherHandler::<Sqlite>::post))
             .route(
-                "/api/publisher",
-                post(PublisherHandler::<Sqlite>::post),
+                "/api/namespace/:namespace",
+                post(NamespaceHandler::<Sqlite>::post),
             )
             .route(
                 "/api/package",
-                get(PackageHandler::<Sqlite>::get).put(PackageHandler::<Sqlite>::put),
+                get(PackageHandler::<Sqlite>::get)
+                    .put(PackageHandler::<Sqlite>::put),
             )
             //.route("/api/package", put(PackageHandler::put))
             .layer(RequestBodyLimitLayer::new(limit))
