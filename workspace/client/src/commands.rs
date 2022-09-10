@@ -7,7 +7,7 @@ use url::Url;
 use web3_address::ethereum::Address;
 use web3_keystore::encrypt;
 
-use ipfs_registry_core::{PackageKey, Receipt};
+use ipfs_registry_core::{Namespace, PackageKey, Receipt};
 use ipfs_registry_database::{NamespaceRecord, PublisherRecord};
 
 use crate::{helpers, input, Error, RegistryClient, Result};
@@ -15,12 +15,14 @@ use crate::{helpers, input, Error, RegistryClient, Result};
 /// Publish a package.
 pub async fn publish(
     server: Url,
+    namespace: Namespace,
     mime: Mime,
     key: PathBuf,
     file: PathBuf,
 ) -> Result<Receipt> {
     let signing_key = helpers::read_keystore_file(key)?;
-    RegistryClient::publish_file(server, mime, signing_key, file).await
+    RegistryClient::publish_file(server, namespace, mime, signing_key, file)
+        .await
 }
 
 /// Signup for publishing.

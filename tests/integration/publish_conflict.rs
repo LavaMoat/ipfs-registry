@@ -6,6 +6,7 @@ use crate::test_utils::*;
 use semver::Version;
 
 use ipfs_registry_client::RegistryClient;
+use ipfs_registry_core::Namespace;
 
 use k256::ecdsa::SigningKey;
 
@@ -22,8 +23,11 @@ async fn integration_publish_conflict() -> Result<()> {
     let mime: mime::Mime = "application/gzip".parse()?;
     let signing_key = SigningKey::random(&mut rand::thread_rng());
 
+    let namespace = Namespace::new_unchecked("mock-namespace");
+
     let receipt = RegistryClient::publish_file(
         server_url.clone(),
+        namespace.clone(),
         mime.clone(),
         signing_key.clone(),
         file.clone(),
@@ -33,9 +37,14 @@ async fn integration_publish_conflict() -> Result<()> {
     assert_eq!("mock-package", receipt.artifact.package.name);
     assert_eq!(Version::new(1, 0, 0), receipt.artifact.package.version);
 
-    let result =
-        RegistryClient::publish_file(server_url, mime, signing_key, file)
-            .await;
+    let result = RegistryClient::publish_file(
+        server_url,
+        namespace,
+        mime,
+        signing_key,
+        file,
+    )
+    .await;
 
     assert!(result.is_err());
 

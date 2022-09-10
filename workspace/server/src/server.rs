@@ -7,7 +7,7 @@ use axum::{
         HeaderValue, Method,
     },
     response::IntoResponse,
-    routing::{get, post},
+    routing::{get, post, put},
     Json, Router,
 };
 use axum_server::{tls_rustls::RustlsConfig, Handle};
@@ -60,6 +60,7 @@ impl State<Any> {
 
         //let pool = AnyPool::connect(&url).await?;
         let pool = SqlitePool::connect(&url).await?;
+
         Ok(State::<Sqlite> {
             config,
             info,
@@ -193,10 +194,10 @@ impl<T: Database + Send + Sync> Server<T> {
                 "/api/namespace/:namespace",
                 post(NamespaceHandler::<Sqlite>::post),
             )
+            .route("/api/package", get(PackageHandler::<Sqlite>::get))
             .route(
-                "/api/package",
-                get(PackageHandler::<Sqlite>::get)
-                    .put(PackageHandler::<Sqlite>::put),
+                "/api/package/:namespace",
+                put(PackageHandler::<Sqlite>::put),
             )
             //.route("/api/package", put(PackageHandler::put))
             .layer(RequestBodyLimitLayer::new(limit))

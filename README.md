@@ -52,7 +52,7 @@ ipkg register -k ./sandbox/<addr>.json mock-namespace
 Publish a package:
 
 ```
-ipkg publish -k ./sandbox/<addr>.json fixtures/mock-package-1.0.0.tgz
+ipkg publish -k ./sandbox/<addr>.json -n mock-namespace fixtures/mock-package-1.0.0.tgz
 ```
 
 Download the package to a file:

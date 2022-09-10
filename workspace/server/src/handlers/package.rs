@@ -1,6 +1,6 @@
 use axum::{
     body::Bytes,
-    extract::{Extension, Query, TypedHeader},
+    extract::{Extension, Path, Query, TypedHeader},
     headers::ContentType,
     http::{HeaderMap, StatusCode},
     Json,
@@ -125,6 +125,7 @@ impl<T: Database> PackageHandler<T> {
         Extension(state): Extension<ServerState<T>>,
         TypedHeader(mime): TypedHeader<ContentType>,
         TypedHeader(signature): TypedHeader<Signature>,
+        Path(namespace): Path<Namespace>,
         body: Bytes,
     ) -> std::result::Result<Json<Receipt>, StatusCode> {
         let encoded_signature = base64::encode(signature.as_ref());

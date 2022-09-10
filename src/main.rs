@@ -6,7 +6,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use url::Url;
 
 use ipfs_registry::Result;
-use ipfs_registry_core::PackageKey;
+use ipfs_registry_core::{Namespace, PackageKey};
 
 /// Signed package registry server.
 #[derive(Parser, Debug)]
@@ -52,6 +52,10 @@ enum Command {
         /// Server URL.
         #[clap(short, long, default_value = "http://127.0.0.1:9060")]
         server: Url,
+
+        /// Namespace for packages.
+        #[clap(short, long)]
+        namespace: Namespace,
 
         /// Media type for the file.
         #[clap(short, long, default_value = "application/gzip")]
@@ -113,12 +117,15 @@ async fn run() -> Result<()> {
         }
         Command::Publish {
             server,
+            namespace,
             mime,
             key,
             file,
         } => {
-            let doc = ipfs_registry_client::publish(server, mime, key, file)
-                .await?;
+            let doc = ipfs_registry_client::publish(
+                server, namespace, mime, key, file,
+            )
+            .await?;
             serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
         }
         Command::Fetch { server, id, file } => {

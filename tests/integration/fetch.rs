@@ -5,6 +5,7 @@ use serial_test::serial;
 use std::path::PathBuf;
 
 use ipfs_registry_client::RegistryClient;
+use ipfs_registry_core::Namespace;
 use ipfs_registry_core::PackageKey;
 use tempfile::NamedTempFile;
 
@@ -23,8 +24,11 @@ async fn integration_fetch_ok() -> Result<()> {
     let mime: mime::Mime = "application/gzip".parse()?;
     let signing_key = SigningKey::random(&mut rand::thread_rng());
 
+    let namespace = Namespace::new_unchecked("mock-namespace");
+
     let receipt = RegistryClient::publish_file(
         server_url.clone(),
+        namespace,
         mime,
         signing_key,
         file,

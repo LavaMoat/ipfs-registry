@@ -17,7 +17,6 @@ use ipfs_registry_database::{
 #[serial]
 async fn integration_database() -> Result<()> {
     let url = "sqlite::memory:";
-
     let pool = SqlitePool::connect(url).await?;
     sqlx::migrate!().run(&pool).await?;
 

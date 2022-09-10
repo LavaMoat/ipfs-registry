@@ -8,7 +8,7 @@ use tokio::io::AsyncWriteExt;
 use url::Url;
 
 use ipfs_registry_core::{
-    PackageKey, Receipt, WELL_KNOWN_MESSAGE, X_SIGNATURE,
+    Namespace, PackageKey, Receipt, WELL_KNOWN_MESSAGE, X_SIGNATURE,
 };
 
 use ipfs_registry_database::{NamespaceRecord, PublisherRecord};
@@ -112,6 +112,7 @@ impl RegistryClient {
     /// Publish a package file with the given signing key.
     pub async fn publish_file(
         server: Url,
+        namespace: Namespace,
         mime: Mime,
         signing_key: SigningKey,
         file: PathBuf,
@@ -125,7 +126,7 @@ impl RegistryClient {
         let sign_bytes = &signature;
 
         let client = Client::new();
-        let url = server.join("api/package")?;
+        let url = server.join(&format!("api/package/{}", namespace))?;
 
         let response = client
             .put(url)
