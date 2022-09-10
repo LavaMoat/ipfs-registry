@@ -18,10 +18,7 @@ pub struct RegistryClient;
 
 impl RegistryClient {
     /// Create a publisher address.
-    pub async fn create_publisher(
-        server: Url,
-        signing_key: SigningKey,
-    ) -> Result<()> {
+    pub async fn signup(server: Url, signing_key: SigningKey) -> Result<()> {
         let signature: recoverable::Signature =
             signing_key.sign(WELL_KNOWN_MESSAGE);
         let sign_bytes = &signature;
@@ -29,8 +26,36 @@ impl RegistryClient {
         let client = Client::new();
         let url = server.join("api/publisher")?;
 
-        println!("Client posting to {}", url);
-        println!("Client posting to {:#?}", sign_bytes);
+        let response = client
+            .post(url)
+            .header(X_SIGNATURE, base64::encode(sign_bytes))
+            .send()
+            .await?;
+
+        response
+            .status()
+            .is_success()
+            .then_some(())
+            .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
+
+        Ok(())
+    }
+
+    /// Register a namespace.
+    pub async fn register(
+        server: Url,
+        signing_key: SigningKey,
+        namespace: String,
+    ) -> Result<()> {
+        let signature: recoverable::Signature =
+            signing_key.sign(namespace.as_bytes());
+        let sign_bytes = &signature;
+
+        let client = Client::new();
+        let url = server.join(&format!("api/namespace/{}", namespace))?;
+
+        println!("Register posting to {}", url);
+        println!("Register posting to {:#?}", sign_bytes);
 
         let response = client
             .post(url)

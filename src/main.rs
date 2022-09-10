@@ -34,6 +34,19 @@ enum Command {
         #[clap(short, long, parse(from_os_str))]
         key: PathBuf,
     },
+    /// Register a namespace.
+    Register {
+        /// Server URL.
+        #[clap(short, long, default_value = "http://127.0.0.1:9060")]
+        server: Url,
+
+        /// Keystore for the signing key.
+        #[clap(short, long, parse(from_os_str))]
+        key: PathBuf,
+
+        /// Namespace to register.
+        namespace: String,
+    },
     /// Publish a package.
     Publish {
         /// Server URL.
@@ -87,6 +100,9 @@ async fn run() -> Result<()> {
         }
         Command::Signup { server, key } => {
             ipfs_registry_client::signup(server, key).await?;
+        }
+        Command::Register { server, key, namespace } => {
+            ipfs_registry_client::register(server, key, namespace).await?;
         }
         Command::Publish {
             server,

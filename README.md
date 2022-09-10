@@ -43,6 +43,12 @@ ipkg signup -k ./sandbox/<addr>.json
 
 Replace `<addr>` with the address of the public key and enter the password for the keystore when prompted.
 
+Register a namespace for published packages:
+
+```
+ipkg register -k ./sandbox/<addr>.json mock-namespace
+```
+
 Publish a package:
 
 ```
