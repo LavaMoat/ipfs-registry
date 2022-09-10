@@ -15,7 +15,7 @@ use rusoto_s3::{
 
 use ipfs_registry_core::{Artifact, ObjectKey, Pointer};
 
-use super::{get_blob_key, get_pointer_key, Layer};
+use super::{get_blob_key, Layer};
 use crate::{Error, Result};
 
 /// Layer for S3 backed storage.
@@ -129,19 +129,5 @@ impl Layer for S3Layer {
         } else {
             Err(Error::BadObjectKey)
         }
-    }
-
-    async fn get_pointer(
-        &self,
-        artifact: &Artifact,
-    ) -> Result<Option<Pointer>> {
-        let key = get_pointer_key(artifact);
-        let result = if let Some(res) = self.get_object(key).await? {
-            let doc: Pointer = serde_json::from_slice(&res)?;
-            Some(doc)
-        } else {
-            None
-        };
-        Ok(result)
     }
 }

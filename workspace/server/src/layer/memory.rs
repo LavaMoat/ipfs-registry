@@ -7,7 +7,7 @@ use tokio::sync::RwLock;
 
 use ipfs_registry_core::{Artifact, ObjectKey, Pointer};
 
-use super::{get_blob_key, get_pointer_key, Layer};
+use super::{get_blob_key, Layer};
 use crate::{Error, Result};
 
 pub struct MemoryLayer {
@@ -45,20 +45,5 @@ impl Layer for MemoryLayer {
         } else {
             Err(Error::BadObjectKey)
         }
-    }
-
-    async fn get_pointer(
-        &self,
-        artifact: &Artifact,
-    ) -> Result<Option<Pointer>> {
-        let key = get_pointer_key(artifact);
-        let reader = self.files.read().await;
-        let result = if let Some(res) = reader.get(&key) {
-            let doc: Pointer = serde_json::from_slice(res)?;
-            Some(doc)
-        } else {
-            None
-        };
-        Ok(result)
     }
 }

@@ -14,7 +14,6 @@ pub(crate) mod memory;
 pub(crate) mod s3;
 
 pub(crate) const ROOT: &str = "ipkg-registry";
-pub(crate) const NAME: &str = "pointer.json";
 pub(crate) const BLOB: &str = "package.tgz";
 
 /// Convert a configuration into a layer implementation.
@@ -89,13 +88,6 @@ impl Layer for Layers {
     async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>> {
         self.primary().get_blob(id).await
     }
-
-    async fn get_pointer(
-        &self,
-        descriptor: &Artifact,
-    ) -> Result<Option<Pointer>> {
-        self.primary().get_pointer(descriptor).await
-    }
 }
 
 /// Get the key for a blob in non-content addressed storage layers.
@@ -111,19 +103,6 @@ pub(crate) fn get_blob_key(artifact: &Artifact) -> String {
     )
 }
 
-/// Get the key for a pointer in non-content addressed storage layers.
-pub(crate) fn get_pointer_key(artifact: &Artifact) -> String {
-    format!(
-        "{}/{}/{}/{}/{}/{}",
-        ROOT,
-        &artifact.kind,
-        &artifact.namespace,
-        &artifact.package.name,
-        &artifact.package.version,
-        NAME
-    )
-}
-
 /// Trait for a storage layer.
 #[async_trait]
 pub trait Layer {
@@ -136,10 +115,4 @@ pub trait Layer {
 
     /// Get a blob from storage by identifier.
     async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>>;
-
-    /// Get a pointer from the storage.
-    async fn get_pointer(
-        &self,
-        artifact: &Artifact,
-    ) -> Result<Option<Pointer>>;
 }

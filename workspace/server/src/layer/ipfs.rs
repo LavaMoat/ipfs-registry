@@ -67,34 +67,4 @@ impl Layer for IpfsLayer {
             .await?;
         Ok(res)
     }
-
-    async fn get_pointer(
-        &self,
-        descriptor: &Artifact,
-    ) -> Result<Option<Pointer>> {
-        let path = format!(
-            "/{}/{}/{}/{}/{}/{}",
-            ROOT,
-            &descriptor.kind,
-            &descriptor.namespace,
-            &descriptor.package.name,
-            &descriptor.package.version,
-            NAME
-        );
-
-        let result = if let Ok(res) = self
-            .client
-            .files_read(&path)
-            .map_ok(|chunk| chunk.to_vec())
-            .try_concat()
-            .await
-        {
-            let doc: Pointer = serde_json::from_slice(&res)?;
-            Some(doc)
-        } else {
-            None
-        };
-
-        Ok(result)
-    }
 }

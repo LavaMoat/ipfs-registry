@@ -80,15 +80,6 @@ impl<T: Database> PackageHandler<T> {
                     package: PackageMeta { name, version },
                 };
 
-                // Get the package pointer
-                let pointer = state
-                    .layers
-                    .get_pointer(&descriptor)
-                    .await
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-                tracing::debug!(pointer = ?pointer);
-
                 if let Some(doc) = pointer {
                     let body = state
                         .layers
