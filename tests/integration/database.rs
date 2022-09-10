@@ -66,9 +66,15 @@ async fn integration_database() -> Result<()> {
             .try_into()?;
     let mock_content_id = Some(&cid);
 
+    // Verify for publishing
+    let (publisher_record, namespace_record) =
+        PackageModel::verify_publish(&pool, &address, &namespace).await?;
+
     // Publish as the namespace owner
     let result = PackageModel::insert(
         &pool,
+        &publisher_record,
+        &namespace_record,
         &address,
         &namespace,
         mock_package,
@@ -82,6 +88,8 @@ async fn integration_database() -> Result<()> {
     // Publish as an authorized publisher
     let result = PackageModel::insert(
         &pool,
+        &publisher_record,
+        &namespace_record,
         &authorized_address,
         &namespace,
         mock_package,
@@ -93,14 +101,11 @@ async fn integration_database() -> Result<()> {
     assert!(result > 0);
 
     // Attempt to publish an existing version - `Err`
-    let result = PackageModel::insert(
+    let result = PackageModel::assert_publish_safe(
         &pool,
-        &address,
-        &namespace,
+        &namespace_record,
         mock_package,
         &mock_version,
-        &mock_value,
-        mock_content_id,
     )
     .await;
     assert!(result.is_err());
@@ -114,16 +119,9 @@ async fn integration_database() -> Result<()> {
     assert!(is_package_exists);
 
     // Publish using an address that is not registered - `Err`
-    let result = PackageModel::insert(
-        &pool,
-        &unknown_address,
-        &namespace,
-        mock_package,
-        &mock_version,
-        &mock_value,
-        mock_content_id,
-    )
-    .await;
+    let result =
+        PackageModel::verify_publish(&pool, &unknown_address, &namespace)
+            .await;
     assert!(result.is_err());
 
     let is_unknown_publisher = if let Err(Error::UnknownPublisher(_)) = result
@@ -135,14 +133,10 @@ async fn integration_database() -> Result<()> {
     assert!(is_unknown_publisher);
 
     // Publish using an address that is not authorized - `Err`
-    let result = PackageModel::insert(
+    let result = PackageModel::verify_publish(
         &pool,
         &unauthorized_address,
         &namespace,
-        mock_package,
-        &mock_version,
-        &mock_value,
-        mock_content_id,
     )
     .await;
     assert!(result.is_err());
@@ -155,14 +149,10 @@ async fn integration_database() -> Result<()> {
     assert!(is_unauthorized);
 
     // Publish using a namespace that does not exist - `Err`
-    let result = PackageModel::insert(
+    let result = PackageModel::verify_publish(
         &pool,
         &address,
         &Namespace::new_unchecked("unknown-namespace"),
-        mock_package,
-        &mock_version,
-        &mock_value,
-        mock_content_id,
     )
     .await;
     assert!(result.is_err());

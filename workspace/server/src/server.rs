@@ -13,7 +13,9 @@ use axum::{
 use axum_server::{tls_rustls::RustlsConfig, Handle};
 use serde::Serialize;
 use serde_json::json;
-use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
+use tower_http::{
+    cors::CorsLayer, limit::RequestBodyLimitLayer, trace::TraceLayer,
+};
 
 use sqlx::{Any, Database, Pool, Sqlite, SqlitePool};
 
@@ -202,6 +204,7 @@ impl<T: Database + Send + Sync> Server<T> {
             //.route("/api/package", put(PackageHandler::put))
             .layer(RequestBodyLimitLayer::new(limit))
             .layer(cors)
+            .layer(TraceLayer::new_for_http())
             .layer(Extension(state));
 
         Ok(app)

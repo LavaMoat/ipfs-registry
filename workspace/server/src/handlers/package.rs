@@ -18,6 +18,8 @@ use ipfs_registry_core::{
     PackageReader, PackageSignature, Pointer, Receipt,
 };
 
+use ipfs_registry_database::{Error as DatabaseError, PackageModel};
+
 use crate::{
     handlers::verify_signature, headers::Signature, layer::Layer,
     server::ServerState,
@@ -148,97 +150,133 @@ impl<T: Database> PackageHandler<T> {
             }
         }
 
-        let mime_type = state.config.registry.mime.clone();
-        let kind = state.config.registry.kind;
-
-        tracing::debug!(mime = ?mime_type);
-
-        // TODO: ensure approval signatures
-
-        // Check MIME type is correct
-        let gzip: mime::Mime = mime_type
-            .parse()
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-        let gzip_ct = ContentType::from(gzip);
-        if mime != gzip_ct {
-            return Err(StatusCode::BAD_REQUEST);
-        }
-
-        let (package, package_meta) = PackageReader::read(kind, &body)
-            .map_err(|_| StatusCode::BAD_REQUEST)?;
-
-        let namespace: Namespace = address
-            .to_string()
-            .parse()
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-        let descriptor = Artifact {
-            kind,
-            namespace,
-            package,
-        };
-
-        let artifact = descriptor.clone();
-
-        // Check the package version does not already exist
-        let meta = state
-            .layers
-            .get_pointer(&descriptor)
+        // Check the publisher and namespace exist and this address
+        // is allowed to publish to the target namespace
+        match PackageModel::verify_publish(&state.pool, &address, &namespace)
             .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-        if meta.is_some() {
-            return Err(StatusCode::CONFLICT);
-        }
+        {
+            Ok((publisher_record, namespace_record)) => {
+                let mime_type = state.config.registry.mime.clone();
+                let kind = state.config.registry.kind;
 
-        let checksum = Sha3_256::digest(&body);
+                tracing::debug!(mime = ?mime_type);
 
-        let mut objects = state
-            .layers
-            .add_blob(body, &descriptor)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+                // TODO: ensure approval signatures
 
-        tracing::debug!(id = ?objects, "added package");
+                // Check MIME type is correct
+                let gzip: mime::Mime = mime_type
+                    .parse()
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+                let gzip_ct = ContentType::from(gzip);
+                if mime != gzip_ct {
+                    return Err(StatusCode::BAD_REQUEST);
+                }
 
-        // Direct key for the publish receipt
-        let key = objects.iter().find_map(|o| {
-            if let ObjectKey::Cid(value) = o {
-                Some(PackageKey::Cid(value.clone()))
-            } else {
-                None
+                let (package, package_meta) =
+                    PackageReader::read(kind, &body)
+                        .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+                // Check the package does not already exist
+                match PackageModel::assert_publish_safe(
+                    &state.pool,
+                    &namespace_record,
+                    &package.name,
+                    &package.version,
+                )
+                .await
+                {
+                    Ok(_) => {
+                        let descriptor = Artifact {
+                            kind,
+                            namespace,
+                            package,
+                        };
+
+                        let artifact = descriptor.clone();
+
+                        let checksum = Sha3_256::digest(&body);
+
+                        let mut objects = state
+                            .layers
+                            .add_blob(body, &descriptor)
+                            .await
+                            .map_err(|e| {
+                                tracing::error!("{}", e);
+                                StatusCode::INTERNAL_SERVER_ERROR
+                            })?;
+
+                        tracing::debug!(id = ?objects, "added package");
+
+                        // Direct key for the publish receipt
+                        let key = objects.iter().find_map(|o| {
+                            if let ObjectKey::Cid(value) = o {
+                                Some(PackageKey::Cid(value.clone()))
+                            } else {
+                                None
+                            }
+                        });
+
+                        let object = objects.remove(0);
+
+                        let doc = Pointer {
+                            definition: Definition {
+                                artifact: descriptor,
+                                object,
+                                signature: PackageSignature {
+                                    signer: address,
+                                    value: encoded_signature,
+                                },
+                                checksum: checksum.to_vec(),
+                            },
+                            package: package_meta,
+                        };
+
+                        // Store the package pointer document
+                        state
+                            .layers
+                            .add_pointer(doc)
+                            .await
+                            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+                        PackageModel::insert(
+                            &state.pool,
+                            &publisher_record,
+                            &namespace_record,
+                            &address,
+                            &artifact.namespace,
+                            &artifact.package.name,
+                            &artifact.package.version,
+                            // TODO
+                            &serde_json::Value::Null,
+                            // TODO
+                            None,
+                        )
+                        .await
+                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+                        let id = PackageKey::Pointer(
+                            artifact.namespace.clone(),
+                            artifact.package.name.clone(),
+                            artifact.package.version.clone(),
+                        );
+
+                        let receipt = Receipt { id, artifact, key };
+                        Ok(Json(receipt))
+                    }
+                    Err(e) => Err(match e {
+                        DatabaseError::PackageExists(_, _, _) => {
+                            StatusCode::CONFLICT
+                        }
+                        _ => StatusCode::INTERNAL_SERVER_ERROR,
+                    }),
+                }
             }
-        });
-
-        let object = objects.remove(0);
-
-        let doc = Pointer {
-            definition: Definition {
-                artifact: descriptor,
-                object,
-                signature: PackageSignature {
-                    signer: address,
-                    value: encoded_signature,
-                },
-                checksum: checksum.to_vec(),
-            },
-            package: package_meta,
-        };
-
-        // Store the package pointer document
-        state
-            .layers
-            .add_pointer(doc)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-        let id = PackageKey::Pointer(
-            artifact.namespace.clone(),
-            artifact.package.name.clone(),
-            artifact.package.version.clone(),
-        );
-
-        let receipt = Receipt { id, artifact, key };
-
-        Ok(Json(receipt))
+            Err(e) => Err(match e {
+                DatabaseError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+                DatabaseError::UnknownPublisher(_)
+                | DatabaseError::UnknownNamespace(_) => StatusCode::NOT_FOUND,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            }),
+        }
     }
 }

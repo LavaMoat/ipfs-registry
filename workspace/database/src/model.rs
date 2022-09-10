@@ -151,28 +151,16 @@ impl PackageModel {
     /// and version return `None`.
     pub async fn insert(
         pool: &SqlitePool,
-        publisher: &Address,
-        namespace: &Namespace,
+        publisher_record: &PublisherRecord,
+        namespace_record: &NamespaceRecord,
+        _publisher: &Address,
+        _namespace: &Namespace,
         name: &str,
         version: &Version,
         package: &Value,
         content_id: Option<&Cid>,
     ) -> Result<i64> {
-        // Check the publisher exists
-        let publisher_record =
-            PublisherModel::find_by_address(pool, publisher)
-                .await?
-                .ok_or(Error::UnknownPublisher(*publisher))?;
-
-        // Check the namespace exists
-        let namespace_record = NamespaceModel::find_by_name(pool, namespace)
-            .await?
-            .ok_or_else(|| Error::UnknownNamespace(namespace.to_string()))?;
-
-        if !namespace_record.can_publish(publisher) {
-            return Err(Error::Unauthorized(*publisher));
-        }
-
+        /*
         // Check the package / version does not already exist
         if PackageModel::find_by_name_version(
             pool,
@@ -189,6 +177,7 @@ impl PackageModel {
                 version.clone(),
             ));
         }
+        */
 
         // Find or insert the package
         let package = serde_json::to_string(package)?;
@@ -220,6 +209,57 @@ impl PackageModel {
         .last_insert_rowid();
 
         Ok(id)
+    }
+
+    /// Assert publishing is ok by checking a package
+    /// with the given name and version does not already exist.
+    pub async fn assert_publish_safe(
+        pool: &SqlitePool,
+        namespace_record: &NamespaceRecord,
+        name: &str,
+        version: &Version,
+    ) -> Result<()> {
+        // Check the package / version does not already exist
+        if PackageModel::find_by_name_version(
+            pool,
+            namespace_record.namespace_id,
+            name,
+            version,
+        )
+        .await?
+        .is_some()
+        {
+            return Err(Error::PackageExists(
+                namespace_record.name.clone(),
+                name.to_owned(),
+                version.clone(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// Verify the publisher and namespace before publishing.
+    pub async fn verify_publish(
+        pool: &SqlitePool,
+        publisher: &Address,
+        namespace: &Namespace,
+    ) -> Result<(PublisherRecord, NamespaceRecord)> {
+        // Check the publisher exists
+        let publisher_record =
+            PublisherModel::find_by_address(pool, publisher)
+                .await?
+                .ok_or(Error::UnknownPublisher(*publisher))?;
+
+        // Check the namespace exists
+        let namespace_record = NamespaceModel::find_by_name(pool, namespace)
+            .await?
+            .ok_or_else(|| Error::UnknownNamespace(namespace.to_string()))?;
+
+        if !namespace_record.can_publish(publisher) {
+            return Err(Error::Unauthorized(*publisher));
+        }
+
+        Ok((publisher_record, namespace_record))
     }
 }
 

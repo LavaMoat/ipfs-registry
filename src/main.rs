@@ -145,7 +145,8 @@ async fn run() -> Result<()> {
 async fn main() -> Result<()> {
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "info".into()),
+            std::env::var("RUST_LOG")
+                .unwrap_or_else(|_| "info,sqlx::query=warn".into()),
         ))
         .with(tracing_subscriber::fmt::layer())
         .init();
