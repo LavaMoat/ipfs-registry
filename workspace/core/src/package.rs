@@ -181,6 +181,17 @@ pub enum ObjectKey {
     Key(String),
 }
 
+impl FromStr for ObjectKey {
+    type Err = Error;
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let result: Result<Cid> = s.try_into().map_err(Error::from);
+        match result {
+            Ok(cid) => Ok(ObjectKey::Cid(cid)),
+            Err(e) => Ok(ObjectKey::Key(s.to_owned())),
+        }
+    }
+}
+
 impl fmt::Display for ObjectKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

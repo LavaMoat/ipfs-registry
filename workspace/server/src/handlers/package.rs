@@ -43,6 +43,30 @@ impl<T: Database> PackageHandler<T> {
         let mime_type = state.config.registry.mime.clone();
         let kind = state.config.registry.kind;
 
+        match PackageModel::find_by_key(&state.pool, &query.id).await {
+            Ok(version) => {
+                let version_record = version.ok_or(StatusCode::NOT_FOUND)?;
+
+                // FIXME: restore signature verification
+                // FIXME: restore checksum verification
+
+                let body = state
+                    .layers
+                    .get_blob(&version_record.content_id)
+                    .await
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+                let mut headers = HeaderMap::new();
+                headers.insert("content-type", mime_type.parse().unwrap());
+                Ok((headers, Bytes::from(body)))
+            }
+            Err(e) => Err(match e {
+                DatabaseError::UnknownNamespace(_) => StatusCode::NOT_FOUND,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            }),
+        }
+
+        /*
         match query.id {
             PackageKey::Pointer(namespace, name, version) => {
                 tracing::debug!(
@@ -115,6 +139,7 @@ impl<T: Database> PackageHandler<T> {
                 Ok((headers, Bytes::from(body)))
             }
         }
+        */
     }
 
     /// Create a new package.

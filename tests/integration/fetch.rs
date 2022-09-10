@@ -13,7 +13,7 @@ use crate::test_utils::*;
 
 #[tokio::test]
 #[serial]
-async fn integration_fetch_ok() -> Result<()> {
+async fn integration_fetch_pointer() -> Result<()> {
     // Spawn the server
     let (rx, _handle) = spawn(default_server_config())?;
     let _ = rx.await?;

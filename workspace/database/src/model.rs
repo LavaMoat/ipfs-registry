@@ -17,7 +17,17 @@ impl PackageModel {
     ) -> Result<Option<VersionRecord>> {
         match package_key {
             PackageKey::Pointer(namespace, name, version) => {
-                todo!()
+                let namespace_record =
+                    NamespaceModel::find_by_name(pool, namespace)
+                        .await?
+                        .ok_or(Error::UnknownNamespace(namespace.clone()))?;
+                PackageModel::find_by_name_version(
+                    pool,
+                    namespace_record.namespace_id,
+                    name,
+                    version,
+                )
+                .await
             }
             PackageKey::Cid(cid) => {
                 let content_id = cid.to_string();
@@ -179,12 +189,14 @@ impl PackageModel {
         )
         .await?;
 
-        let content_id =
-            if let ObjectKey::Cid(cid) = &pointer.definition.object {
-                Some(cid.to_string())
-            } else {
-                None
-            };
+        let content_id = pointer.definition.object.to_string();
+
+        //let content_id =
+        //if let ObjectKey::Cid(cid) = &pointer.definition.object {
+        //Some(cid.to_string())
+        //} else {
+        //None
+        //};
 
         // Insert the package version
         let mut conn = pool.acquire().await?;
@@ -248,7 +260,7 @@ impl PackageModel {
         // Check the namespace exists
         let namespace_record = NamespaceModel::find_by_name(pool, namespace)
             .await?
-            .ok_or_else(|| Error::UnknownNamespace(namespace.to_string()))?;
+            .ok_or_else(|| Error::UnknownNamespace(namespace.clone()))?;
 
         if !namespace_record.can_publish(publisher) {
             return Err(Error::Unauthorized(*publisher));

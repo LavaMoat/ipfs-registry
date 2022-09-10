@@ -169,7 +169,6 @@ async fn integration_database() -> Result<()> {
     assert!(package_record.version_id > 0);
     assert_eq!(&package_record.version, &mock_version);
     assert_eq!(&package_record.package, &pointer.package);
-    assert!(package_record.content_id.is_some());
 
     Ok(())
 }

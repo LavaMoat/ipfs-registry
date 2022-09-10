@@ -44,8 +44,8 @@ CREATE TABLE IF NOT EXISTS versions
     version               TEXT                NOT NULL UNIQUE,
     -- Package meta data JSON
     package               TEXT                NOT NULL,
-    -- IPFS content identifier
-    content_id            TEXT,
+    -- IPFS content identifier or key path
+    content_id            TEXT                NOT NULL,
 
     FOREIGN KEY (publisher_id) REFERENCES publishers (publisher_id),
     FOREIGN KEY (package_id) REFERENCES packages (package_id)

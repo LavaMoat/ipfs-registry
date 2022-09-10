@@ -1,7 +1,7 @@
+use ipfs_registry_core::Namespace;
 use semver::Version;
 use thiserror::Error;
 use web3_address::ethereum::Address;
-use ipfs_registry_core::Namespace;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -15,7 +15,7 @@ pub enum Error {
     UnknownPublisher(Address),
 
     #[error("unknown namespace {0}")]
-    UnknownNamespace(String),
+    UnknownNamespace(Namespace),
 
     #[error("failed to fetch record {0} after insert")]
     InsertFetch(i64),

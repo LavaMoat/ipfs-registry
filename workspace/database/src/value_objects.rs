@@ -5,8 +5,8 @@ use serde_json::Value;
 use time::{format_description, OffsetDateTime, PrimitiveDateTime};
 use web3_address::ethereum::Address;
 
+use ipfs_registry_core::{Namespace, ObjectKey};
 use sqlx::{sqlite::SqliteRow, FromRow, Row};
-use ipfs_registry_core::Namespace;
 
 use crate::{Error, Result};
 
@@ -176,7 +176,7 @@ pub(crate) struct VersionRow {
     /// Package meta data.
     pub package: String,
     /// Content identifier.
-    pub content_id: Option<String>,
+    pub content_id: String,
     /// Creation date and time.
     pub created_at: String,
 }
@@ -189,13 +189,7 @@ impl TryFrom<VersionRow> for VersionRecord {
     ) -> std::result::Result<VersionRecord, Self::Error> {
         let version: Version = Version::parse(&row.version)?;
         let package: Value = serde_json::from_str(&row.package)?;
-
-        let content_id = if let Some(cid) = row.content_id {
-            let cid: Cid = cid.try_into()?;
-            Some(cid)
-        } else {
-            None
-        };
+        let content_id = row.content_id.parse()?;
 
         // Parse to time type
         let created_at = parse_date_time(&row.created_at)?;
@@ -228,7 +222,7 @@ pub struct VersionRecord {
     /// Package meta data.
     pub package: Value,
     /// Content identifier.
-    pub content_id: Option<Cid>,
+    pub content_id: ObjectKey,
     /// Creation date and time.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
