@@ -37,13 +37,51 @@ impl fmt::Display for RegistryKind {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct Namespace(String);
+
+impl Namespace {
+    /// Create a new namespace with checking the source is valid.
+    pub fn new_unchecked(s: &str) -> Self {
+        Self(s.to_owned())
+    }
+
+    /// Get a reference to the underlying string.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Get a reference to the underlying bytes.
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+}
+
+impl fmt::Display for Namespace {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl FromStr for Namespace {
+    type Err = Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        if s.find('/').or(s.find(' ')).is_some() {
+            Err(Error::InvalidNamespace(s.to_owned()))
+        } else {
+            Ok(Namespace(s.to_owned()))
+        }
+    }
+}
+
 /// Reference to a package artifact.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PackageKey {
     /// Direct artifact reference using an IPFS content identifier.
     Cid(Cid),
     /// Pointer reference by namespace, package name and version.
-    Pointer(String, String, Version),
+    Pointer(Namespace, String, Version),
 }
 
 impl fmt::Display for PackageKey {
@@ -81,12 +119,12 @@ impl FromStr for PackageKey {
                 return Err(Error::InvalidPath(s.to_owned()));
             }
 
-            let org = parts.remove(0);
+            let ns: Namespace = parts.remove(0).parse()?;
             let name = parts.remove(0);
             let version = parts.remove(0);
             let version: Version = Version::parse(version)?;
 
-            Ok(Self::Pointer(org.to_owned(), name.to_owned(), version))
+            Ok(Self::Pointer(ns, name.to_owned(), version))
         }
     }
 }
@@ -167,7 +205,7 @@ pub struct Artifact {
     /// The kind of registry.
     pub kind: RegistryKind,
     /// Organization namespace.
-    pub namespace: String,
+    pub namespace: Namespace,
     /// Package descriptor.
     pub package: PackageMeta,
 }
@@ -262,10 +300,10 @@ mod tests {
     fn parse_package_key_path() -> Result<()> {
         let key = "example.com/mock-package/1.0.0";
         let package_key: PackageKey = key.parse()?;
-        if let PackageKey::Pointer(org, name, version) = &package_key {
-            assert_eq!("example.com", org);
+        if let PackageKey::Pointer(org, name, version) = package_key {
+            assert_eq!(Namespace::new_unchecked("example.com"), org);
             assert_eq!("mock-package", name);
-            assert_eq!(&Version::new(1, 0, 0), version);
+            assert_eq!(Version::new(1, 0, 0), version);
             Ok(())
         } else {
             panic!("expecting path for package key");

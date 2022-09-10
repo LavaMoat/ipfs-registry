@@ -6,11 +6,11 @@ use axum::{
 
 //use axum_macros::debug_handler;
 
-use sqlx::{Database, Sqlite};
+use sqlx::Database;
 
 use ipfs_registry_core::WELL_KNOWN_MESSAGE;
 
-use ipfs_registry_database::{Publisher, PublisherRecord};
+use ipfs_registry_database::{PublisherModel, PublisherRecord};
 
 use crate::{
     handlers::verify_signature, headers::Signature, server::ServerState,
@@ -30,17 +30,16 @@ impl<T: Database> PublisherHandler<T> {
         let address = verify_signature(signature.into(), WELL_KNOWN_MESSAGE)
             .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-        let record =
-            Publisher::<Sqlite>::find_by_address(&state.pool, &address)
-                .await
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        let record = PublisherModel::find_by_address(&state.pool, &address)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
         if record.is_some() {
             return Err(StatusCode::CONFLICT);
         }
 
         let publisher_record =
-            Publisher::<Sqlite>::insert_fetch(&state.pool, &address)
+            PublisherModel::insert_fetch(&state.pool, &address)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

@@ -14,8 +14,8 @@ use sha3::{Digest, Sha3_256};
 use sqlx::Database;
 
 use ipfs_registry_core::{
-    Artifact, Definition, ObjectKey, PackageKey, PackageMeta, PackageReader,
-    PackageSignature, Pointer, Receipt,
+    Artifact, Definition, Namespace, ObjectKey, PackageKey, PackageMeta,
+    PackageReader, PackageSignature, Pointer, Receipt,
 };
 
 use crate::{
@@ -48,9 +48,14 @@ impl<T: Database> PackageHandler<T> {
                     name = %name,
                     version = ?version);
 
+                let namespace: Namespace = address
+                    .to_string()
+                    .parse()
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
                 let descriptor = Artifact {
                     kind,
-                    namespace: address.to_string(),
+                    namespace,
                     package: PackageMeta { name, version },
                 };
 
@@ -161,9 +166,14 @@ impl<T: Database> PackageHandler<T> {
         let (package, package_meta) = PackageReader::read(kind, &body)
             .map_err(|_| StatusCode::BAD_REQUEST)?;
 
+        let namespace: Namespace = address
+            .to_string()
+            .parse()
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
         let descriptor = Artifact {
             kind,
-            namespace: address.to_string(),
+            namespace,
             package,
         };
 

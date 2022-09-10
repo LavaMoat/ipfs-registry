@@ -1,17 +1,16 @@
 use cid::Cid;
 use semver::Version;
 use serde_json::Value;
-use sqlx::{Database, Sqlite, SqlitePool};
+use sqlx::SqlitePool;
 use time::OffsetDateTime;
 use web3_address::ethereum::Address;
 
 use crate::{value_objects::*, Error, Result};
+use ipfs_registry_core::Namespace;
 
-pub struct Package<T: Database> {
-    marker: std::marker::PhantomData<T>,
-}
+pub struct PackageModel;
 
-impl Package<Sqlite> {
+impl PackageModel {
     /// Find a package by name.
     pub async fn find_by_name(
         pool: &SqlitePool,
@@ -58,7 +57,7 @@ impl Package<Sqlite> {
         version: &Version,
     ) -> Result<Option<VersionRecord>> {
         if let Some(package_record) =
-            Package::<Sqlite>::find_by_name(pool, namespace_id, name).await?
+            PackageModel::find_by_name(pool, namespace_id, name).await?
         {
             let version = version.to_string();
 
@@ -119,7 +118,7 @@ impl Package<Sqlite> {
         name: &str,
     ) -> Result<PackageRecord> {
         if let Some(record) =
-            Package::<Sqlite>::find_by_name(pool, namespace_id, name).await?
+            PackageModel::find_by_name(pool, namespace_id, name).await?
         {
             Ok(record)
         } else {
@@ -153,7 +152,7 @@ impl Package<Sqlite> {
     pub async fn insert(
         pool: &SqlitePool,
         publisher: &Address,
-        namespace: &str,
+        namespace: &Namespace,
         name: &str,
         version: &Version,
         package: &Value,
@@ -161,24 +160,21 @@ impl Package<Sqlite> {
     ) -> Result<i64> {
         // Check the publisher exists
         let publisher_record =
-            Publisher::<Sqlite>::find_by_address(pool, publisher)
+            PublisherModel::find_by_address(pool, publisher)
                 .await?
                 .ok_or(Error::UnknownPublisher(*publisher))?;
 
         // Check the namespace exists
-        let namespace_record =
-            Namespace::<Sqlite>::find_by_name(pool, namespace)
-                .await?
-                .ok_or_else(|| {
-                    Error::UnknownNamespace(namespace.to_string())
-                })?;
+        let namespace_record = NamespaceModel::find_by_name(pool, namespace)
+            .await?
+            .ok_or_else(|| Error::UnknownNamespace(namespace.to_string()))?;
 
         if !namespace_record.can_publish(publisher) {
             return Err(Error::Unauthorized(*publisher));
         }
 
         // Check the package / version does not already exist
-        if Package::<Sqlite>::find_by_name_version(
+        if PackageModel::find_by_name_version(
             pool,
             namespace_record.namespace_id,
             name,
@@ -197,7 +193,7 @@ impl Package<Sqlite> {
         // Find or insert the package
         let package = serde_json::to_string(package)?;
         let version = version.to_string();
-        let package_record = Package::<Sqlite>::find_or_insert(
+        let package_record = PackageModel::find_or_insert(
             pool,
             namespace_record.namespace_id,
             name,
@@ -227,13 +223,11 @@ impl Package<Sqlite> {
     }
 }
 
-pub struct Publisher<T: Database> {
-    marker: std::marker::PhantomData<T>,
-}
+pub struct PublisherModel;
 
-impl Publisher<Sqlite> {
-    /// Add a publisher.
-    pub async fn add(pool: &SqlitePool, owner: &Address) -> Result<i64> {
+impl PublisherModel {
+    /// Insert a publisher.
+    pub async fn insert(pool: &SqlitePool, owner: &Address) -> Result<i64> {
         let mut conn = pool.acquire().await?;
         let addr = owner.as_ref();
         let id = sqlx::query!(
@@ -255,8 +249,8 @@ impl Publisher<Sqlite> {
         pool: &SqlitePool,
         owner: &Address,
     ) -> Result<PublisherRecord> {
-        let id = Publisher::<Sqlite>::add(pool, owner).await?;
-        let record = Publisher::<Sqlite>::find_by_address(pool, owner)
+        let id = PublisherModel::insert(pool, owner).await?;
+        let record = PublisherModel::find_by_address(pool, owner)
             .await?
             .ok_or(Error::InsertFetch(id))?;
         Ok(record)
@@ -297,25 +291,24 @@ impl Publisher<Sqlite> {
     }
 }
 
-pub struct Namespace<T: Database> {
-    marker: std::marker::PhantomData<T>,
-}
+pub struct NamespaceModel;
 
-impl Namespace<Sqlite> {
+impl NamespaceModel {
     /// Add a namespace.
-    pub async fn add(
+    pub async fn insert(
         pool: &SqlitePool,
-        name: &str,
+        name: &Namespace,
         publisher_id: i64,
     ) -> Result<i64> {
         let mut conn = pool.acquire().await?;
 
+        let ns = name.as_str();
         let id = sqlx::query!(
             r#"
                 INSERT INTO namespaces ( name, publisher_id, created_at )
                 VALUES ( ?1, ?2, datetime('now') )
             "#,
-            name,
+            ns,
             publisher_id,
         )
         .execute(&mut conn)
@@ -328,11 +321,11 @@ impl Namespace<Sqlite> {
     /// Insert a namespace and fetch the record.
     pub async fn insert_fetch(
         pool: &SqlitePool,
-        name: &str,
+        name: &Namespace,
         publisher_id: i64,
     ) -> Result<NamespaceRecord> {
-        let id = Namespace::<Sqlite>::add(pool, name, publisher_id).await?;
-        let record = Namespace::<Sqlite>::find_by_name(pool, name)
+        let id = NamespaceModel::insert(pool, name, publisher_id).await?;
+        let record = NamespaceModel::find_by_name(pool, name)
             .await?
             .ok_or(Error::InsertFetch(id))?;
         Ok(record)
@@ -366,8 +359,9 @@ impl Namespace<Sqlite> {
     /// Find a namespace by name.
     pub async fn find_by_name(
         pool: &SqlitePool,
-        name: &str,
+        name: &Namespace,
     ) -> Result<Option<NamespaceRecord>> {
+        let ns = name.as_str();
         let result = sqlx::query!(
             r#"
                 SELECT
@@ -381,7 +375,7 @@ impl Namespace<Sqlite> {
                 ON (namespaces.publisher_id = publishers.publisher_id)
                 WHERE name = ?
             "#,
-            name
+            ns
         )
         .fetch_optional(pool)
         .await?;

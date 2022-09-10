@@ -5,7 +5,7 @@ use semver::Version;
 use tempfile::NamedTempFile;
 
 use ipfs_registry_client::fetch;
-use ipfs_registry_core::PackageKey;
+use ipfs_registry_core::{Namespace, PackageKey};
 
 use crate::test_utils::*;
 
@@ -25,7 +25,9 @@ async fn integration_fetch_not_found() -> Result<()> {
     std::fs::remove_file(&output)?;
 
     let key = PackageKey::Pointer(
-        "0x0000000000000000000000000000000000000000".to_owned(),
+        Namespace::new_unchecked(
+            "0x0000000000000000000000000000000000000000",
+        ),
         "foo-name".to_owned(),
         Version::new(1, 0, 0),
     );

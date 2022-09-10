@@ -6,9 +6,12 @@ use crate::test_utils::*;
 use cid::Cid;
 use semver::Version;
 use serde_json::Value;
-use sqlx::{Sqlite, SqlitePool};
+use sqlx::SqlitePool;
 
-use ipfs_registry_database::{Error, Namespace, Package, Publisher};
+use ipfs_registry_core::Namespace;
+use ipfs_registry_database::{
+    Error, NamespaceModel, PackageModel, PublisherModel,
+};
 
 #[tokio::test]
 #[serial]
@@ -24,31 +27,27 @@ async fn integration_database() -> Result<()> {
     let (_, unauthorized_address) = new_signing_key();
 
     // Create a publisher to own the namespace
-    let publisher_id = Publisher::<Sqlite>::add(&pool, &address).await?;
+    let publisher_id = PublisherModel::insert(&pool, &address).await?;
 
     let user_publisher_id =
-        Publisher::<Sqlite>::add(&pool, &authorized_address).await?;
+        PublisherModel::insert(&pool, &authorized_address).await?;
 
     let _unauthorized_publisher_id =
-        Publisher::<Sqlite>::add(&pool, &unauthorized_address).await?;
+        PublisherModel::insert(&pool, &unauthorized_address).await?;
 
-    let namespace = "mock-namespace";
+    let namespace = Namespace::new_unchecked("mock-namespace");
 
     // Create a namespace
     let namespace_id =
-        Namespace::<Sqlite>::add(&pool, namespace, publisher_id).await?;
+        NamespaceModel::insert(&pool, &namespace, publisher_id).await?;
 
     assert!(namespace_id > 0);
 
     // Add another publisher to the namespace
-    Namespace::<Sqlite>::add_publisher(
-        &pool,
-        namespace_id,
-        user_publisher_id,
-    )
-    .await?;
+    NamespaceModel::add_publisher(&pool, namespace_id, user_publisher_id)
+        .await?;
 
-    let ns = Namespace::<Sqlite>::find_by_name(&pool, namespace).await?;
+    let ns = NamespaceModel::find_by_name(&pool, &namespace).await?;
 
     assert!(ns.is_some());
     let ns = ns.unwrap();
@@ -69,10 +68,10 @@ async fn integration_database() -> Result<()> {
     let mock_content_id = Some(&cid);
 
     // Publish as the namespace owner
-    let result = Package::<Sqlite>::insert(
+    let result = PackageModel::insert(
         &pool,
         &address,
-        namespace,
+        &namespace,
         mock_package,
         &mock_version,
         &mock_value,
@@ -82,10 +81,10 @@ async fn integration_database() -> Result<()> {
     assert!(result > 0);
 
     // Publish as an authorized publisher
-    let result = Package::<Sqlite>::insert(
+    let result = PackageModel::insert(
         &pool,
         &authorized_address,
-        namespace,
+        &namespace,
         mock_package,
         &Version::new(1, 0, 1),
         &mock_value,
@@ -95,10 +94,10 @@ async fn integration_database() -> Result<()> {
     assert!(result > 0);
 
     // Attempt to publish an existing version - `Err`
-    let result = Package::<Sqlite>::insert(
+    let result = PackageModel::insert(
         &pool,
         &address,
-        namespace,
+        &namespace,
         mock_package,
         &mock_version,
         &mock_value,
@@ -116,10 +115,10 @@ async fn integration_database() -> Result<()> {
     assert!(is_package_exists);
 
     // Publish using an address that is not registered - `Err`
-    let result = Package::<Sqlite>::insert(
+    let result = PackageModel::insert(
         &pool,
         &unknown_address,
-        namespace,
+        &namespace,
         mock_package,
         &mock_version,
         &mock_value,
@@ -137,10 +136,10 @@ async fn integration_database() -> Result<()> {
     assert!(is_unknown_publisher);
 
     // Publish using an address that is not authorized - `Err`
-    let result = Package::<Sqlite>::insert(
+    let result = PackageModel::insert(
         &pool,
         &unauthorized_address,
-        namespace,
+        &namespace,
         mock_package,
         &mock_version,
         &mock_value,
@@ -157,10 +156,10 @@ async fn integration_database() -> Result<()> {
     assert!(is_unauthorized);
 
     // Publish using a namespace that does not exist - `Err`
-    let result = Package::<Sqlite>::insert(
+    let result = PackageModel::insert(
         &pool,
         &address,
-        "unknown-namespace",
+        &Namespace::new_unchecked("unknown-namespace"),
         mock_package,
         &mock_version,
         &mock_value,
@@ -178,7 +177,7 @@ async fn integration_database() -> Result<()> {
     assert!(is_unknown_namespace);
 
     // Check we can get the published package / version
-    let package_record = Package::<Sqlite>::find_by_name_version(
+    let package_record = PackageModel::find_by_name_version(
         &pool,
         namespace_id,
         mock_package,

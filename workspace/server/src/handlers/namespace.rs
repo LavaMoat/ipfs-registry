@@ -4,9 +4,12 @@ use axum::{
     Json,
 };
 
-use sqlx::{Database, Sqlite};
+use sqlx::Database;
 
-use ipfs_registry_database::{Namespace, NamespaceRecord, Publisher};
+use ipfs_registry_core::Namespace;
+use ipfs_registry_database::{
+    NamespaceModel, NamespaceRecord, PublisherModel,
+};
 
 use crate::{
     handlers::verify_signature, headers::Signature, server::ServerState,
@@ -21,7 +24,7 @@ impl<T: Database> NamespaceHandler<T> {
     pub(crate) async fn post(
         Extension(state): Extension<ServerState<T>>,
         TypedHeader(signature): TypedHeader<Signature>,
-        Path(namespace): Path<String>,
+        Path(namespace): Path<Namespace>,
     ) -> std::result::Result<Json<NamespaceRecord>, StatusCode> {
         // FIXME: verify namespace is sane - no slashes!
 
@@ -31,13 +34,13 @@ impl<T: Database> NamespaceHandler<T> {
                 .map_err(|_| StatusCode::BAD_REQUEST)?;
 
         let publisher =
-            Publisher::<Sqlite>::find_by_address(&state.pool, &address)
+            PublisherModel::find_by_address(&state.pool, &address)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
         if let Some(publisher) = publisher {
             let record =
-                Namespace::<Sqlite>::find_by_name(&state.pool, &namespace)
+                NamespaceModel::find_by_name(&state.pool, &namespace)
                     .await
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -45,7 +48,7 @@ impl<T: Database> NamespaceHandler<T> {
                 return Err(StatusCode::CONFLICT);
             }
 
-            let record = Namespace::<Sqlite>::insert_fetch(
+            let record = NamespaceModel::insert_fetch(
                 &state.pool,
                 &namespace,
                 publisher.publisher_id,
