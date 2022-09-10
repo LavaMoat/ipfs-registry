@@ -4,7 +4,7 @@ use std::{collections::HashSet, path::PathBuf};
 
 use crate::test_utils::*;
 
-use ipfs_registry_client::publish::publish_with_key;
+use ipfs_registry_client::RegistryClient;
 use ipfs_registry_server::config::RegistryConfig;
 
 use web3_address::ethereum::Address;
@@ -36,7 +36,9 @@ async fn integration_publish_allow_unauthorized() -> Result<()> {
 
     let server_url = server();
 
-    let result = publish_with_key(server_url, mime, signing_key, file).await;
+    let result =
+        RegistryClient::publish_file(server_url, mime, signing_key, file)
+            .await;
 
     assert!(result.is_err());
 

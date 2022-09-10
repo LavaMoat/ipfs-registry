@@ -2,14 +2,14 @@ use cid::Cid;
 use semver::Version;
 use serde::Serialize;
 use serde_json::Value;
+use time::{format_description, OffsetDateTime, PrimitiveDateTime};
 use web3_address::ethereum::Address;
-use time::{PrimitiveDateTime, OffsetDateTime, format_description};
 
 use crate::Result;
 
 pub(crate) fn parse_date_time(date_time: &str) -> Result<OffsetDateTime> {
     let format = format_description::parse(
-        "[year]-[month]-[day] [hour]:[minute]:[second]"
+        "[year]-[month]-[day] [hour]:[minute]:[second]",
     )?;
     Ok(PrimitiveDateTime::parse(date_time, &format)?.assume_utc())
 }

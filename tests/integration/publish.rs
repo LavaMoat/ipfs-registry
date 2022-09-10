@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use crate::test_utils::*;
 use semver::Version;
 
-use ipfs_registry_client::publish::publish_with_key;
+use ipfs_registry_client::RegistryClient;
 
 use k256::ecdsa::SigningKey;
 
@@ -23,7 +23,8 @@ async fn integration_publish_ok() -> Result<()> {
     let signing_key = SigningKey::random(&mut rand::thread_rng());
 
     let receipt =
-        publish_with_key(server_url, mime, signing_key, file).await?;
+        RegistryClient::publish_file(server_url, mime, signing_key, file)
+            .await?;
 
     assert_eq!("mock-package", receipt.artifact.package.name);
     assert_eq!(Version::new(1, 0, 0), receipt.artifact.package.version);

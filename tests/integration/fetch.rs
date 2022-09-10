@@ -4,7 +4,7 @@ use semver::Version;
 use serial_test::serial;
 use std::path::PathBuf;
 
-use ipfs_registry_client::{fetch, publish::publish_with_key};
+use ipfs_registry_client::RegistryClient;
 use ipfs_registry_core::PackageKey;
 use tempfile::NamedTempFile;
 
@@ -23,8 +23,13 @@ async fn integration_fetch_ok() -> Result<()> {
     let mime: mime::Mime = "application/gzip".parse()?;
     let signing_key = SigningKey::random(&mut rand::thread_rng());
 
-    let receipt =
-        publish_with_key(server_url.clone(), mime, signing_key, file).await?;
+    let receipt = RegistryClient::publish_file(
+        server_url.clone(),
+        mime,
+        signing_key,
+        file,
+    )
+    .await?;
 
     assert_eq!("mock-package", receipt.artifact.package.name);
     assert_eq!(Version::new(1, 0, 0), receipt.artifact.package.version);
@@ -41,7 +46,8 @@ async fn integration_fetch_ok() -> Result<()> {
         receipt.artifact.package.version.clone(),
     );
 
-    let result = fetch(server_url, key, output.clone()).await?;
+    let result =
+        RegistryClient::fetch_file(server_url, key, output.clone()).await?;
 
     assert_eq!(output, result);
 

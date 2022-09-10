@@ -2,8 +2,8 @@ use cid::Cid;
 use semver::Version;
 use serde_json::Value;
 use sqlx::{Database, Sqlite, SqlitePool};
-use web3_address::ethereum::Address;
 use time::OffsetDateTime;
+use web3_address::ethereum::Address;
 
 use crate::{value_objects::*, Error, Result};
 
@@ -41,9 +41,11 @@ impl Package<Sqlite> {
                 namespace_id: record.namespace_id,
                 package_id: record.package_id,
                 name: record.name,
-                created_at
+                created_at,
             })
-        } else { None };
+        } else {
+            None
+        };
 
         Ok(record)
     }
@@ -277,7 +279,9 @@ impl Publisher<Sqlite> {
                 address: *publisher,
                 created_at,
             })
-        } else { None };
+        } else {
+            None
+        };
 
         Ok(record)
     }

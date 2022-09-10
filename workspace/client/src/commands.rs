@@ -1,11 +1,35 @@
 use k256::ecdsa::SigningKey;
+use mime::Mime;
+
+use secrecy::ExposeSecret;
 use std::path::PathBuf;
+use url::Url;
 use web3_address::ethereum::Address;
 use web3_keystore::encrypt;
 
-use secrecy::ExposeSecret;
+use ipfs_registry_core::{PackageKey, Receipt};
 
-use crate::{input::read_password, Error, Result};
+use crate::{helpers, input, Error, RegistryClient, Result};
+
+/// Publish a package.
+pub async fn publish(
+    server: Url,
+    mime: Mime,
+    key: PathBuf,
+    file: PathBuf,
+) -> Result<Receipt> {
+    let signing_key = helpers::read_keystore_file(key)?;
+    RegistryClient::publish_file(server, mime, signing_key, file).await
+}
+
+/// Download a package and write it to file.
+pub async fn fetch(
+    server: Url,
+    key: PackageKey,
+    file: PathBuf,
+) -> Result<PathBuf> {
+    RegistryClient::fetch_file(server, key, file).await
+}
 
 /// Generate a signing key and write the result to file.
 pub async fn keygen(dir: PathBuf) -> Result<Address> {
@@ -13,8 +37,8 @@ pub async fn keygen(dir: PathBuf) -> Result<Address> {
         return Err(Error::NotDirectory(dir));
     }
 
-    let password = read_password(None)?;
-    let confirm = read_password(Some("Confirm password: "))?;
+    let password = input::read_password(None)?;
+    let confirm = input::read_password(Some("Confirm password: "))?;
 
     if password.expose_secret() != confirm.expose_secret() {
         return Err(Error::PasswordMismatch);
