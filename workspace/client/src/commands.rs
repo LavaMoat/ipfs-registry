@@ -22,6 +22,12 @@ pub async fn publish(
     RegistryClient::publish_file(server, mime, signing_key, file).await
 }
 
+/// Register publisher key.
+pub async fn signup(server: Url, key: PathBuf) -> Result<()> {
+    let signing_key = helpers::read_keystore_file(key)?;
+    RegistryClient::create_publisher(server, signing_key).await
+}
+
 /// Download a package and write it to file.
 pub async fn fetch(
     server: Url,

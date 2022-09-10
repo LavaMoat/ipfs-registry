@@ -7,7 +7,9 @@ use reqwest::Client;
 use tokio::io::AsyncWriteExt;
 use url::Url;
 
-use ipfs_registry_core::{PackageKey, Receipt, X_SIGNATURE};
+use ipfs_registry_core::{
+    PackageKey, Receipt, WELL_KNOWN_MESSAGE, X_SIGNATURE,
+};
 
 use crate::{Error, Result};
 
@@ -15,6 +17,38 @@ use crate::{Error, Result};
 pub struct RegistryClient;
 
 impl RegistryClient {
+    /// Create a publisher address.
+    pub async fn create_publisher(
+        server: Url,
+        signing_key: SigningKey,
+    ) -> Result<()> {
+        let signature: recoverable::Signature =
+            signing_key.sign(WELL_KNOWN_MESSAGE);
+        let sign_bytes = &signature;
+
+        let client = Client::new();
+        let url = server.join("api/publisher")?;
+
+        println!("Client posting to {}", url);
+        println!("Client posting to {:#?}", sign_bytes);
+
+        let response = client
+            .post(url)
+            .header(X_SIGNATURE, base64::encode(sign_bytes))
+            .send()
+            .await?;
+
+        println!("Response {:#?}", response);
+
+        response
+            .status()
+            .is_success()
+            .then_some(())
+            .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
+
+        Ok(())
+    }
+
     /// Download a package and write it to file.
     pub async fn fetch_file(
         server: Url,

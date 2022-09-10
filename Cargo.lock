@@ -1462,6 +1462,7 @@ dependencies = [
  "indexmap",
  "ipfs-api-backend-hyper",
  "ipfs-registry-core",
+ "ipfs-registry-database",
  "k256",
  "mime",
  "once_cell",

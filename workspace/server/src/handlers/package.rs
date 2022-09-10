@@ -8,34 +8,24 @@ use axum::{
 
 //use axum_macros::debug_handler;
 
-use k256::ecdsa::recoverable;
 use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
 
 use sqlx::Database;
-
-use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
     Artifact, Definition, ObjectKey, PackageKey, PackageMeta, PackageReader,
     PackageSignature, Pointer, Receipt,
 };
 
-use crate::{headers::Signature, layer::Layer, server::ServerState, Result};
+use crate::{
+    handlers::verify_signature, headers::Signature, layer::Layer,
+    server::ServerState,
+};
 
 #[derive(Debug, Deserialize)]
 pub struct PackageQuery {
     id: PackageKey,
-}
-
-/// Verify a signature against a message and return the address.
-fn verify_signature(signature: [u8; 65], message: &[u8]) -> Result<Address> {
-    let recoverable: recoverable::Signature =
-        signature.as_slice().try_into()?;
-    let public_key = recoverable.recover_verifying_key(message)?;
-    let public_key: [u8; 33] = public_key.to_bytes().as_slice().try_into()?;
-    let address: Address = (&public_key).try_into()?;
-    Ok(address)
 }
 
 pub(crate) struct PackageHandler<T: Database> {

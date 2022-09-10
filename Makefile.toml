@@ -66,6 +66,10 @@ script = '''
 sqlx database drop -y && sqlx database create && sqlx migrate run
 '''
 
+[tasks.dev-server]
+command = "cargo"
+args = ["run", "--", "server", "-c", "sandbox/config.toml"]
+
 [tasks.clean-coverage]
 script = '''
 #rm -rf ./target/cover

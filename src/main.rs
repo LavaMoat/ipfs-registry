@@ -24,6 +24,16 @@ enum Command {
         #[clap(parse(from_os_str))]
         dir: PathBuf,
     },
+    /// Register the public key for publishing.
+    Signup {
+        /// Server URL.
+        #[clap(short, long, default_value = "http://127.0.0.1:9060")]
+        server: Url,
+
+        /// Keystore for the signing key.
+        #[clap(short, long, parse(from_os_str))]
+        key: PathBuf,
+    },
     /// Publish a package.
     Publish {
         /// Server URL.
@@ -74,6 +84,9 @@ async fn run() -> Result<()> {
         Command::Keygen { dir } => {
             let address = ipfs_registry_client::keygen(dir).await?;
             serde_json::to_writer_pretty(std::io::stdout(), &address)?;
+        }
+        Command::Signup { server, key } => {
+            ipfs_registry_client::signup(server, key).await?;
         }
         Command::Publish {
             server,

@@ -7,7 +7,7 @@ use web3_keystore::{decrypt, KeyStore};
 use crate::{input::read_password, Error, Result};
 
 /// Read a keystore file into a signing key.
-pub fn read_keystore_file(key: PathBuf) -> Result<SigningKey> {
+pub(crate) fn read_keystore_file(key: PathBuf) -> Result<SigningKey> {
     if !key.is_file() {
         return Err(Error::NotFile(key));
     }

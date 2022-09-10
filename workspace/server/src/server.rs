@@ -7,7 +7,7 @@ use axum::{
         HeaderValue, Method,
     },
     response::IntoResponse,
-    routing::get,
+    routing::{get, post},
     Json, Router,
 };
 use axum_server::{tls_rustls::RustlsConfig, Handle};
@@ -15,10 +15,10 @@ use serde::Serialize;
 use serde_json::json;
 use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
 
-use sqlx::{Any, AnyPool, Database, Pool};
+use sqlx::{Any, AnyPool, Database, Pool, Sqlite, SqlitePool};
 
 use crate::{
-    config::ServerConfig, config::TlsConfig, handlers::PackageHandler,
+    config::ServerConfig, config::TlsConfig, handlers::{PackageHandler, PublisherHandler},
     headers::X_SIGNATURE, layer::Layers, Result,
 };
 
@@ -34,7 +34,11 @@ pub struct State<T: Database> {
     /// Storage layers.
     pub(crate) layers: Layers,
     /// Connection pool.
-    pub(crate) pool: Pool<T>,
+    pub(crate) pool: Pool<Sqlite>,
+
+    // Keeping the generics so that later we 
+    // can use the Any support in sqlx
+    marker: std::marker::PhantomData<T>,
 }
 
 impl State<Any> {
@@ -43,19 +47,21 @@ impl State<Any> {
         config: ServerConfig,
         info: ServerInfo,
         layers: Layers,
-    ) -> Result<State<Any>> {
+    ) -> Result<State<Sqlite>> {
         let url = std::env::var("DATABASE_URL")
             .ok()
             .unwrap_or_else(|| config.database.url.clone());
 
         tracing::info!(db = %url);
 
-        let pool = AnyPool::connect(&url).await?;
-        Ok(State::<Any> {
+        //let pool = AnyPool::connect(&url).await?;
+        let pool = SqlitePool::connect(&url).await?;
+        Ok(State::<Sqlite> {
             config,
             info,
             layers,
             pool,
+            marker: std::marker::PhantomData,
         })
     }
 }
@@ -75,14 +81,14 @@ pub struct Server<T: Database> {
 }
 
 impl Server<Any> {
-    pub fn new() -> Server<Any> {
-        Server::<Any> {
+    pub fn new() -> Server<Sqlite> {
+        Server::<Sqlite> {
             marker: std::marker::PhantomData,
         }
     }
 }
 
-impl<T: Database> Server<T> {
+impl<T: Database + Send + Sync> Server<T> {
     /// Start the server.
     pub async fn start(
         &self,
@@ -177,10 +183,14 @@ impl<T: Database> Server<T> {
         };
 
         let app = Router::new()
-            .route("/api", get(ApiHandler::<T>::get))
+            .route("/api", get(ApiHandler::<Sqlite>::get))
+            .route(
+                "/api/publisher",
+                post(PublisherHandler::<Sqlite>::post),
+            )
             .route(
                 "/api/package",
-                get(PackageHandler::<T>::get).put(PackageHandler::<T>::put),
+                get(PackageHandler::<Sqlite>::get).put(PackageHandler::<Sqlite>::put),
             )
             //.route("/api/package", put(PackageHandler::put))
             .layer(RequestBodyLimitLayer::new(limit))
@@ -195,7 +205,7 @@ pub(crate) struct ApiHandler<T: Database> {
     marker: std::marker::PhantomData<T>,
 }
 
-impl<T: Database> ApiHandler<T> {
+impl<T: Database + Send + Sync> ApiHandler<T> {
     /// Serve the API identity page.
     pub(crate) async fn get(
         Extension(state): Extension<ServerState<T>>,
