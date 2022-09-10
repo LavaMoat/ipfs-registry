@@ -1,6 +1,5 @@
 use anyhow::Result;
 use axum_server::Handle;
-use sqlx::Any;
 use std::{net::SocketAddr, sync::Arc, thread};
 use tokio::sync::oneshot;
 use url::Url;
@@ -8,6 +7,9 @@ use url::Url;
 use k256::ecdsa::SigningKey;
 use web3_address::ethereum::Address;
 
+use ipfs_registry_client::RegistryClient;
+use ipfs_registry_core::Namespace;
+use ipfs_registry_database::{NamespaceRecord, PublisherRecord};
 use ipfs_registry_server::{
     build_layers,
     config::{LayerConfig, RegistryConfig, ServerConfig, StorageConfig},
@@ -36,7 +38,7 @@ impl MockServer {
         let layers = build_layers(&config)?;
 
         let state = Arc::new(
-            State::<Any>::new(
+            State::new(
                 config,
                 ServerInfo {
                     name: String::from("integration-test"),
@@ -47,7 +49,7 @@ impl MockServer {
             .await?,
         );
 
-        let server = Server::<Any>::new();
+        let server = Server::new();
         server.start(addr, state, self.handle.clone()).await?;
         Ok(())
     }
@@ -127,4 +129,20 @@ pub fn new_signing_key() -> (SigningKey, Address) {
     let verifying_key = signing_key.verifying_key();
     let address: Address = verifying_key.into();
     (signing_key, address)
+}
+
+pub async fn prepare_mock_namespace(
+    server: &Url,
+    key: &SigningKey,
+    namespace: &Namespace,
+) -> Result<(PublisherRecord, NamespaceRecord)> {
+    let publisher_record =
+        RegistryClient::signup(server.clone(), key.clone()).await?;
+    let namespace_record = RegistryClient::register(
+        server.clone(),
+        key.clone(),
+        namespace.clone(),
+    )
+    .await?;
+    Ok((publisher_record, namespace_record))
 }

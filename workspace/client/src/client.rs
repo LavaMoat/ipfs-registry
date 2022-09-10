@@ -51,7 +51,7 @@ impl RegistryClient {
     pub async fn register(
         server: Url,
         signing_key: SigningKey,
-        namespace: String,
+        namespace: Namespace,
     ) -> Result<NamespaceRecord> {
         let signature: recoverable::Signature =
             signing_key.sign(namespace.as_bytes());

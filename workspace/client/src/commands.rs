@@ -35,7 +35,7 @@ pub async fn signup(server: Url, key: PathBuf) -> Result<PublisherRecord> {
 pub async fn register(
     server: Url,
     key: PathBuf,
-    namespace: String,
+    namespace: Namespace,
 ) -> Result<NamespaceRecord> {
     let signing_key = helpers::read_keystore_file(key)?;
     RegistryClient::register(server, signing_key, namespace).await

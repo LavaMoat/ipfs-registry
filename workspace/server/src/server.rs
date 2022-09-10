@@ -63,6 +63,10 @@ impl State<Any> {
         //let pool = AnyPool::connect(&url).await?;
         let pool = SqlitePool::connect(&url).await?;
 
+        if &config.database.url == "sqlite::memory:" {
+            sqlx::migrate!("../../migrations").run(&pool).await?;
+        }
+
         Ok(State::<Sqlite> {
             config,
             info,

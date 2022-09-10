@@ -45,7 +45,7 @@ enum Command {
         key: PathBuf,
 
         /// Namespace to register.
-        namespace: String,
+        namespace: Namespace,
     },
     /// Publish a package.
     Publish {

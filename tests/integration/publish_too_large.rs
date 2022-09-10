@@ -28,6 +28,8 @@ async fn integration_publish_too_large() -> Result<()> {
 
     let namespace = Namespace::new_unchecked("mock-namespace");
 
+    prepare_mock_namespace(&server_url, &signing_key, &namespace).await?;
+
     let result = RegistryClient::publish_file(
         server_url,
         namespace,
