@@ -67,7 +67,7 @@ impl FromStr for Namespace {
     type Err = Error;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        if s.find('/').or(s.find(' ')).is_some() {
+        if s.find('/').or_else(|| s.find(' ')).is_some() {
             Err(Error::InvalidNamespace(s.to_owned()))
         } else {
             Ok(Namespace(s.to_owned()))
@@ -187,7 +187,7 @@ impl FromStr for ObjectKey {
         let result: Result<Cid> = s.try_into().map_err(Error::from);
         match result {
             Ok(cid) => Ok(ObjectKey::Cid(cid)),
-            Err(e) => Ok(ObjectKey::Key(s.to_owned())),
+            Err(_e) => Ok(ObjectKey::Key(s.to_owned())),
         }
     }
 }

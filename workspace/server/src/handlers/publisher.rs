@@ -6,8 +6,6 @@ use axum::{
 
 //use axum_macros::debug_handler;
 
-use sqlx::Database;
-
 use ipfs_registry_core::WELL_KNOWN_MESSAGE;
 
 use ipfs_registry_database::{PublisherModel, PublisherRecord};
@@ -16,14 +14,12 @@ use crate::{
     handlers::verify_signature, headers::Signature, server::ServerState,
 };
 
-pub(crate) struct PublisherHandler<T: Database> {
-    marker: std::marker::PhantomData<T>,
-}
+pub(crate) struct PublisherHandler;
 
-impl<T: Database> PublisherHandler<T> {
+impl PublisherHandler {
     /// Create a new publisher.
     pub(crate) async fn post(
-        Extension(state): Extension<ServerState<T>>,
+        Extension(state): Extension<ServerState>,
         TypedHeader(signature): TypedHeader<Signature>,
     ) -> std::result::Result<Json<PublisherRecord>, StatusCode> {
         // Verify the signature header against the well known message

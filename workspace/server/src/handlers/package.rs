@@ -11,10 +11,8 @@ use axum::{
 use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
 
-use sqlx::Database;
-
 use ipfs_registry_core::{
-    Artifact, Definition, Namespace, ObjectKey, PackageKey, PackageMeta,
+    Artifact, Definition, Namespace, ObjectKey, PackageKey,
     PackageReader, PackageSignature, Pointer, Receipt,
 };
 
@@ -30,18 +28,16 @@ pub struct PackageQuery {
     id: PackageKey,
 }
 
-pub(crate) struct PackageHandler<T: Database> {
-    marker: std::marker::PhantomData<T>,
-}
+pub(crate) struct PackageHandler;
 
-impl<T: Database> PackageHandler<T> {
+impl PackageHandler {
     /// Get a package.
     pub(crate) async fn get(
-        Extension(state): Extension<ServerState<T>>,
+        Extension(state): Extension<ServerState>,
         Query(query): Query<PackageQuery>,
     ) -> std::result::Result<(HeaderMap, Bytes), StatusCode> {
         let mime_type = state.config.registry.mime.clone();
-        let kind = state.config.registry.kind;
+        let _kind = state.config.registry.kind;
 
         match PackageModel::find_by_key(&state.pool, &query.id).await {
             Ok(version) => {
@@ -75,7 +71,7 @@ impl<T: Database> PackageHandler<T> {
 
     /// Create a new package.
     pub(crate) async fn put(
-        Extension(state): Extension<ServerState<T>>,
+        Extension(state): Extension<ServerState>,
         TypedHeader(mime): TypedHeader<ContentType>,
         TypedHeader(signature): TypedHeader<Signature>,
         Path(namespace): Path<Namespace>,
@@ -161,7 +157,7 @@ impl<T: Database> PackageHandler<T> {
                         // Direct key for the publish receipt
                         let key = objects.iter().find_map(|o| {
                             if let ObjectKey::Cid(value) = o {
-                                Some(PackageKey::Cid(value.clone()))
+                                Some(PackageKey::Cid(*value))
                             } else {
                                 None
                             }

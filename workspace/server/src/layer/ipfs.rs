@@ -6,11 +6,10 @@ use ipfs_api_backend_hyper::{IpfsApi, IpfsClient, TryFromUri};
 use std::io::Cursor;
 use url::Url;
 
-use ipfs_registry_core::{Artifact, ObjectKey, Pointer};
+use ipfs_registry_core::{Artifact, ObjectKey};
 
 use super::Layer;
 
-use super::ROOT;
 use crate::{Error, Result};
 
 /// Layer for IPFS backed storage.

@@ -1,5 +1,4 @@
 use axum_server::Handle;
-use sqlx::Any;
 use std::{net::SocketAddr, path::PathBuf, str::FromStr, sync::Arc};
 
 pub mod config;
@@ -23,15 +22,10 @@ pub async fn start(bind: String, config: PathBuf) -> Result<()> {
     let layers = layer::build(&config)?;
     let handle = Handle::new();
     let state = Arc::new(
-        server::State::<Any>::new(
-            config,
-            ServerInfo { name, version },
-            layers,
-        )
-        .await?,
+        server::State::new(config, ServerInfo { name, version }, layers)
+            .await?,
     );
     let addr = SocketAddr::from_str(&bind)?;
-    let server = Server::<Any>::new();
-    server.start(addr, state, handle).await?;
+    Server.start(addr, state, handle).await?;
     Ok(())
 }

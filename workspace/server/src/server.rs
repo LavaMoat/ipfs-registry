@@ -17,7 +17,7 @@ use tower_http::{
     cors::CorsLayer, limit::RequestBodyLimitLayer, trace::TraceLayer,
 };
 
-use sqlx::{Any, Database, Pool, Sqlite, SqlitePool};
+use sqlx::{SqlitePool};
 
 use crate::{
     config::ServerConfig,
@@ -29,10 +29,10 @@ use crate::{
 };
 
 /// Type alias for the server state.
-pub(crate) type ServerState<T> = Arc<State<T>>;
+pub(crate) type ServerState = Arc<State>;
 
 /// Server state.
-pub struct State<T: Database> {
+pub struct State {
     /// The server configuration.
     pub(crate) config: ServerConfig,
     /// Server information.
@@ -40,39 +40,33 @@ pub struct State<T: Database> {
     /// Storage layers.
     pub(crate) layers: Layers,
     /// Connection pool.
-    pub(crate) pool: Pool<Sqlite>,
-
-    // Keeping the generics so that later we
-    // can use the Any support in sqlx
-    marker: std::marker::PhantomData<T>,
+    pub(crate) pool: SqlitePool,
 }
 
-impl State<Any> {
+impl State {
     /// Create a new state.
     pub async fn new(
         config: ServerConfig,
         info: ServerInfo,
         layers: Layers,
-    ) -> Result<State<Sqlite>> {
+    ) -> Result<State> {
         let url = std::env::var("DATABASE_URL")
             .ok()
             .unwrap_or_else(|| config.database.url.clone());
 
         tracing::info!(db = %url);
 
-        //let pool = AnyPool::connect(&url).await?;
         let pool = SqlitePool::connect(&url).await?;
 
         if &config.database.url == "sqlite::memory:" {
             sqlx::migrate!("../../migrations").run(&pool).await?;
         }
 
-        Ok(State::<Sqlite> {
+        Ok(State {
             config,
             info,
             layers,
             pool,
-            marker: std::marker::PhantomData,
         })
     }
 }
@@ -87,24 +81,14 @@ pub struct ServerInfo {
 }
 
 #[derive(Default)]
-pub struct Server<T: Database> {
-    marker: std::marker::PhantomData<T>,
-}
+pub struct Server;
 
-impl Server<Any> {
-    pub fn new() -> Server<Sqlite> {
-        Server::<Sqlite> {
-            marker: std::marker::PhantomData,
-        }
-    }
-}
-
-impl<T: Database + Send + Sync> Server<T> {
+impl Server {
     /// Start the server.
     pub async fn start(
         &self,
         addr: SocketAddr,
-        state: ServerState<T>,
+        state: ServerState,
         handle: Handle,
     ) -> Result<()> {
         let origins = self.read_origins(&state)?;
@@ -124,7 +108,7 @@ impl<T: Database + Send + Sync> Server<T> {
     async fn run_tls(
         &self,
         addr: SocketAddr,
-        state: ServerState<T>,
+        state: ServerState,
         handle: Handle,
         origins: Option<Vec<HeaderValue>>,
         limit: usize,
@@ -144,7 +128,7 @@ impl<T: Database + Send + Sync> Server<T> {
     async fn run(
         &self,
         addr: SocketAddr,
-        state: ServerState<T>,
+        state: ServerState,
         handle: Handle,
         origins: Option<Vec<HeaderValue>>,
         limit: usize,
@@ -160,7 +144,7 @@ impl<T: Database + Send + Sync> Server<T> {
 
     fn read_origins(
         &self,
-        state: &State<T>,
+        state: &State,
     ) -> Result<Option<Vec<HeaderValue>>> {
         if let Some(cors) = &state.config.cors {
             let mut origins = Vec::new();
@@ -176,7 +160,7 @@ impl<T: Database + Send + Sync> Server<T> {
     }
 
     fn router(
-        state: ServerState<T>,
+        state: ServerState,
         origins: Option<Vec<HeaderValue>>,
         limit: usize,
     ) -> Result<Router> {
@@ -194,18 +178,11 @@ impl<T: Database + Send + Sync> Server<T> {
         };
 
         let app = Router::new()
-            .route("/api", get(ApiHandler::<Sqlite>::get))
-            .route("/api/publisher", post(PublisherHandler::<Sqlite>::post))
-            .route(
-                "/api/namespace/:namespace",
-                post(NamespaceHandler::<Sqlite>::post),
-            )
-            .route("/api/package", get(PackageHandler::<Sqlite>::get))
-            .route(
-                "/api/package/:namespace",
-                put(PackageHandler::<Sqlite>::put),
-            )
-            //.route("/api/package", put(PackageHandler::put))
+            .route("/api", get(ApiHandler::get))
+            .route("/api/publisher", post(PublisherHandler::post))
+            .route("/api/namespace/:namespace", post(NamespaceHandler::post))
+            .route("/api/package", get(PackageHandler::get))
+            .route("/api/package/:namespace", put(PackageHandler::put))
             .layer(RequestBodyLimitLayer::new(limit))
             .layer(cors)
             .layer(TraceLayer::new_for_http())
@@ -215,14 +192,12 @@ impl<T: Database + Send + Sync> Server<T> {
     }
 }
 
-pub(crate) struct ApiHandler<T: Database> {
-    marker: std::marker::PhantomData<T>,
-}
+pub(crate) struct ApiHandler;
 
-impl<T: Database + Send + Sync> ApiHandler<T> {
+impl ApiHandler {
     /// Serve the API identity page.
     pub(crate) async fn get(
-        Extension(state): Extension<ServerState<T>>,
+        Extension(state): Extension<ServerState>,
     ) -> impl IntoResponse {
         Json(json!(&state.info))
     }

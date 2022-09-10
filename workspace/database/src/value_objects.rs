@@ -1,4 +1,4 @@
-use cid::Cid;
+
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -6,7 +6,7 @@ use time::{format_description, OffsetDateTime, PrimitiveDateTime};
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{Namespace, ObjectKey};
-use sqlx::{sqlite::SqliteRow, FromRow, Row};
+
 
 use crate::{Error, Result};
 
@@ -57,6 +57,7 @@ pub struct PublisherRecord {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub(crate) struct NamespaceRow {
     /// Namespace primary key.
     pub namespace_id: i64,

@@ -4,8 +4,6 @@ use axum::{
     Json,
 };
 
-use sqlx::Database;
-
 use ipfs_registry_core::Namespace;
 use ipfs_registry_database::{
     NamespaceModel, NamespaceRecord, PublisherModel,
@@ -15,14 +13,12 @@ use crate::{
     handlers::verify_signature, headers::Signature, server::ServerState,
 };
 
-pub(crate) struct NamespaceHandler<T: Database> {
-    marker: std::marker::PhantomData<T>,
-}
+pub(crate) struct NamespaceHandler;
 
-impl<T: Database> NamespaceHandler<T> {
+impl NamespaceHandler {
     /// Create a new namespace.
     pub(crate) async fn post(
-        Extension(state): Extension<ServerState<T>>,
+        Extension(state): Extension<ServerState>,
         TypedHeader(signature): TypedHeader<Signature>,
         Path(namespace): Path<Namespace>,
     ) -> std::result::Result<Json<NamespaceRecord>, StatusCode> {

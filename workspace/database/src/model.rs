@@ -1,12 +1,12 @@
-use cid::Cid;
+
 use semver::Version;
-use serde_json::Value;
+
 use sqlx::SqlitePool;
 use time::OffsetDateTime;
 use web3_address::ethereum::Address;
 
 use crate::{value_objects::*, Error, Result};
-use ipfs_registry_core::{Namespace, ObjectKey, PackageKey, Pointer};
+use ipfs_registry_core::{Namespace, PackageKey, Pointer};
 
 pub struct PackageModel;
 
@@ -20,7 +20,7 @@ impl PackageModel {
                 let namespace_record =
                     NamespaceModel::find_by_name(pool, namespace)
                         .await?
-                        .ok_or(Error::UnknownNamespace(namespace.clone()))?;
+                        .ok_or_else(|| Error::UnknownNamespace(namespace.clone()))?;
                 PackageModel::find_by_name_version(
                     pool,
                     namespace_record.namespace_id,

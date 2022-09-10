@@ -51,8 +51,7 @@ impl MockServer {
             .await?,
         );
 
-        let server = Server::new();
-        server.start(addr, state, self.handle.clone()).await?;
+        Server.start(addr, state, self.handle.clone()).await?;
         Ok(())
     }
 
