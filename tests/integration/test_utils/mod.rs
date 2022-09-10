@@ -1,14 +1,16 @@
 use anyhow::Result;
 use axum_server::Handle;
+use semver::Version;
 use std::{net::SocketAddr, sync::Arc, thread};
 use tokio::sync::oneshot;
 use url::Url;
 
 use k256::ecdsa::SigningKey;
+use serde_json::json;
 use web3_address::ethereum::Address;
 
 use ipfs_registry_client::RegistryClient;
-use ipfs_registry_core::Namespace;
+use ipfs_registry_core::{Namespace, Pointer};
 use ipfs_registry_database::{NamespaceRecord, PublisherRecord};
 use ipfs_registry_server::{
     build_layers,
@@ -145,4 +147,83 @@ pub async fn prepare_mock_namespace(
     )
     .await?;
     Ok((publisher_record, namespace_record))
+}
+
+pub fn mock_pointer(version: Option<Version>) -> Result<Pointer> {
+    let doc = json!(
+        {
+          "definition": {
+            "object": {
+              "cid": [
+                18,
+                32,
+                62,
+                119,
+                81,
+                194,
+                143,
+                147,
+                52,
+                6,
+                132,
+                211,
+                227,
+                135,
+                38,
+                189,
+                96,
+                172,
+                164,
+                112,
+                138,
+                247,
+                112,
+                65,
+                89,
+                133,
+                159,
+                167,
+                162,
+                75,
+                197,
+                164,
+                149,
+                32
+              ]
+            },
+            "artifact": {
+              "kind": "npm",
+              "namespace": "mock-namespace",
+              "package": {
+                "name": "mock-package",
+                "version": "1.0.0"
+              }
+            },
+            "signature": {
+              "signer": "0x1fc770ac21067a04f83101ebf19a670db9e3eb21",
+              "value": "mgtkUNH0I4D4JqhvLYEG1snbBByRLZCmBj5r+KKJiTAVUdBFj7Sm9JtGczTX0dk2jjtBH0wbLOcFIWesQiwVAwE="
+            },
+            "checksum": "4ad90a2c2e08374f8ccec2b604915a0ab7e97fcca983b12a6857d20df3fca9c0"
+          },
+          "package": {
+            "author": "",
+            "description": "Mock package to test NPM registry support",
+            "license": "ISC",
+            "main": "index.js",
+            "name": "mock-package",
+            "scripts": {
+              "test": "echo \"Error: no test specified\" && exit 1"
+            },
+            "version": "1.0.0"
+          }
+        }
+    );
+
+    let mut doc: Pointer = serde_json::from_value(doc)?;
+
+    if let Some(version) = version {
+        doc.definition.artifact.package.version = version;
+    }
+
+    Ok(doc)
 }

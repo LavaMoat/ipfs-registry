@@ -231,25 +231,12 @@ impl<T: Database> PackageHandler<T> {
                             package: package_meta,
                         };
 
-                        // Store the package pointer document
-                        state
-                            .layers
-                            .add_pointer(doc)
-                            .await
-                            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
                         PackageModel::insert(
                             &state.pool,
                             &publisher_record,
                             &namespace_record,
                             &address,
-                            &artifact.namespace,
-                            &artifact.package.name,
-                            &artifact.package.version,
-                            // TODO
-                            &serde_json::Value::Null,
-                            // TODO
-                            None,
+                            &doc,
                         )
                         .await
                         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -271,20 +258,16 @@ impl<T: Database> PackageHandler<T> {
                     }),
                 }
             }
-            Err(e) => {
-                println!("Verify publish error!!! {}", e);
-
-                Err(match e {
-                    DatabaseError::Unauthorized(_) => {
-                        StatusCode::UNAUTHORIZED
-                    }
-                    DatabaseError::UnknownPublisher(_)
-                    | DatabaseError::UnknownNamespace(_) => {
-                        StatusCode::NOT_FOUND
-                    }
-                    _ => StatusCode::INTERNAL_SERVER_ERROR,
-                })
-            }
+            Err(e) => Err(match e {
+                DatabaseError::Unauthorized(_) => {
+                    StatusCode::UNAUTHORIZED
+                }
+                DatabaseError::UnknownPublisher(_)
+                | DatabaseError::UnknownNamespace(_) => {
+                    StatusCode::NOT_FOUND
+                }
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            })
         }
     }
 }

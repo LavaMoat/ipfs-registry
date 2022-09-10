@@ -3,9 +3,7 @@ use serial_test::serial;
 
 use crate::test_utils::*;
 
-use cid::Cid;
 use semver::Version;
-use serde_json::Value;
 use sqlx::SqlitePool;
 
 use ipfs_registry_core::Namespace;
@@ -58,13 +56,10 @@ async fn integration_database() -> Result<()> {
     assert_eq!(address, ns.owner);
     assert_eq!(&authorized_address, ns.publishers.get(0).unwrap());
 
+    let pointer = mock_pointer(None)?;
+
     let mock_package = "mock-package";
     let mock_version = Version::new(1, 0, 0);
-    let mock_value = Value::Null;
-    let cid: Cid =
-        "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
-            .try_into()?;
-    let mock_content_id = Some(&cid);
 
     // Verify for publishing
     let (publisher_record, namespace_record) =
@@ -76,11 +71,7 @@ async fn integration_database() -> Result<()> {
         &publisher_record,
         &namespace_record,
         &address,
-        &namespace,
-        mock_package,
-        &mock_version,
-        &mock_value,
-        mock_content_id,
+        &pointer,
     )
     .await?;
     assert!(result > 0);
@@ -91,11 +82,7 @@ async fn integration_database() -> Result<()> {
         &publisher_record,
         &namespace_record,
         &authorized_address,
-        &namespace,
-        mock_package,
-        &Version::new(1, 0, 1),
-        &mock_value,
-        mock_content_id,
+        &mock_pointer(Some(Version::new(1, 0, 1)))?,
     )
     .await?;
     assert!(result > 0);
@@ -181,8 +168,8 @@ async fn integration_database() -> Result<()> {
     assert!(package_record.package_id > 0);
     assert!(package_record.version_id > 0);
     assert_eq!(&package_record.version, &mock_version);
-    assert_eq!(&package_record.package, &mock_value);
-    assert_eq!(&package_record.content_id, &Some(cid));
+    assert_eq!(&package_record.package, &pointer.package);
+    assert!(package_record.content_id.is_some());
 
     Ok(())
 }

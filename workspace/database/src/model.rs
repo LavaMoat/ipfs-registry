@@ -6,7 +6,7 @@ use time::OffsetDateTime;
 use web3_address::ethereum::Address;
 
 use crate::{value_objects::*, Error, Result};
-use ipfs_registry_core::Namespace;
+use ipfs_registry_core::{Namespace, ObjectKey, Pointer};
 
 pub struct PackageModel;
 
@@ -154,33 +154,17 @@ impl PackageModel {
         publisher_record: &PublisherRecord,
         namespace_record: &NamespaceRecord,
         _publisher: &Address,
-        _namespace: &Namespace,
-        name: &str,
-        version: &Version,
-        package: &Value,
-        content_id: Option<&Cid>,
+        pointer: &Pointer,
+        //name: &str,
+        //version: &Version,
+        //package: &Value,
+        //content_id: Option<&Cid>,
     ) -> Result<i64> {
-        /*
-        // Check the package / version does not already exist
-        if PackageModel::find_by_name_version(
-            pool,
-            namespace_record.namespace_id,
-            name,
-            version,
-        )
-        .await?
-        .is_some()
-        {
-            return Err(Error::PackageExists(
-                namespace_record.name.clone(),
-                name.to_owned(),
-                version.clone(),
-            ));
-        }
-        */
+        let name = &pointer.definition.artifact.package.name;
+        let version = &pointer.definition.artifact.package.version;
 
         // Find or insert the package
-        let package = serde_json::to_string(package)?;
+        let package = serde_json::to_string(&pointer.package)?;
         let version = version.to_string();
         let package_record = PackageModel::find_or_insert(
             pool,
@@ -189,7 +173,12 @@ impl PackageModel {
         )
         .await?;
 
-        let content_id = content_id.map(|cid| cid.to_string());
+        let content_id =
+            if let ObjectKey::Cid(cid) = &pointer.definition.object {
+                Some(cid.to_string())
+            } else {
+                None
+            };
 
         // Insert the package version
         let mut conn = pool.acquire().await?;
