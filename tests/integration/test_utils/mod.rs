@@ -201,7 +201,7 @@ pub fn mock_pointer(version: Option<Version>) -> Result<Pointer> {
             },
             "signature": {
               "signer": "0x1fc770ac21067a04f83101ebf19a670db9e3eb21",
-              "value": "mgtkUNH0I4D4JqhvLYEG1snbBByRLZCmBj5r+KKJiTAVUdBFj7Sm9JtGczTX0dk2jjtBH0wbLOcFIWesQiwVAwE="
+              "value": "9a0b6450d1f42380f826a86f2d8106d6c9db041c912d90a6063e6bf8a28989301551d0458fb4a6f49b467334d7d1d9368e3b411f4c1b2ce7052167ac422c150301"
             },
             "checksum": "4ad90a2c2e08374f8ccec2b604915a0ab7e97fcca983b12a6857d20df3fca9c0"
           },

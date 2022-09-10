@@ -42,10 +42,14 @@ CREATE TABLE IF NOT EXISTS versions
     created_at            TEXT                NOT NULL,
     -- Semver
     version               TEXT                NOT NULL UNIQUE,
-    -- Package meta data JSON
-    package               TEXT                NOT NULL,
     -- IPFS content identifier or key path
     content_id            TEXT                NOT NULL,
+    -- Signature using the publisher's private key
+    signature             BLOB(65)            NOT NULL,
+    -- SHA-256 checksum or the package archive
+    checksum              BLOB(32)            NOT NULL,
+    -- Package meta data as JSON (eg: package.json)
+    package               TEXT                NOT NULL,
 
     FOREIGN KEY (publisher_id) REFERENCES publishers (publisher_id),
     FOREIGN KEY (package_id) REFERENCES packages (package_id)

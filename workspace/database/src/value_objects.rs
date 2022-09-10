@@ -177,6 +177,10 @@ pub(crate) struct VersionRow {
     pub package: String,
     /// Content identifier.
     pub content_id: String,
+    /// Package archive signature.
+    pub signature: Vec<u8>,
+    /// Archive checksum.
+    pub checksum: Vec<u8>,
     /// Creation date and time.
     pub created_at: String,
 }
@@ -191,6 +195,9 @@ impl TryFrom<VersionRow> for VersionRecord {
         let package: Value = serde_json::from_str(&row.package)?;
         let content_id = row.content_id.parse()?;
 
+        let signature: [u8; 65] = row.signature.as_slice().try_into()?;
+        let checksum: [u8; 32] = row.checksum.as_slice().try_into()?;
+
         // Parse to time type
         let created_at = parse_date_time(&row.created_at)?;
 
@@ -201,6 +208,8 @@ impl TryFrom<VersionRow> for VersionRecord {
             content_id,
             version,
             package,
+            signature,
+            checksum,
             created_at,
         })
     }
@@ -223,6 +232,18 @@ pub struct VersionRecord {
     pub package: Value,
     /// Content identifier.
     pub content_id: ObjectKey,
+    /// Package archive signature.
+    #[serde(
+        serialize_with = "hex::serde::serialize",
+        deserialize_with = "hex::serde::deserialize"
+    )]
+    pub signature: [u8; 65],
+    /// Package archive checksum.
+    #[serde(
+        serialize_with = "hex::serde::serialize",
+        deserialize_with = "hex::serde::deserialize"
+    )]
+    pub checksum: [u8; 32],
     /// Creation date and time.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,

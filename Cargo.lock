@@ -1438,6 +1438,7 @@ name = "ipfs-registry-database"
 version = "0.1.0"
 dependencies = [
  "cid",
+ "hex",
  "ipfs-registry-core",
  "semver",
  "serde",

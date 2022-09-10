@@ -47,14 +47,20 @@ impl<T: Database> PackageHandler<T> {
             Ok(version) => {
                 let version_record = version.ok_or(StatusCode::NOT_FOUND)?;
 
-                // FIXME: restore signature verification
-                // FIXME: restore checksum verification
-
                 let body = state
                     .layers
                     .get_blob(&version_record.content_id)
                     .await
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+                // Verify the checksum
+                let checksum = Sha3_256::digest(&body);
+                if checksum.as_slice() != version_record.checksum.as_slice() {
+                    return Err(StatusCode::UNPROCESSABLE_ENTITY);
+                }
+
+                verify_signature(version_record.signature, &body)
+                    .map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?;
 
                 let mut headers = HeaderMap::new();
                 headers.insert("content-type", mime_type.parse().unwrap());
@@ -65,72 +71,6 @@ impl<T: Database> PackageHandler<T> {
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }),
         }
-
-        /*
-        match query.id {
-            PackageKey::Pointer(namespace, name, version) => {
-                tracing::debug!(
-                    namespace = %namespace,
-                    name = %name,
-                    version = ?version);
-
-                let descriptor = Artifact {
-                    kind,
-                    namespace,
-                    package: PackageMeta { name, version },
-                };
-
-                if let Some(doc) = pointer {
-                    let body = state
-                        .layers
-                        .get_blob(&doc.definition.object)
-                        .await
-                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-                    // Verify the checksum
-                    let checksum = Sha3_256::digest(&body);
-                    if checksum.as_slice()
-                        != doc.definition.checksum.as_slice()
-                    {
-                        return Err(StatusCode::UNPROCESSABLE_ENTITY);
-                    }
-
-                    // Verify the signature
-                    let signature = doc.definition.signature;
-                    let signature_bytes = base64::decode(signature.value)
-                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-                    let signature_bytes: [u8; 65] = signature_bytes
-                        .as_slice()
-                        .try_into()
-                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-                    verify_signature(signature_bytes, &body)
-                        .map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?;
-
-                    let mut headers = HeaderMap::new();
-                    headers
-                        .insert("content-type", mime_type.parse().unwrap());
-
-                    Ok((headers, Bytes::from(body)))
-                } else {
-                    Err(StatusCode::NOT_FOUND)
-                }
-            }
-            PackageKey::Cid(cid) => {
-                let key = ObjectKey::Cid(cid);
-                let body = state
-                    .layers
-                    .get_blob(&key)
-                    .await
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-                let mut headers = HeaderMap::new();
-                headers.insert("content-type", mime_type.parse().unwrap());
-
-                Ok((headers, Bytes::from(body)))
-            }
-        }
-        */
     }
 
     /// Create a new package.
@@ -141,10 +81,10 @@ impl<T: Database> PackageHandler<T> {
         Path(namespace): Path<Namespace>,
         body: Bytes,
     ) -> std::result::Result<Json<Receipt>, StatusCode> {
-        let encoded_signature = base64::encode(signature.as_ref());
+        //let encoded_signature = base64::encode(signature.as_ref());
 
         // Verify the signature header against the payload bytes
-        let address = verify_signature(signature.into(), &body)
+        let address = verify_signature(signature.clone().into(), &body)
             .map_err(|_| StatusCode::BAD_REQUEST)?;
 
         // Check if the author is denied
@@ -235,7 +175,7 @@ impl<T: Database> PackageHandler<T> {
                                 object,
                                 signature: PackageSignature {
                                     signer: address,
-                                    value: encoded_signature,
+                                    value: signature.into(),
                                 },
                                 checksum: checksum.to_vec(),
                             },

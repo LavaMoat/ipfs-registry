@@ -243,8 +243,12 @@ pub struct Definition {
 pub struct PackageSignature {
     /// Address of the signer.
     pub signer: Address,
-    /// Signature of the package file encoded as base64.
-    pub value: String,
+    /// Signature of the package file.
+    #[serde(
+        serialize_with = "hex::serde::serialize",
+        deserialize_with = "hex::serde::deserialize"
+    )]
+    pub value: [u8; 65],
 }
 
 /// Type that points to a package archive and wraps the meta

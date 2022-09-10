@@ -7,6 +7,7 @@ pub static X_SIGNATURE: Lazy<HeaderName> =
     Lazy::new(|| HeaderName::from_static(ipfs_registry_core::X_SIGNATURE));
 
 /// Represents the `x-signature` header.
+#[derive(Clone)]
 pub struct Signature([u8; 65]);
 
 impl AsRef<[u8]> for Signature {

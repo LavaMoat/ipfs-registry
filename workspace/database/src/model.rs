@@ -107,6 +107,8 @@ impl PackageModel {
                         version,
                         package,
                         content_id,
+                        signature,
+                        checksum,
                         created_at
                     FROM versions
                     WHERE package_id = ? AND version = ?
@@ -190,26 +192,23 @@ impl PackageModel {
         .await?;
 
         let content_id = pointer.definition.object.to_string();
-
-        //let content_id =
-        //if let ObjectKey::Cid(cid) = &pointer.definition.object {
-        //Some(cid.to_string())
-        //} else {
-        //None
-        //};
+        let signature = pointer.definition.signature.value.to_vec();
+        let checksum = pointer.definition.checksum.to_vec();
 
         // Insert the package version
         let mut conn = pool.acquire().await?;
         let id = sqlx::query!(
             r#"
-                INSERT INTO versions ( publisher_id, package_id, version, package, content_id, created_at )
-                VALUES ( ?1, ?2, ?3, ?4, ?5, datetime('now') )
+                INSERT INTO versions ( publisher_id, package_id, version, package, content_id, signature, checksum, created_at )
+                VALUES ( ?1, ?2, ?3, ?4, ?5, ?6, ?7, datetime('now') )
             "#,
             publisher_record.publisher_id,
             package_record.package_id,
             version,
             package,
             content_id,
+            signature,
+            checksum,
         )
         .execute(&mut conn)
         .await?

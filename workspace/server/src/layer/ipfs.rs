@@ -10,7 +10,7 @@ use ipfs_registry_core::{Artifact, ObjectKey, Pointer};
 
 use super::Layer;
 
-use super::{NAME, ROOT};
+use super::ROOT;
 use crate::{Error, Result};
 
 /// Layer for IPFS backed storage.
