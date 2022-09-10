@@ -47,14 +47,6 @@ impl Layer for MemoryLayer {
         }
     }
 
-    async fn add_pointer(&self, doc: Pointer) -> Result<Vec<ObjectKey>> {
-        let key = get_pointer_key(&doc.definition.artifact);
-        let data = serde_json::to_vec_pretty(&doc)?;
-        let mut writer = self.files.write().await;
-        writer.insert(key.clone(), data);
-        Ok(vec![ObjectKey::Key(key)])
-    }
-
     async fn get_pointer(
         &self,
         artifact: &Artifact,

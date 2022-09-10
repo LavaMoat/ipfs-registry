@@ -90,21 +90,6 @@ impl Layer for Layers {
         self.primary().get_blob(id).await
     }
 
-    async fn add_pointer(&self, doc: Pointer) -> Result<Vec<ObjectKey>> {
-        let has_mirrors = self.storage.len() > 1;
-        if has_mirrors {
-            let mut keys = Vec::new();
-            for layer in self.storage.iter() {
-                let mut id = layer.add_pointer(doc.clone()).await?;
-
-                keys.append(&mut id);
-            }
-            Ok(keys)
-        } else {
-            self.primary().add_pointer(doc).await
-        }
-    }
-
     async fn get_pointer(
         &self,
         descriptor: &Artifact,
@@ -151,9 +136,6 @@ pub trait Layer {
 
     /// Get a blob from storage by identifier.
     async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>>;
-
-    /// Add a pointer to the storage.
-    async fn add_pointer(&self, doc: Pointer) -> Result<Vec<ObjectKey>>;
 
     /// Get a pointer from the storage.
     async fn get_pointer(

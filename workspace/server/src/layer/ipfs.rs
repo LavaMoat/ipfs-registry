@@ -68,32 +68,6 @@ impl Layer for IpfsLayer {
         Ok(res)
     }
 
-    async fn add_pointer(&self, doc: Pointer) -> Result<Vec<ObjectKey>> {
-        let artifact = &doc.definition.artifact;
-        let dir = format!(
-            "/{}/{}/{}/{}/{}",
-            ROOT,
-            &artifact.kind,
-            &artifact.namespace,
-            &artifact.package.name,
-            &artifact.package.version
-        );
-
-        self.client.files_mkdir(&dir, true).await?;
-
-        let data = serde_json::to_vec_pretty(&doc)?;
-        let path = format!("{}/{}", dir, NAME);
-
-        let data = Cursor::new(data);
-        self.client.files_write(&path, true, true, data).await?;
-        self.client.files_flush(Some(&path)).await?;
-
-        let stat = self.client.files_stat(&path).await?;
-        self.client.pin_add(&stat.hash, true).await?;
-
-        Ok(vec![ObjectKey::Cid(stat.hash.try_into()?)])
-    }
-
     async fn get_pointer(
         &self,
         descriptor: &Artifact,
