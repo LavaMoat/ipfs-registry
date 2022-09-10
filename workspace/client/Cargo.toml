@@ -6,6 +6,7 @@ description = "Signed package registry client for IPFS"
 
 [dependencies]
 ipfs-registry-core = { version = "*", path = "../core" }
+ipfs-registry-database = { version = "*", path = "../database" }
 
 clap = { version = "3", features = ["derive", "wrap_help"] }
 thiserror = "1"

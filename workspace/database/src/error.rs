@@ -16,6 +16,9 @@ pub enum Error {
     #[error("unknown namespace {0}")]
     UnknownNamespace(String),
 
+    #[error("failed to fetch record {0} after insert")]
+    InsertFetch(i64),
+
     /// Error generated converting from a slice.
     #[error(transparent)]
     TryFromSlice(#[from] std::array::TryFromSliceError),

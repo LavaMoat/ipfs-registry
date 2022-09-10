@@ -8,6 +8,7 @@ use web3_address::ethereum::Address;
 use web3_keystore::encrypt;
 
 use ipfs_registry_core::{PackageKey, Receipt};
+use ipfs_registry_database::{NamespaceRecord, PublisherRecord};
 
 use crate::{helpers, input, Error, RegistryClient, Result};
 
@@ -23,7 +24,7 @@ pub async fn publish(
 }
 
 /// Signup for publishing.
-pub async fn signup(server: Url, key: PathBuf) -> Result<()> {
+pub async fn signup(server: Url, key: PathBuf) -> Result<PublisherRecord> {
     let signing_key = helpers::read_keystore_file(key)?;
     RegistryClient::signup(server, signing_key).await
 }
@@ -33,7 +34,7 @@ pub async fn register(
     server: Url,
     key: PathBuf,
     namespace: String,
-) -> Result<()> {
+) -> Result<NamespaceRecord> {
     let signing_key = helpers::read_keystore_file(key)?;
     RegistryClient::register(server, signing_key, namespace).await
 }

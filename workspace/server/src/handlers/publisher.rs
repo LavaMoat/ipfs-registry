@@ -1,6 +1,7 @@
 use axum::{
     extract::{Extension, TypedHeader},
     http::StatusCode,
+    Json,
 };
 
 //use axum_macros::debug_handler;
@@ -9,7 +10,7 @@ use sqlx::{Database, Sqlite};
 
 use ipfs_registry_core::WELL_KNOWN_MESSAGE;
 
-use ipfs_registry_database::Publisher;
+use ipfs_registry_database::{Publisher, PublisherRecord};
 
 use crate::{
     handlers::verify_signature, headers::Signature, server::ServerState,
@@ -24,7 +25,7 @@ impl<T: Database> PublisherHandler<T> {
     pub(crate) async fn post(
         Extension(state): Extension<ServerState<T>>,
         TypedHeader(signature): TypedHeader<Signature>,
-    ) -> std::result::Result<StatusCode, StatusCode> {
+    ) -> std::result::Result<Json<PublisherRecord>, StatusCode> {
         // Verify the signature header against the well known message
         let address = verify_signature(signature.into(), WELL_KNOWN_MESSAGE)
             .map_err(|_| StatusCode::BAD_REQUEST)?;
@@ -38,10 +39,11 @@ impl<T: Database> PublisherHandler<T> {
             return Err(StatusCode::CONFLICT);
         }
 
-        Publisher::<Sqlite>::add(&state.pool, &address)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        let publisher_record =
+            Publisher::<Sqlite>::insert_fetch(&state.pool, &address)
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-        Ok(StatusCode::OK)
+        Ok(Json(publisher_record))
     }
 }

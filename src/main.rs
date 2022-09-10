@@ -99,10 +99,17 @@ async fn run() -> Result<()> {
             serde_json::to_writer_pretty(std::io::stdout(), &address)?;
         }
         Command::Signup { server, key } => {
-            ipfs_registry_client::signup(server, key).await?;
+            let doc = ipfs_registry_client::signup(server, key).await?;
+            serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
         }
-        Command::Register { server, key, namespace } => {
-            ipfs_registry_client::register(server, key, namespace).await?;
+        Command::Register {
+            server,
+            key,
+            namespace,
+        } => {
+            let doc = ipfs_registry_client::register(server, key, namespace)
+                .await?;
+            serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
         }
         Command::Publish {
             server,
@@ -113,7 +120,6 @@ async fn run() -> Result<()> {
             let doc = ipfs_registry_client::publish(server, mime, key, file)
                 .await?;
             serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
-            //tracing::info!(definition = ?definition);
         }
         Command::Fetch { server, id, file } => {
             let file = ipfs_registry_client::fetch(server, id, file).await?;

@@ -1396,6 +1396,7 @@ dependencies = [
  "base64",
  "clap",
  "ipfs-registry-core",
+ "ipfs-registry-database",
  "k256",
  "mime",
  "rand",

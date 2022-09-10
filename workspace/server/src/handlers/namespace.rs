@@ -1,11 +1,12 @@
 use axum::{
     extract::{Extension, Path, TypedHeader},
     http::StatusCode,
+    Json,
 };
 
 use sqlx::{Database, Sqlite};
 
-use ipfs_registry_database::{Namespace, Publisher};
+use ipfs_registry_database::{Namespace, NamespaceRecord, Publisher};
 
 use crate::{
     handlers::verify_signature, headers::Signature, server::ServerState,
@@ -21,7 +22,7 @@ impl<T: Database> NamespaceHandler<T> {
         Extension(state): Extension<ServerState<T>>,
         TypedHeader(signature): TypedHeader<Signature>,
         Path(namespace): Path<String>,
-    ) -> std::result::Result<StatusCode, StatusCode> {
+    ) -> std::result::Result<Json<NamespaceRecord>, StatusCode> {
         // FIXME: verify namespace is sane - no slashes!
 
         // Verify the signature header against supplied namespace
@@ -44,7 +45,7 @@ impl<T: Database> NamespaceHandler<T> {
                 return Err(StatusCode::CONFLICT);
             }
 
-            Namespace::<Sqlite>::add(
+            let record = Namespace::<Sqlite>::insert_fetch(
                 &state.pool,
                 &namespace,
                 publisher.publisher_id,
@@ -52,7 +53,7 @@ impl<T: Database> NamespaceHandler<T> {
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            Ok(StatusCode::OK)
+            Ok(Json(record))
         } else {
             Err(StatusCode::UNAUTHORIZED)
         }

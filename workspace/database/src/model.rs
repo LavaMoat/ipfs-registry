@@ -235,9 +235,7 @@ impl Publisher<Sqlite> {
     /// Add a publisher.
     pub async fn add(pool: &SqlitePool, owner: &Address) -> Result<i64> {
         let mut conn = pool.acquire().await?;
-
         let addr = owner.as_ref();
-
         let id = sqlx::query!(
             r#"
                 INSERT INTO publishers ( address, created_at )
@@ -250,6 +248,18 @@ impl Publisher<Sqlite> {
         .last_insert_rowid();
 
         Ok(id)
+    }
+
+    /// Insert a publisher and fetch the record.
+    pub async fn insert_fetch(
+        pool: &SqlitePool,
+        owner: &Address,
+    ) -> Result<PublisherRecord> {
+        let id = Publisher::<Sqlite>::add(pool, owner).await?;
+        let record = Publisher::<Sqlite>::find_by_address(pool, owner)
+            .await?
+            .ok_or(Error::InsertFetch(id))?;
+        Ok(record)
     }
 
     /// Find a publisher by address.
@@ -313,6 +323,19 @@ impl Namespace<Sqlite> {
         .last_insert_rowid();
 
         Ok(id)
+    }
+
+    /// Insert a namespace and fetch the record.
+    pub async fn insert_fetch(
+        pool: &SqlitePool,
+        name: &str,
+        publisher_id: i64,
+    ) -> Result<NamespaceRecord> {
+        let id = Namespace::<Sqlite>::add(pool, name, publisher_id).await?;
+        let record = Namespace::<Sqlite>::find_by_name(pool, name)
+            .await?
+            .ok_or(Error::InsertFetch(id))?;
+        Ok(record)
     }
 
     /// Add a publisher to a namespace.
