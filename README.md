@@ -35,13 +35,19 @@ Generate a signing key; you will be prompted to choose a password for the keysto
 ipkg keygen ./sandbox
 ```
 
+Signup so the public key is registered for publishing:
+
+```
+ipkg signup -k ./sandbox/<addr>.json
+```
+
+Replace `<addr>` with the address of the public key and enter the password for the keystore when prompted.
+
 Publish a package:
 
 ```
 ipkg publish -k ./sandbox/<addr>.json fixtures/mock-package-1.0.0.tgz
 ```
-
-Replace `<addr>` with the address for the key and enter the password for the keystore when prompted.
 
 Download the package to a file:
 

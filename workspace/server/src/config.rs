@@ -126,7 +126,8 @@ pub struct DatabaseConfig {
 impl Default for DatabaseConfig {
     fn default() -> Self {
         Self {
-            url: "sqlite:ipfs_registry.db".to_owned(),
+            url: "sqlite::memory:".to_owned(),
+            //url: "sqlite:ipfs_registry.db".to_owned(),
         }
     }
 }

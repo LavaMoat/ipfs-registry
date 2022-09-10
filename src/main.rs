@@ -24,7 +24,7 @@ enum Command {
         #[clap(parse(from_os_str))]
         dir: PathBuf,
     },
-    /// Register the public key for publishing.
+    /// Signup the public key for publishing.
     Signup {
         /// Server URL.
         #[clap(short, long, default_value = "http://127.0.0.1:9060")]
