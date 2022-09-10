@@ -6,18 +6,51 @@ use time::OffsetDateTime;
 use web3_address::ethereum::Address;
 
 use crate::{value_objects::*, Error, Result};
-use ipfs_registry_core::{Namespace, ObjectKey, Pointer};
+use ipfs_registry_core::{Namespace, ObjectKey, PackageKey, Pointer};
 
 pub struct PackageModel;
 
 impl PackageModel {
+    pub async fn find_by_key(
+        pool: &SqlitePool,
+        package_key: &PackageKey,
+    ) -> Result<Option<VersionRecord>> {
+        match package_key {
+            PackageKey::Pointer(namespace, name, version) => {
+                todo!()
+            }
+            PackageKey::Cid(cid) => {
+                let content_id = cid.to_string();
+                let record = sqlx::query_as!(
+                    VersionRow,
+                    r#"
+                        SELECT * FROM versions
+                        WHERE content_id = ?
+                    "#,
+                    content_id
+                )
+                .fetch_optional(pool)
+                .await?;
+
+                let record = if let Some(record) = record {
+                    Some(record.try_into()?)
+                } else {
+                    None
+                };
+
+                Ok(record)
+            }
+        }
+    }
+
     /// Find a package by name.
     pub async fn find_by_name(
         pool: &SqlitePool,
         namespace_id: i64,
         name: &str,
     ) -> Result<Option<PackageRecord>> {
-        let record = sqlx::query!(
+        let record = sqlx::query_as!(
+            PackageRow,
             r#"
                 SELECT
                     namespace_id,
@@ -34,14 +67,7 @@ impl PackageModel {
         .await?;
 
         let record = if let Some(record) = record {
-            let created_at = parse_date_time(&record.created_at)?;
-
-            Some(PackageRecord {
-                namespace_id: record.namespace_id,
-                package_id: record.package_id,
-                name: record.name,
-                created_at,
-            })
+            Some(record.try_into()?)
         } else {
             None
         };
@@ -61,7 +87,8 @@ impl PackageModel {
         {
             let version = version.to_string();
 
-            let result = sqlx::query!(
+            let record = sqlx::query_as!(
+                VersionRow,
                 r#"
                     SELECT
                         version_id,
@@ -80,32 +107,13 @@ impl PackageModel {
             .fetch_optional(pool)
             .await?;
 
-            if let Some(record) = result {
-                let version: Version = Version::parse(&record.version)?;
-                let package: Value = serde_json::from_str(&record.package)?;
-
-                let content_id = if let Some(cid) = record.content_id {
-                    let cid: Cid = cid.try_into()?;
-                    Some(cid)
-                } else {
-                    None
-                };
-
-                // Parse to time type
-                let created_at = parse_date_time(&record.created_at)?;
-
-                Ok(Some(VersionRecord {
-                    publisher_id: record.publisher_id,
-                    version_id: record.version_id,
-                    package_id: record.package_id,
-                    content_id,
-                    version,
-                    package,
-                    created_at,
-                }))
+            let record = if let Some(record) = record {
+                Some(record.try_into()?)
             } else {
-                Ok(None)
-            }
+                None
+            };
+
+            Ok(record)
         } else {
             Ok(None)
         }
@@ -135,6 +143,8 @@ impl PackageModel {
             .await?
             .last_insert_rowid();
 
+            // FIXME: fetch from the database!
+
             Ok(PackageRecord {
                 namespace_id,
                 package_id: id,
@@ -155,10 +165,6 @@ impl PackageModel {
         namespace_record: &NamespaceRecord,
         _publisher: &Address,
         pointer: &Pointer,
-        //name: &str,
-        //version: &Version,
-        //package: &Value,
-        //content_id: Option<&Cid>,
     ) -> Result<i64> {
         let name = &pointer.definition.artifact.package.name;
         let version = &pointer.definition.artifact.package.version;
@@ -292,10 +298,12 @@ impl PublisherModel {
     ) -> Result<Option<PublisherRecord>> {
         let addr = publisher.as_ref();
 
-        let record = sqlx::query!(
+        let record = sqlx::query_as!(
+            PublisherRow,
             r#"
                 SELECT
                     publisher_id,
+                    address,
                     created_at
                 FROM publishers
                 WHERE address = ?
@@ -306,12 +314,7 @@ impl PublisherModel {
         .await?;
 
         let record = if let Some(record) = record {
-            let created_at = parse_date_time(&record.created_at)?;
-            Some(PublisherRecord {
-                publisher_id: record.publisher_id,
-                address: *publisher,
-                created_at,
-            })
+            Some(record.try_into()?)
         } else {
             None
         };
@@ -391,7 +394,8 @@ impl NamespaceModel {
         name: &Namespace,
     ) -> Result<Option<NamespaceRecord>> {
         let ns = name.as_str();
-        let result = sqlx::query!(
+        let record = sqlx::query_as!(
+            NamespaceRow,
             r#"
                 SELECT
                     namespaces.namespace_id,
@@ -409,9 +413,10 @@ impl NamespaceModel {
         .fetch_optional(pool)
         .await?;
 
-        if let Some(result) = result {
-            let owner: [u8; 20] = result.address.as_slice().try_into()?;
-            let owner: Address = owner.into();
+        if let Some(record) = record {
+            let mut record: NamespaceRecord = record.try_into()?;
+            //let owner: [u8; 20] = result.address.as_slice().try_into()?;
+            //let owner: Address = owner.into();
 
             let records = sqlx::query!(
                 r#"
@@ -424,28 +429,18 @@ impl NamespaceModel {
                     ON (namespace_publishers.publisher_id = publishers.publisher_id)
                     WHERE namespace_id = ?
                 "#,
-                result.namespace_id,
+                record.namespace_id,
             )
             .fetch_all(pool)
             .await?;
 
-            let mut publishers = Vec::new();
             for result in records {
                 let owner: [u8; 20] = result.address.as_slice().try_into()?;
                 let owner: Address = owner.into();
-                publishers.push(owner);
+                record.publishers.push(owner);
             }
 
-            // Parse to time type
-            let created_at = parse_date_time(&result.created_at)?;
-
-            Ok(Some(NamespaceRecord {
-                namespace_id: result.namespace_id,
-                name: result.name,
-                owner,
-                publishers,
-                created_at,
-            }))
+            Ok(Some(record))
         } else {
             Ok(None)
         }

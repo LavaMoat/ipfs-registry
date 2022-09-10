@@ -5,13 +5,43 @@ use serde_json::Value;
 use time::{format_description, OffsetDateTime, PrimitiveDateTime};
 use web3_address::ethereum::Address;
 
-use crate::Result;
+use sqlx::{sqlite::SqliteRow, FromRow, Row};
+use ipfs_registry_core::Namespace;
+
+use crate::{Error, Result};
 
 pub(crate) fn parse_date_time(date_time: &str) -> Result<OffsetDateTime> {
     let format = format_description::parse(
         "[year]-[month]-[day] [hour]:[minute]:[second]",
     )?;
     Ok(PrimitiveDateTime::parse(date_time, &format)?.assume_utc())
+}
+
+#[derive(Debug)]
+pub(crate) struct PublisherRow {
+    /// Publisher primary key.
+    pub publisher_id: i64,
+    /// Address of the publisher.
+    pub address: Vec<u8>,
+    /// Creation date and time.
+    pub created_at: String,
+}
+
+impl TryFrom<PublisherRow> for PublisherRecord {
+    type Error = Error;
+
+    fn try_from(
+        row: PublisherRow,
+    ) -> std::result::Result<PublisherRecord, Self::Error> {
+        let created_at = parse_date_time(&row.created_at)?;
+        let address: [u8; 20] = row.address.as_slice().try_into()?;
+        let address: Address = address.into();
+        Ok(PublisherRecord {
+            publisher_id: row.publisher_id,
+            address,
+            created_at,
+        })
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -26,13 +56,48 @@ pub struct PublisherRecord {
     pub created_at: OffsetDateTime,
 }
 
+#[derive(Debug)]
+pub(crate) struct NamespaceRow {
+    /// Namespace primary key.
+    pub namespace_id: i64,
+    /// Publisher foreign key.
+    pub publisher_id: i64,
+    /// Name for the namespace.
+    pub name: String,
+    /// Address of the owner.
+    pub address: Vec<u8>,
+    /// Creation date and time.
+    pub created_at: String,
+}
+
+impl TryFrom<NamespaceRow> for NamespaceRecord {
+    type Error = Error;
+
+    fn try_from(
+        row: NamespaceRow,
+    ) -> std::result::Result<NamespaceRecord, Self::Error> {
+        let created_at = parse_date_time(&row.created_at)?;
+
+        let owner: [u8; 20] = row.address.as_slice().try_into()?;
+        let owner: Address = owner.into();
+
+        Ok(NamespaceRecord {
+            namespace_id: row.namespace_id,
+            owner,
+            name: row.name.parse()?,
+            created_at,
+            publishers: Vec::new(),
+        })
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NamespaceRecord {
     /// Namespace primary key.
     #[serde(skip)]
     pub namespace_id: i64,
     /// Name for the namespace.
-    pub name: String,
+    pub name: Namespace,
     /// Owner of the namespace.
     pub owner: Address,
     /// Additional publishers.
@@ -54,6 +119,35 @@ impl NamespaceRecord {
     }
 }
 
+#[derive(Debug)]
+pub(crate) struct PackageRow {
+    /// Namespace foreign key.
+    pub namespace_id: i64,
+    /// Package primary key.
+    pub package_id: i64,
+    /// Name of the package.
+    pub name: String,
+    /// Creation date and time.
+    pub created_at: String,
+}
+
+impl TryFrom<PackageRow> for PackageRecord {
+    type Error = Error;
+
+    fn try_from(
+        row: PackageRow,
+    ) -> std::result::Result<PackageRecord, Self::Error> {
+        // Parse to time type
+        let created_at = parse_date_time(&row.created_at)?;
+        Ok(PackageRecord {
+            namespace_id: row.namespace_id,
+            package_id: row.package_id,
+            name: row.name,
+            created_at,
+        })
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PackageRecord {
     /// Namespace foreign key.
@@ -67,6 +161,55 @@ pub struct PackageRecord {
     /// Creation date and time.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+}
+
+#[derive(Debug)]
+pub(crate) struct VersionRow {
+    /// Publisher foreign key.
+    pub publisher_id: i64,
+    /// Package foreign key.
+    pub package_id: i64,
+    /// Version primary key.
+    pub version_id: i64,
+    /// Version of the package.
+    pub version: String,
+    /// Package meta data.
+    pub package: String,
+    /// Content identifier.
+    pub content_id: Option<String>,
+    /// Creation date and time.
+    pub created_at: String,
+}
+
+impl TryFrom<VersionRow> for VersionRecord {
+    type Error = Error;
+
+    fn try_from(
+        row: VersionRow,
+    ) -> std::result::Result<VersionRecord, Self::Error> {
+        let version: Version = Version::parse(&row.version)?;
+        let package: Value = serde_json::from_str(&row.package)?;
+
+        let content_id = if let Some(cid) = row.content_id {
+            let cid: Cid = cid.try_into()?;
+            Some(cid)
+        } else {
+            None
+        };
+
+        // Parse to time type
+        let created_at = parse_date_time(&row.created_at)?;
+
+        Ok(VersionRecord {
+            publisher_id: row.publisher_id,
+            version_id: row.version_id,
+            package_id: row.package_id,
+            content_id,
+            version,
+            package,
+            created_at,
+        })
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

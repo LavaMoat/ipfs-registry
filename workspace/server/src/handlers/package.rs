@@ -44,16 +44,11 @@ impl<T: Database> PackageHandler<T> {
         let kind = state.config.registry.kind;
 
         match query.id {
-            PackageKey::Pointer(address, name, version) => {
+            PackageKey::Pointer(namespace, name, version) => {
                 tracing::debug!(
-                    address = %address,
+                    namespace = %namespace,
                     name = %name,
                     version = ?version);
-
-                let namespace: Namespace = address
-                    .to_string()
-                    .parse()
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
                 let descriptor = Artifact {
                     kind,
@@ -259,15 +254,11 @@ impl<T: Database> PackageHandler<T> {
                 }
             }
             Err(e) => Err(match e {
-                DatabaseError::Unauthorized(_) => {
-                    StatusCode::UNAUTHORIZED
-                }
+                DatabaseError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
                 DatabaseError::UnknownPublisher(_)
-                | DatabaseError::UnknownNamespace(_) => {
-                    StatusCode::NOT_FOUND
-                }
+                | DatabaseError::UnknownNamespace(_) => StatusCode::NOT_FOUND,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
-            })
+            }),
         }
     }
 }

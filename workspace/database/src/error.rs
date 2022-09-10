@@ -1,11 +1,12 @@
 use semver::Version;
 use thiserror::Error;
 use web3_address::ethereum::Address;
+use ipfs_registry_core::Namespace;
 
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("package {0}/{1}/{2} already exists")]
-    PackageExists(String, String, Version),
+    PackageExists(Namespace, String, Version),
 
     #[error("publisher {0} is not authorized")]
     Unauthorized(Address),
@@ -19,12 +20,18 @@ pub enum Error {
     #[error("failed to fetch record {0} after insert")]
     InsertFetch(i64),
 
+    #[error(transparent)]
+    Core(#[from] ipfs_registry_core::Error),
+
     /// Error generated converting from a slice.
     #[error(transparent)]
     TryFromSlice(#[from] std::array::TryFromSliceError),
 
     #[error(transparent)]
     Semver(#[from] semver::Error),
+
+    #[error(transparent)]
+    Address(#[from] web3_address::Error),
 
     #[error(transparent)]
     Sql(#[from] sqlx::Error),
