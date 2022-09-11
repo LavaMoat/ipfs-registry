@@ -8,7 +8,7 @@ use ipfs_registry_core::{Namespace, ObjectKey};
 
 use sqlx::{sqlite::SqliteRow, FromRow, Row};
 
-use crate::{Error, Result};
+use crate::Result;
 
 pub(crate) fn parse_date_time(date_time: &str) -> Result<OffsetDateTime> {
     let format = format_description::parse(
@@ -48,6 +48,38 @@ impl FromRow<'_, SqliteRow> for PublisherRecord {
             publisher_id,
             address,
             created_at,
+        })
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserRecord {
+    /// Namespace foreign key.
+    #[serde(skip)]
+    pub namespace_id: i64,
+    /// Publisher foreign key.
+    #[serde(skip)]
+    pub publisher_id: i64,
+    /// Address of the publisher.
+    pub address: Address,
+}
+
+impl FromRow<'_, SqliteRow> for UserRecord {
+    fn from_row(row: &SqliteRow) -> sqlx::Result<Self> {
+        let namespace_id: i64 = row.try_get("namespace_id")?;
+        let publisher_id: i64 = row.try_get("publisher_id")?;
+        let address: Vec<u8> = row.try_get("address")?;
+
+        let address: [u8; 20] = address
+            .as_slice()
+            .try_into()
+            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+        let address: Address = address.into();
+
+        Ok(Self {
+            namespace_id,
+            publisher_id,
+            address,
         })
     }
 }

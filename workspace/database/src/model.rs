@@ -1,6 +1,6 @@
 use semver::Version;
 
-use sqlx::{sqlite::SqliteArguments, Arguments, SqlitePool};
+use sqlx::{sqlite::SqliteArguments, Arguments, QueryBuilder, SqlitePool};
 use time::OffsetDateTime;
 use web3_address::ethereum::Address;
 
@@ -175,17 +175,23 @@ impl PackageModel {
             Ok(record)
         } else {
             let mut conn = pool.acquire().await?;
-            let id = sqlx::query!(
+
+            let mut builder = QueryBuilder::new(
                 r#"
                     INSERT INTO packages ( namespace_id, name, created_at )
-                    VALUES ( ?1, ?2, datetime('now') )
+                    VALUES (
                 "#,
-                namespace_id,
-                name,
-            )
-            .execute(&mut conn)
-            .await?
-            .last_insert_rowid();
+            );
+            let mut separated = builder.separated(", ");
+            separated.push_bind(namespace_id);
+            separated.push_bind(name);
+            builder.push(", datetime('now') )");
+
+            let id = builder
+                .build()
+                .execute(&mut conn)
+                .await?
+                .last_insert_rowid();
 
             // FIXME: fetch from the database!
 
@@ -215,6 +221,7 @@ impl PackageModel {
 
         // Find or insert the package
         let package = serde_json::to_string(&pointer.package)?;
+
         //let version = version.to_string();
         let package_record = PackageModel::find_or_insert(
             pool,
@@ -223,38 +230,34 @@ impl PackageModel {
         )
         .await?;
 
-        let content_id = pointer.definition.object.to_string();
-        let signature = pointer.definition.signature.value.to_vec();
-        let checksum = pointer.definition.checksum.to_vec();
-
-        let major = version.major as i64;
-        let minor = version.minor as i64;
-        let patch = version.patch as i64;
-        let pre = version.pre.to_string();
-        let build = version.build.to_string();
-
         // Insert the package version
         let mut conn = pool.acquire().await?;
-        let id = sqlx::query!(
+
+        let mut builder = QueryBuilder::new(
             r#"
                 INSERT INTO versions ( publisher_id, package_id, major, minor, patch, pre, build, package, content_id, signature, checksum, created_at )
-                VALUES ( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, datetime('now') )
+                VALUES (
             "#,
-            publisher_record.publisher_id,
-            package_record.package_id,
-            major,
-            minor,
-            patch,
-            pre,
-            build,
-            package,
-            content_id,
-            signature,
-            checksum,
-        )
-        .execute(&mut conn)
-        .await?
-        .last_insert_rowid();
+        );
+        let mut separated = builder.separated(", ");
+        separated.push_bind(publisher_record.publisher_id);
+        separated.push_bind(package_record.package_id);
+        separated.push_bind(version.major as i64);
+        separated.push_bind(version.minor as i64);
+        separated.push_bind(version.patch as i64);
+        separated.push_bind(version.pre.to_string());
+        separated.push_bind(version.build.to_string());
+        separated.push_bind(package);
+        separated.push_bind(pointer.definition.object.to_string());
+        separated.push_bind(pointer.definition.signature.value.to_vec());
+        separated.push_bind(pointer.definition.checksum.to_vec());
+        builder.push(", datetime('now') )");
+
+        let id = builder
+            .build()
+            .execute(&mut conn)
+            .await?
+            .last_insert_rowid();
 
         Ok(id)
     }
@@ -317,17 +320,22 @@ impl PublisherModel {
     /// Insert a publisher.
     pub async fn insert(pool: &SqlitePool, owner: &Address) -> Result<i64> {
         let mut conn = pool.acquire().await?;
-        let addr = owner.as_ref();
-        let id = sqlx::query!(
+
+        let mut builder = QueryBuilder::new(
             r#"
                 INSERT INTO publishers ( address, created_at )
-                VALUES ( ?1, datetime('now') )
+                VALUES (
             "#,
-            addr,
-        )
-        .execute(&mut conn)
-        .await?
-        .last_insert_rowid();
+        );
+        let mut separated = builder.separated(", ");
+        separated.push_bind(owner.as_ref());
+        builder.push(", datetime('now') )");
+
+        let id = builder
+            .build()
+            .execute(&mut conn)
+            .await?
+            .last_insert_rowid();
 
         Ok(id)
     }
@@ -368,12 +376,6 @@ impl PublisherModel {
         .fetch_optional(pool)
         .await?;
 
-        //let record = if let Some(record) = record {
-        //Some(record.try_into()?)
-        //} else {
-        //None
-        //};
-
         Ok(record)
     }
 }
@@ -389,18 +391,22 @@ impl NamespaceModel {
     ) -> Result<i64> {
         let mut conn = pool.acquire().await?;
 
-        let ns = name.as_str();
-        let id = sqlx::query!(
+        let mut builder = QueryBuilder::new(
             r#"
                 INSERT INTO namespaces ( name, publisher_id, created_at )
-                VALUES ( ?1, ?2, datetime('now') )
+                VALUES (
             "#,
-            ns,
-            publisher_id,
-        )
-        .execute(&mut conn)
-        .await?
-        .last_insert_rowid();
+        );
+        let mut separated = builder.separated(", ");
+        separated.push_bind(name.as_str());
+        separated.push_bind(publisher_id);
+        builder.push(", datetime('now') )");
+
+        let id = builder
+            .build()
+            .execute(&mut conn)
+            .await?
+            .last_insert_rowid();
 
         Ok(id)
     }
@@ -425,18 +431,22 @@ impl NamespaceModel {
         publisher_id: i64,
     ) -> Result<i64> {
         let mut conn = pool.acquire().await?;
-
-        let id = sqlx::query!(
+        let mut builder = QueryBuilder::new(
             r#"
                 INSERT INTO namespace_publishers ( namespace_id, publisher_id )
-                VALUES ( ?1, ?2 )
+                VALUES (
             "#,
-            namespace_id,
-            publisher_id,
-        )
-        .execute(&mut conn)
-        .await?
-        .last_insert_rowid();
+        );
+        let mut separated = builder.separated(", ");
+        separated.push_bind(namespace_id);
+        separated.push_bind(publisher_id);
+        builder.push(" )");
+
+        let id = builder
+            .build()
+            .execute(&mut conn)
+            .await?
+            .last_insert_rowid();
 
         Ok(id)
     }
@@ -471,7 +481,10 @@ impl NamespaceModel {
         .await?;
 
         if let Some(mut record) = record {
-            let records = sqlx::query!(
+            let mut args: SqliteArguments = Default::default();
+            args.add(record.namespace_id);
+
+            let users = sqlx::query_as_with::<_, UserRecord, _>(
                 r#"
                     SELECT
                         namespace_publishers.namespace_id,
@@ -482,15 +495,13 @@ impl NamespaceModel {
                     ON (namespace_publishers.publisher_id = publishers.publisher_id)
                     WHERE namespace_id = ?
                 "#,
-                record.namespace_id,
+                args
             )
             .fetch_all(pool)
             .await?;
 
-            for result in records {
-                let owner: [u8; 20] = result.address.as_slice().try_into()?;
-                let owner: Address = owner.into();
-                record.publishers.push(owner);
+            for user in users {
+                record.publishers.push(user.address);
             }
 
             Ok(Some(record))
