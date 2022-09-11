@@ -67,7 +67,7 @@ impl PackageHandler {
         match PackageModel::list_packages(
             &state.pool,
             &namespace,
-            pager,
+            &pager,
             query.versions,
         )
         .await

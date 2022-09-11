@@ -183,6 +183,8 @@ List the packages for a namespace.
 * `offset`: Offset for pagination.
 * `sort`: Sort order, either `asc` or `desc`.
 
+Note that fetching `all` versions is limited to a maximum of 100.
+
 #### Response
 
 ```json

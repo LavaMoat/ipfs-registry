@@ -174,7 +174,7 @@ async fn integration_database() -> Result<()> {
         &pool,
         &namespace,
         &mock_package,
-        Default::default(),
+        &Default::default(),
     )
     .await?;
 
@@ -183,7 +183,7 @@ async fn integration_database() -> Result<()> {
     let packages = PackageModel::list_packages(
         &pool,
         &namespace,
-        Default::default(),
+        &Default::default(),
         VersionIncludes::Latest,
     )
     .await?;

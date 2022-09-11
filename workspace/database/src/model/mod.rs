@@ -50,16 +50,16 @@ impl Default for Pager {
 #[serde(rename_all = "lowercase")]
 pub enum Direction {
     #[default]
-    ASC,
-    DESC,
+    Asc,
+    Desc,
 }
 
 impl Direction {
     /// Get a string for each variant.
     pub fn as_str(&self) -> &str {
         match self {
-            Self::ASC => "ASC",
-            Self::DESC => "DESC",
+            Self::Asc => "ASC",
+            Self::Desc => "DESC",
         }
     }
 }
