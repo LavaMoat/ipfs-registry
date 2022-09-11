@@ -170,5 +170,13 @@ async fn integration_database() -> Result<()> {
     assert_eq!(&package_record.version, &mock_version);
     assert_eq!(&package_record.package, &pointer.package);
 
+    let packages =
+        PackageModel::list_packages(&pool, &namespace, Default::default())
+            .await?;
+
+    //println!("{:#?}", packages);
+
+    assert!(packages.len() > 0);
+
     Ok(())
 }

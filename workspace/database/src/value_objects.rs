@@ -6,6 +6,8 @@ use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{Namespace, ObjectKey};
 
+use sqlx::{sqlite::SqliteRow, FromRow, Row};
+
 use crate::{Error, Result};
 
 pub(crate) fn parse_date_time(date_time: &str) -> Result<OffsetDateTime> {
@@ -13,33 +15,6 @@ pub(crate) fn parse_date_time(date_time: &str) -> Result<OffsetDateTime> {
         "[year]-[month]-[day] [hour]:[minute]:[second]",
     )?;
     Ok(PrimitiveDateTime::parse(date_time, &format)?.assume_utc())
-}
-
-#[derive(Debug)]
-pub(crate) struct PublisherRow {
-    /// Publisher primary key.
-    pub publisher_id: i64,
-    /// Address of the publisher.
-    pub address: Vec<u8>,
-    /// Creation date and time.
-    pub created_at: String,
-}
-
-impl TryFrom<PublisherRow> for PublisherRecord {
-    type Error = Error;
-
-    fn try_from(
-        row: PublisherRow,
-    ) -> std::result::Result<PublisherRecord, Self::Error> {
-        let created_at = parse_date_time(&row.created_at)?;
-        let address: [u8; 20] = row.address.as_slice().try_into()?;
-        let address: Address = address.into();
-        Ok(PublisherRecord {
-            publisher_id: row.publisher_id,
-            address,
-            created_at,
-        })
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -54,38 +29,25 @@ pub struct PublisherRecord {
     pub created_at: OffsetDateTime,
 }
 
-#[derive(Debug)]
-#[allow(dead_code)]
-pub(crate) struct NamespaceRow {
-    /// Namespace primary key.
-    pub namespace_id: i64,
-    /// Publisher foreign key.
-    pub publisher_id: i64,
-    /// Name for the namespace.
-    pub name: String,
-    /// Address of the owner.
-    pub address: Vec<u8>,
-    /// Creation date and time.
-    pub created_at: String,
-}
+impl FromRow<'_, SqliteRow> for PublisherRecord {
+    fn from_row(row: &SqliteRow) -> sqlx::Result<Self> {
+        let publisher_id: i64 = row.try_get("publisher_id")?;
+        let address: Vec<u8> = row.try_get("address")?;
+        let created_at: String = row.try_get("created_at")?;
 
-impl TryFrom<NamespaceRow> for NamespaceRecord {
-    type Error = Error;
+        let address: [u8; 20] = address
+            .as_slice()
+            .try_into()
+            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+        let address: Address = address.into();
 
-    fn try_from(
-        row: NamespaceRow,
-    ) -> std::result::Result<NamespaceRecord, Self::Error> {
-        let created_at = parse_date_time(&row.created_at)?;
+        let created_at = parse_date_time(&created_at)
+            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
 
-        let owner: [u8; 20] = row.address.as_slice().try_into()?;
-        let owner: Address = owner.into();
-
-        Ok(NamespaceRecord {
-            namespace_id: row.namespace_id,
-            owner,
-            name: row.name.parse()?,
+        Ok(Self {
+            publisher_id,
+            address,
             created_at,
-            publishers: Vec::new(),
         })
     }
 }
@@ -106,6 +68,37 @@ pub struct NamespaceRecord {
     pub created_at: OffsetDateTime,
 }
 
+impl FromRow<'_, SqliteRow> for NamespaceRecord {
+    fn from_row(row: &SqliteRow) -> sqlx::Result<Self> {
+        let namespace_id: i64 = row.try_get("namespace_id")?;
+        //let publisher_id: i64 = row.try_get("publisher_id")?;
+        let name: String = row.try_get("name")?;
+        let address: Vec<u8> = row.try_get("address")?;
+        let created_at: String = row.try_get("created_at")?;
+
+        let name: Namespace =
+            name.parse().map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+
+        let address: [u8; 20] = address
+            .as_slice()
+            .try_into()
+            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+        let address: Address = address.into();
+
+        let created_at = parse_date_time(&created_at)
+            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+
+        Ok(Self {
+            namespace_id,
+            //publisher_id,
+            publishers: vec![],
+            name,
+            owner: address,
+            created_at,
+        })
+    }
+}
+
 impl NamespaceRecord {
     /// Determine if an address is allowed to publish to
     /// this namespace.
@@ -115,35 +108,6 @@ impl NamespaceRecord {
         } else {
             self.publishers.iter().any(|a| a == address)
         }
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct PackageRow {
-    /// Namespace foreign key.
-    pub namespace_id: i64,
-    /// Package primary key.
-    pub package_id: i64,
-    /// Name of the package.
-    pub name: String,
-    /// Creation date and time.
-    pub created_at: String,
-}
-
-impl TryFrom<PackageRow> for PackageRecord {
-    type Error = Error;
-
-    fn try_from(
-        row: PackageRow,
-    ) -> std::result::Result<PackageRecord, Self::Error> {
-        // Parse to time type
-        let created_at = parse_date_time(&row.created_at)?;
-        Ok(PackageRecord {
-            namespace_id: row.namespace_id,
-            package_id: row.package_id,
-            name: row.name,
-            created_at,
-        })
     }
 }
 
@@ -162,73 +126,20 @@ pub struct PackageRecord {
     pub created_at: OffsetDateTime,
 }
 
-#[derive(Debug)]
-pub(crate) struct VersionRow {
-    /// Publisher foreign key.
-    pub publisher_id: i64,
-    /// Package foreign key.
-    pub package_id: i64,
-    /// Version primary key.
-    pub version_id: i64,
-    /// Major version.
-    pub major: i64,
-    /// Minor version.
-    pub minor: i64,
-    /// Patch version.
-    pub patch: i64,
-    /// Prerelease tag.
-    pub pre: Option<String>,
-    /// Build meta data tag.
-    pub build: Option<String>,
-    /// Package meta data.
-    pub package: String,
-    /// Content identifier.
-    pub content_id: String,
-    /// Package archive signature.
-    pub signature: Vec<u8>,
-    /// Archive checksum.
-    pub checksum: Vec<u8>,
-    /// Creation date and time.
-    pub created_at: String,
-}
+impl FromRow<'_, SqliteRow> for PackageRecord {
+    fn from_row(row: &SqliteRow) -> sqlx::Result<Self> {
+        let namespace_id: i64 = row.try_get("namespace_id")?;
+        let package_id: i64 = row.try_get("package_id")?;
+        let name: String = row.try_get("name")?;
+        let created_at: String = row.try_get("created_at")?;
 
-impl TryFrom<VersionRow> for VersionRecord {
-    type Error = Error;
+        let created_at = parse_date_time(&created_at)
+            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
 
-    fn try_from(
-        row: VersionRow,
-    ) -> std::result::Result<VersionRecord, Self::Error> {
-        let mut version = Version::new(
-            row.major as u64,
-            row.minor as u64,
-            row.patch as u64,
-        );
-        if let Some(pre) = &row.pre {
-            version.pre = Prerelease::new(pre)?;
-        }
-        if let Some(build) = &row.build {
-            version.build = BuildMetadata::new(build)?;
-        }
-
-        //let version: Version = Version::parse(&row.version)?;
-        let package: Value = serde_json::from_str(&row.package)?;
-        let content_id = row.content_id.parse()?;
-
-        let signature: [u8; 65] = row.signature.as_slice().try_into()?;
-        let checksum: [u8; 32] = row.checksum.as_slice().try_into()?;
-
-        // Parse to time type
-        let created_at = parse_date_time(&row.created_at)?;
-
-        Ok(VersionRecord {
-            publisher_id: row.publisher_id,
-            version_id: row.version_id,
-            package_id: row.package_id,
-            content_id,
-            version,
-            package,
-            signature,
-            checksum,
+        Ok(Self {
+            namespace_id,
+            package_id,
+            name,
             created_at,
         })
     }
@@ -266,4 +177,69 @@ pub struct VersionRecord {
     /// Creation date and time.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+}
+
+impl FromRow<'_, SqliteRow> for VersionRecord {
+    fn from_row(row: &SqliteRow) -> sqlx::Result<Self> {
+        let publisher_id: i64 = row.try_get("publisher_id")?;
+        let version_id: i64 = row.try_get("version_id")?;
+        let package_id: i64 = row.try_get("package_id")?;
+
+        let major: i64 = row.try_get("major")?;
+        let minor: i64 = row.try_get("minor")?;
+        let patch: i64 = row.try_get("patch")?;
+
+        let pre: Option<String> = row.try_get("pre")?;
+        let build: Option<String> = row.try_get("build")?;
+
+        let package: String = row.try_get("package")?;
+        let content_id: String = row.try_get("content_id")?;
+
+        let signature: Vec<u8> = row.try_get("signature")?;
+        let checksum: Vec<u8> = row.try_get("checksum")?;
+
+        let created_at: String = row.try_get("created_at")?;
+
+        let mut version =
+            Version::new(major as u64, minor as u64, patch as u64);
+        if let Some(pre) = &pre {
+            version.pre = Prerelease::new(pre)
+                .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+        }
+        if let Some(build) = &build {
+            version.build = BuildMetadata::new(build)
+                .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+        }
+
+        let package: Value = serde_json::from_str(&package)
+            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+
+        let content_id = content_id
+            .parse()
+            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+
+        let signature: [u8; 65] = signature
+            .as_slice()
+            .try_into()
+            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+        let checksum: [u8; 32] = checksum
+            .as_slice()
+            .try_into()
+            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+
+        let created_at = parse_date_time(&created_at)
+            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+
+        Ok(Self {
+            publisher_id,
+            version_id,
+            package_id,
+            content_id,
+            version,
+            package,
+            signature,
+            checksum,
+            created_at,
+        })
+    }
 }

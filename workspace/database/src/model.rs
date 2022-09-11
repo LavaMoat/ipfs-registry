@@ -1,15 +1,67 @@
 use semver::Version;
 
-use sqlx::SqlitePool;
+use sqlx::{sqlite::SqliteArguments, Arguments, SqlitePool};
 use time::OffsetDateTime;
 use web3_address::ethereum::Address;
 
 use crate::{value_objects::*, Error, Result};
 use ipfs_registry_core::{Namespace, PackageKey, Pointer};
 
+#[derive(Debug)]
+pub struct Pager {
+    pub offset: i64,
+    pub limit: i64,
+}
+
+impl Default for Pager {
+    fn default() -> Self {
+        Self {
+            offset: 0,
+            limit: 25,
+        }
+    }
+}
+
 pub struct PackageModel;
 
 impl PackageModel {
+    /// List packages for a namespace.
+    pub async fn list_packages(
+        pool: &SqlitePool,
+        namespace: &Namespace,
+        pager: Pager,
+    ) -> Result<Vec<PackageRecord>> {
+        // Check the namespace exists
+        let namespace_record = NamespaceModel::find_by_name(pool, namespace)
+            .await?
+            .ok_or_else(|| Error::UnknownNamespace(namespace.clone()))?;
+
+        let mut args: SqliteArguments = Default::default();
+        args.add(namespace_record.namespace_id);
+        args.add(pager.limit);
+        args.add(pager.offset);
+
+        let records = sqlx::query_as_with::<_, PackageRecord, _>(
+            r#"
+                SELECT
+                    namespace_id,
+                    package_id,
+                    created_at,
+                    name
+                FROM packages
+                WHERE namespace_id = ?
+                ORDER BY name ASC
+                LIMIT ? OFFSET ?
+            "#,
+            args,
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(records)
+    }
+
+    /// Find a package version by package key.
     pub async fn find_by_key(
         pool: &SqlitePool,
         package_key: &PackageKey,
@@ -31,23 +83,18 @@ impl PackageModel {
                 .await
             }
             PackageKey::Cid(cid) => {
-                let content_id = cid.to_string();
-                let record = sqlx::query_as!(
-                    VersionRow,
+                let mut args: SqliteArguments = Default::default();
+                args.add(cid.to_string());
+
+                let record = sqlx::query_as_with::<_, VersionRecord, _>(
                     r#"
                         SELECT * FROM versions
                         WHERE content_id = ?
                     "#,
-                    content_id
+                    args,
                 )
                 .fetch_optional(pool)
                 .await?;
-
-                let record = if let Some(record) = record {
-                    Some(record.try_into()?)
-                } else {
-                    None
-                };
 
                 Ok(record)
             }
@@ -60,8 +107,11 @@ impl PackageModel {
         namespace_id: i64,
         name: &str,
     ) -> Result<Option<PackageRecord>> {
-        let record = sqlx::query_as!(
-            PackageRow,
+        let mut args: SqliteArguments = Default::default();
+        args.add(namespace_id);
+        args.add(name);
+
+        let record = sqlx::query_as_with::<_, PackageRecord, _>(
             r#"
                 SELECT
                     namespace_id,
@@ -71,17 +121,10 @@ impl PackageModel {
                 FROM packages
                 WHERE namespace_id = ? AND name = ?
             "#,
-            namespace_id,
-            name
+            args,
         )
         .fetch_optional(pool)
         .await?;
-
-        let record = if let Some(record) = record {
-            Some(record.try_into()?)
-        } else {
-            None
-        };
 
         Ok(record)
     }
@@ -96,47 +139,23 @@ impl PackageModel {
         if let Some(package_record) =
             PackageModel::find_by_name(pool, namespace_id, name).await?
         {
-            let major = version.major as i64;
-            let minor = version.minor as i64;
-            let patch = version.patch as i64;
-            let pre = version.pre.to_string();
-            let build = version.build.to_string();
+            let mut args: SqliteArguments = Default::default();
+            args.add(package_record.package_id);
+            args.add(version.major as i64);
+            args.add(version.minor as i64);
+            args.add(version.patch as i64);
+            args.add(version.pre.to_string());
+            args.add(version.build.to_string());
 
-            let record = sqlx::query_as!(
-                VersionRow,
+            let record = sqlx::query_as_with::<_, VersionRecord, _>(
                 r#"
-                    SELECT
-                        version_id,
-                        publisher_id,
-                        package_id,
-                        major,
-                        minor,
-                        patch,
-                        pre,
-                        build,
-                        package,
-                        content_id,
-                        signature,
-                        checksum,
-                        created_at
-                    FROM versions
+                    SELECT * FROM versions
                     WHERE package_id = ? AND major = ? AND minor = ? AND patch = ? AND pre = ? AND build = ?
                 "#,
-                package_record.package_id,
-                major,
-                minor,
-                patch,
-                pre,
-                build,
+                args
             )
             .fetch_optional(pool)
             .await?;
-
-            let record = if let Some(record) = record {
-                Some(record.try_into()?)
-            } else {
-                None
-            };
 
             Ok(record)
         } else {
@@ -332,8 +351,10 @@ impl PublisherModel {
     ) -> Result<Option<PublisherRecord>> {
         let addr = publisher.as_ref();
 
-        let record = sqlx::query_as!(
-            PublisherRow,
+        let mut args: SqliteArguments = Default::default();
+        args.add(addr);
+
+        let record = sqlx::query_as_with::<_, PublisherRecord, _>(
             r#"
                 SELECT
                     publisher_id,
@@ -342,16 +363,16 @@ impl PublisherModel {
                 FROM publishers
                 WHERE address = ?
             "#,
-            addr
+            args,
         )
         .fetch_optional(pool)
         .await?;
 
-        let record = if let Some(record) = record {
-            Some(record.try_into()?)
-        } else {
-            None
-        };
+        //let record = if let Some(record) = record {
+        //Some(record.try_into()?)
+        //} else {
+        //None
+        //};
 
         Ok(record)
     }
@@ -428,8 +449,10 @@ impl NamespaceModel {
         name: &Namespace,
     ) -> Result<Option<NamespaceRecord>> {
         let ns = name.as_str();
-        let record = sqlx::query_as!(
-            NamespaceRow,
+        let mut args: SqliteArguments = Default::default();
+        args.add(ns);
+
+        let record = sqlx::query_as_with::<_, NamespaceRecord, _>(
             r#"
                 SELECT
                     namespaces.namespace_id,
@@ -442,16 +465,12 @@ impl NamespaceModel {
                 ON (namespaces.publisher_id = publishers.publisher_id)
                 WHERE name = ?
             "#,
-            ns
+            args,
         )
         .fetch_optional(pool)
         .await?;
 
-        if let Some(record) = record {
-            let mut record: NamespaceRecord = record.try_into()?;
-            //let owner: [u8; 20] = result.address.as_slice().try_into()?;
-            //let owner: Address = owner.into();
-
+        if let Some(mut record) = record {
             let records = sqlx::query!(
                 r#"
                     SELECT
