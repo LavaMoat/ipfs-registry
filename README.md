@@ -63,25 +63,52 @@ ipkg fetch <addr>/mock-package/1.0.0 sandbox/package.tgz
 
 ## API
 
+For API calls that require authentication the `x-signature` header MUST be a base64 encoded string of a 65-byte Ethereum-style ECDSA recoverable signature.
+
+### Signup
+
+```
+POST /api/publisher
+```
+
+Register a signing key for publishing.
+
+#### Headers
+
+* `x-signature`: Signature of the well known value `.ipfs-registry`.
+
+### Register
+
+```
+POST /api/namespace/:namespace
+```
+
+Register a namespace; if the namespace already exists a 409 CONFLICT response is returned.
+
+#### Headers
+
+* `x-signature`: Signature of the bytes for `:namespace`.
+
 ### Upload a package
 
 ```
-PUT /api/package
+PUT /api/package/:namespace
 ```
 
-The default mime type the server respects for packages is `application/gzip` so you should ensure the `content-type` header is set correctly.
-
-To upload a package it MUST be signed and the signature given in the `x-signature` header.
-
-The `x-signature` header MUST be a base64 encoded string of a 65-byte Ethereum-style ECDSA recoverable signature.
-
-The server will compute the address from the public key recovered from the signature and use that as the namespace for packages.
-
-If a file already exists for the given package a 409 CONFLICT response is returned.
+If the package already exists a 409 CONFLICT response is returned.
 
 If the address of the publisher has been denied based on the server configuration's `allow` and `deny` sets then a 401 UNAUTHORIZED response is returned.
 
 The default configuration limits requests to 16MiB so if the package is too large a 413 PAYLOAD TOO LARGE response is returned.
+
+#### Parameters
+
+* `:namespace`: The package namespace.
+
+#### Headers
+
+* `x-signature`: Signature of the bytes for the request body.
+* `content-type`: Should match the MIME type for the registry (default: `application/gzip`)
 
 ### Download a package
 
@@ -89,7 +116,7 @@ The default configuration limits requests to 16MiB so if the package is too larg
 GET /api/package?id=<package-id>
 ```
 
-To download a package construct a URL containing the package identifier; the identifier may be an explicit IPFS reference such as:
+To download a package construct a URL containing the package identifier; the identifier may be an IPFS reference such as:
 
 ```
 /ipfs/bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi
@@ -98,10 +125,8 @@ To download a package construct a URL containing the package identifier; the ide
 Or a package pointer:
 
 ```
-example.com/mock-package/1.0.0
+mock-namespace/mock-package/1.0.0
 ```
-
-When a package pointer is used to fetch a package then the checksum and signature are verified.
 
 ## Configuration
 
@@ -140,7 +165,7 @@ layers = [
 ]
 ```
 
-When using an AWS S3 bucket as a storage layer in production it is ***strongly recommended*** that the bucket has [versioning][] and [object locks][] enabled. 
+When using an AWS S3 bucket as a storage layer in production it is ***strongly recommended*** that the bucket has [versioning][] and [object locks][] enabled.
 Mixing layers is encouraged for redundancy:
 
 ```toml
