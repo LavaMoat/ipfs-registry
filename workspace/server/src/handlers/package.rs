@@ -12,8 +12,8 @@ use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
 
 use ipfs_registry_core::{
-    Artifact, Definition, Namespace, ObjectKey, PackageKey,
-    PackageReader, PackageSignature, Pointer, Receipt,
+    Artifact, Definition, Namespace, ObjectKey, PackageKey, PackageReader,
+    PackageSignature, Pointer, Receipt,
 };
 
 use ipfs_registry_database::{Error as DatabaseError, PackageModel};

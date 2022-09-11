@@ -17,7 +17,7 @@ use tower_http::{
     cors::CorsLayer, limit::RequestBodyLimitLayer, trace::TraceLayer,
 };
 
-use sqlx::{SqlitePool};
+use sqlx::SqlitePool;
 
 use crate::{
     config::ServerConfig,

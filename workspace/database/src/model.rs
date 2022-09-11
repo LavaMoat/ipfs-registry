@@ -1,4 +1,3 @@
-
 use semver::Version;
 
 use sqlx::SqlitePool;
@@ -20,7 +19,9 @@ impl PackageModel {
                 let namespace_record =
                     NamespaceModel::find_by_name(pool, namespace)
                         .await?
-                        .ok_or_else(|| Error::UnknownNamespace(namespace.clone()))?;
+                        .ok_or_else(|| {
+                            Error::UnknownNamespace(namespace.clone())
+                        })?;
                 PackageModel::find_by_name_version(
                     pool,
                     namespace_record.namespace_id,
@@ -95,7 +96,11 @@ impl PackageModel {
         if let Some(package_record) =
             PackageModel::find_by_name(pool, namespace_id, name).await?
         {
-            let version = version.to_string();
+            let major = version.major as i64;
+            let minor = version.minor as i64;
+            let patch = version.patch as i64;
+            let pre = version.pre.to_string();
+            let build = version.build.to_string();
 
             let record = sqlx::query_as!(
                 VersionRow,
@@ -104,17 +109,25 @@ impl PackageModel {
                         version_id,
                         publisher_id,
                         package_id,
-                        version,
+                        major,
+                        minor,
+                        patch,
+                        pre,
+                        build,
                         package,
                         content_id,
                         signature,
                         checksum,
                         created_at
                     FROM versions
-                    WHERE package_id = ? AND version = ?
+                    WHERE package_id = ? AND major = ? AND minor = ? AND patch = ? AND pre = ? AND build = ?
                 "#,
                 package_record.package_id,
-                version,
+                major,
+                minor,
+                patch,
+                pre,
+                build,
             )
             .fetch_optional(pool)
             .await?;
@@ -183,7 +196,7 @@ impl PackageModel {
 
         // Find or insert the package
         let package = serde_json::to_string(&pointer.package)?;
-        let version = version.to_string();
+        //let version = version.to_string();
         let package_record = PackageModel::find_or_insert(
             pool,
             namespace_record.namespace_id,
@@ -195,16 +208,26 @@ impl PackageModel {
         let signature = pointer.definition.signature.value.to_vec();
         let checksum = pointer.definition.checksum.to_vec();
 
+        let major = version.major as i64;
+        let minor = version.minor as i64;
+        let patch = version.patch as i64;
+        let pre = version.pre.to_string();
+        let build = version.build.to_string();
+
         // Insert the package version
         let mut conn = pool.acquire().await?;
         let id = sqlx::query!(
             r#"
-                INSERT INTO versions ( publisher_id, package_id, version, package, content_id, signature, checksum, created_at )
-                VALUES ( ?1, ?2, ?3, ?4, ?5, ?6, ?7, datetime('now') )
+                INSERT INTO versions ( publisher_id, package_id, major, minor, patch, pre, build, package, content_id, signature, checksum, created_at )
+                VALUES ( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, datetime('now') )
             "#,
             publisher_record.publisher_id,
             package_record.package_id,
-            version,
+            major,
+            minor,
+            patch,
+            pre,
+            build,
             package,
             content_id,
             signature,

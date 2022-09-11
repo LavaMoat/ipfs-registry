@@ -41,7 +41,12 @@ CREATE TABLE IF NOT EXISTS versions
     package_id            INTEGER             NOT NULL,
     created_at            TEXT                NOT NULL,
     -- Semver
-    version               TEXT                NOT NULL UNIQUE,
+    major                 INTEGER             NOT NULL,
+    minor                 INTEGER             NOT NULL,
+    patch                 INTEGER             NOT NULL,
+    pre                   TEXT,
+    build                 TEXT,
+
     -- IPFS content identifier or key path
     content_id            TEXT                NOT NULL,
     -- Signature using the publisher's private key

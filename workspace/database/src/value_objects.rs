@@ -1,12 +1,10 @@
-
-use semver::Version;
+use semver::{BuildMetadata, Prerelease, Version};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use time::{format_description, OffsetDateTime, PrimitiveDateTime};
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{Namespace, ObjectKey};
-
 
 use crate::{Error, Result};
 
@@ -172,8 +170,16 @@ pub(crate) struct VersionRow {
     pub package_id: i64,
     /// Version primary key.
     pub version_id: i64,
-    /// Version of the package.
-    pub version: String,
+    /// Major version.
+    pub major: i64,
+    /// Minor version.
+    pub minor: i64,
+    /// Patch version.
+    pub patch: i64,
+    /// Prerelease tag.
+    pub pre: Option<String>,
+    /// Build meta data tag.
+    pub build: Option<String>,
     /// Package meta data.
     pub package: String,
     /// Content identifier.
@@ -192,7 +198,19 @@ impl TryFrom<VersionRow> for VersionRecord {
     fn try_from(
         row: VersionRow,
     ) -> std::result::Result<VersionRecord, Self::Error> {
-        let version: Version = Version::parse(&row.version)?;
+        let mut version = Version::new(
+            row.major as u64,
+            row.minor as u64,
+            row.patch as u64,
+        );
+        if let Some(pre) = &row.pre {
+            version.pre = Prerelease::new(pre)?;
+        }
+        if let Some(build) = &row.build {
+            version.build = BuildMetadata::new(build)?;
+        }
+
+        //let version: Version = Version::parse(&row.version)?;
         let package: Value = serde_json::from_str(&row.package)?;
         let content_id = row.content_id.parse()?;
 
