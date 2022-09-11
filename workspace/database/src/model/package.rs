@@ -8,7 +8,7 @@ use web3_address::ethereum::Address;
 use ipfs_registry_core::{Namespace, PackageKey, PackageName, Pointer};
 
 use crate::{
-    model::{NamespaceModel, Pager, PublisherModel},
+    model::{NamespaceModel, Pager, PublisherModel, VersionIncludes},
     value_objects::*,
     Error, Result,
 };
@@ -21,6 +21,7 @@ impl PackageModel {
         pool: &SqlitePool,
         namespace: &Namespace,
         pager: Pager,
+        versions: VersionIncludes,
     ) -> Result<Vec<PackageRecord>> {
         // Check the namespace exists
         let namespace_record = NamespaceModel::find_by_name(pool, namespace)
@@ -50,14 +51,22 @@ impl PackageModel {
             .fetch_all(pool)
             .await?;
 
-        let mut packages = Vec::with_capacity(records.len());
-        for mut package in records {
-            let latest = PackageModel::find_latest(pool, &package, false)
-                .await?
-                .ok_or(Error::NoPackageVersion)?;
-            package.versions.push(latest);
-            packages.push(package);
-        }
+        let packages = match versions {
+            VersionIncludes::Latest => {
+                let mut packages = Vec::with_capacity(records.len());
+                for mut package in records {
+                    let latest =
+                        PackageModel::find_latest(pool, &package, false)
+                            .await?
+                            .ok_or(Error::NoPackageVersion)?;
+                    package.versions.push(latest);
+                    packages.push(package);
+                }
+                packages
+            }
+            VersionIncludes::All => todo!("get all versions for a package"),
+            VersionIncludes::None => records,
+        };
 
         Ok(packages)
     }

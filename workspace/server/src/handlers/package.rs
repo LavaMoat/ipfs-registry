@@ -16,7 +16,10 @@ use ipfs_registry_core::{
     PackageSignature, Pointer, Receipt,
 };
 
-use ipfs_registry_database::{Error as DatabaseError, PackageModel};
+use ipfs_registry_database::{
+    default_limit, Direction, Error as DatabaseError, PackageModel,
+    PackageRecord, Pager, VersionIncludes,
+};
 
 use crate::{
     handlers::verify_signature, headers::Signature, layer::Layer,
@@ -28,9 +31,55 @@ pub struct PackageQuery {
     id: PackageKey,
 }
 
+// FIXME: problem using flatten, see: https://github.com/tokio-rs/axum/issues/1366
+
+#[derive(Default, Debug, Deserialize)]
+#[serde(default)]
+pub struct ListPackagesQuery {
+    versions: VersionIncludes,
+    offset: i64,
+    #[serde(default = "default_limit")]
+    limit: i64,
+    sort: Direction,
+}
+
+impl ListPackagesQuery {
+    fn into_pager(&self) -> Pager {
+        Pager {
+            offset: self.offset,
+            limit: self.limit,
+            direction: self.sort,
+        }
+    }
+}
+
 pub(crate) struct PackageHandler;
 
 impl PackageHandler {
+    /// List packages for a namespace.
+    pub(crate) async fn list(
+        Extension(state): Extension<ServerState>,
+        Path(namespace): Path<Namespace>,
+        Query(query): Query<ListPackagesQuery>,
+    ) -> std::result::Result<Json<Vec<PackageRecord>>, StatusCode> {
+        let pager = query.into_pager();
+
+        match PackageModel::list_packages(
+            &state.pool,
+            &namespace,
+            pager,
+            query.versions,
+        )
+        .await
+        {
+            Ok(records) => Ok(Json(records)),
+            Err(e) => Err(match e {
+                DatabaseError::UnknownNamespace(_) => StatusCode::NOT_FOUND,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            }),
+        }
+    }
+
     /// Download a package.
     pub(crate) async fn fetch(
         Extension(state): Extension<ServerState>,

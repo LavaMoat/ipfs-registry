@@ -8,7 +8,7 @@ use sqlx::SqlitePool;
 
 use ipfs_registry_core::{Namespace, PackageName};
 use ipfs_registry_database::{
-    Error, NamespaceModel, PackageModel, PublisherModel,
+    Error, NamespaceModel, PackageModel, PublisherModel, VersionIncludes,
 };
 
 #[tokio::test]
@@ -180,9 +180,13 @@ async fn integration_database() -> Result<()> {
 
     assert_eq!(2, versions.len());
 
-    let packages =
-        PackageModel::list_packages(&pool, &namespace, Default::default())
-            .await?;
+    let packages = PackageModel::list_packages(
+        &pool,
+        &namespace,
+        Default::default(),
+        VersionIncludes::Latest,
+    )
+    .await?;
 
     assert!(packages.len() > 0);
 

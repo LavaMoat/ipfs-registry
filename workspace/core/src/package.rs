@@ -29,10 +29,11 @@ pub fn validate(s: &str) -> bool {
 }
 
 /// Kinds or supported registries.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Default, Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RegistryKind {
     /// NPM compatible packages.
+    #[default]
     Npm,
 }
 
@@ -98,13 +99,6 @@ impl PackageName {
     pub fn as_str(&self) -> &str {
         &self.0
     }
-
-    /*
-    /// Get a reference to the underlying bytes.
-    pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_bytes()
-    }
-    */
 }
 
 impl fmt::Display for PackageName {
@@ -263,6 +257,7 @@ pub struct PackageMeta {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Artifact {
     /// The kind of registry.
+    #[serde(skip)]
     pub kind: RegistryKind,
     /// Organization namespace.
     pub namespace: Namespace,

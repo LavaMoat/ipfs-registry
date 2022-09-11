@@ -185,7 +185,10 @@ impl Server {
                 post(NamespaceHandler::register),
             )
             .route("/api/package", get(PackageHandler::fetch))
-            .route("/api/package/:namespace", put(PackageHandler::publish))
+            .route(
+                "/api/package/:namespace",
+                put(PackageHandler::publish).get(PackageHandler::list),
+            )
             .layer(RequestBodyLimitLayer::new(limit))
             .layer(cors)
             .layer(TraceLayer::new_for_http())

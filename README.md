@@ -77,6 +77,15 @@ Register a signing key for publishing.
 
 * `x-signature`: Signature of the well known value `.ipfs-registry`.
 
+#### Response
+
+```json
+{
+  "address": "0x1fc770ac21067a04f83101ebf19a670db9e3eb21",
+  "created_at": "2022-09-11T08:28:17Z"
+}
+```
+
 ### Register
 
 ```
@@ -88,6 +97,17 @@ Register a namespace; if the namespace already exists a 409 CONFLICT response is
 #### Headers
 
 * `x-signature`: Signature of the bytes for `:namespace`.
+
+#### Response
+
+```json
+{
+  "name": "mock-namespace",
+  "owner": "0x1fc770ac21067a04f83101ebf19a670db9e3eb21",
+  "publishers": [],
+  "created_at": "2022-09-11T08:29:27Z"
+}
+```
 
 ### Upload a package
 
@@ -110,6 +130,22 @@ The default configuration limits requests to 16MiB so if the package is too larg
 * `x-signature`: Signature of the bytes for the request body.
 * `content-type`: Should match the MIME type for the registry (default: `application/gzip`)
 
+#### Response
+
+```json
+{
+  "id": "mock-namespace/mock-package/1.0.0",
+  "artifact": {
+    "namespace": "mock-namespace",
+    "package": {
+      "name": "mock-package",
+      "version": "1.0.0"
+    }
+  },
+  "key": "/ipfs/QmSYVWjXh5GCZpxhCSHMa89X9VHnPpaxafkBAR9rjfCenb"
+}
+```
+
 ### Download a package
 
 ```
@@ -126,6 +162,31 @@ Or a package pointer:
 
 ```
 mock-namespace/mock-package/1.0.0
+```
+
+#### Query
+
+* `id`: Package identifier.
+
+### List packages
+
+```
+GET /api/package/:namespace
+```
+
+List the packages for a namespace.
+
+#### Query
+
+* `versions`: Fetch versions for each package, either `none`, `latest` or `all`. Default is `none`.
+* `limit`: Limit per page.
+* `offset`: Offset for pagination.
+* `sort`: Sort order, either `asc` or `desc`.
+
+#### Response
+
+```json
+[{"name":"mock-package","created_at":"2022-09-11T08:30:27Z","versions":[]}]
 ```
 
 ## Configuration
