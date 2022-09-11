@@ -4,7 +4,7 @@ use serde_json::Value;
 use time::{format_description, OffsetDateTime, PrimitiveDateTime};
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{Namespace, ObjectKey};
+use ipfs_registry_core::{Namespace, ObjectKey, PackageName};
 
 use sqlx::{sqlite::SqliteRow, FromRow, Row};
 
@@ -152,7 +152,7 @@ pub struct PackageRecord {
     #[serde(skip)]
     pub package_id: i64,
     /// Name of the package.
-    pub name: String,
+    pub name: PackageName,
     /// Creation date and time.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -166,6 +166,9 @@ impl FromRow<'_, SqliteRow> for PackageRecord {
         let package_id: i64 = row.try_get("package_id")?;
         let name: String = row.try_get("name")?;
         let created_at: String = row.try_get("created_at")?;
+
+        let name: PackageName =
+            name.parse().map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
 
         let created_at = parse_date_time(&created_at)
             .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;

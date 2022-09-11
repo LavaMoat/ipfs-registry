@@ -6,7 +6,7 @@ use crate::test_utils::*;
 use semver::Version;
 
 use ipfs_registry_client::RegistryClient;
-use ipfs_registry_core::Namespace;
+use ipfs_registry_core::{Namespace, PackageName};
 
 use k256::ecdsa::SigningKey;
 
@@ -36,7 +36,10 @@ async fn integration_publish_ok() -> Result<()> {
     )
     .await?;
 
-    assert_eq!("mock-package", receipt.artifact.package.name);
+    assert_eq!(
+        PackageName::new_unchecked("mock-package"),
+        receipt.artifact.package.name
+    );
     assert_eq!(Version::new(1, 0, 0), receipt.artifact.package.version);
 
     //println!("receipt {:#?}", receipt);

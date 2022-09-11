@@ -5,8 +5,7 @@ use serial_test::serial;
 use std::path::PathBuf;
 
 use ipfs_registry_client::RegistryClient;
-use ipfs_registry_core::Namespace;
-use ipfs_registry_core::PackageKey;
+use ipfs_registry_core::{Namespace, PackageKey, PackageName};
 use tempfile::NamedTempFile;
 
 use crate::test_utils::*;
@@ -37,7 +36,10 @@ async fn integration_fetch_pointer() -> Result<()> {
     )
     .await?;
 
-    assert_eq!("mock-package", receipt.artifact.package.name);
+    assert_eq!(
+        PackageName::new_unchecked("mock-package"),
+        receipt.artifact.package.name
+    );
     assert_eq!(Version::new(1, 0, 0), receipt.artifact.package.version);
 
     let tmp = NamedTempFile::new()?;

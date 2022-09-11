@@ -5,7 +5,7 @@ use sqlx::{
 };
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{Namespace, PackageKey, Pointer};
+use ipfs_registry_core::{Namespace, PackageKey, PackageName, Pointer};
 
 use crate::{
     model::{NamespaceModel, Pager, PublisherModel},
@@ -66,7 +66,7 @@ impl PackageModel {
     pub async fn list_versions(
         pool: &SqlitePool,
         namespace: &Namespace,
-        name: &str,
+        name: &PackageName,
         pager: Pager,
     ) -> Result<Vec<VersionRecord>> {
         // Find the namespace
@@ -145,11 +145,11 @@ impl PackageModel {
     pub async fn find_by_name(
         pool: &SqlitePool,
         namespace_id: i64,
-        name: &str,
+        name: &PackageName,
     ) -> Result<Option<PackageRecord>> {
         let mut args: SqliteArguments = Default::default();
         args.add(namespace_id);
-        args.add(name);
+        args.add(name.as_str());
 
         let record = sqlx::query_as_with::<_, PackageRecord, _>(
             r#"
@@ -212,7 +212,7 @@ impl PackageModel {
     pub async fn find_by_name_version(
         pool: &SqlitePool,
         namespace_id: i64,
-        name: &str,
+        name: &PackageName,
         version: &Version,
     ) -> Result<Option<VersionRecord>> {
         if let Some(package_record) =
@@ -262,7 +262,7 @@ impl PackageModel {
     pub async fn find_or_insert(
         pool: &SqlitePool,
         namespace_id: i64,
-        name: &str,
+        name: &PackageName,
     ) -> Result<PackageRecord> {
         if let Some(record) =
             PackageModel::find_by_name(pool, namespace_id, name).await?
@@ -279,7 +279,7 @@ impl PackageModel {
             );
             let mut separated = builder.separated(", ");
             separated.push_bind(namespace_id);
-            separated.push_bind(name);
+            separated.push_bind(name.as_str());
             builder.push(", datetime('now') )");
 
             let id = builder
@@ -358,7 +358,7 @@ impl PackageModel {
     pub async fn assert_publish_safe(
         pool: &SqlitePool,
         namespace_record: &NamespaceRecord,
-        name: &str,
+        name: &PackageName,
         version: &Version,
     ) -> Result<()> {
         // Check the package / version does not already exist
@@ -373,7 +373,7 @@ impl PackageModel {
         {
             return Err(Error::PackageExists(
                 namespace_record.name.clone(),
-                name.to_owned(),
+                name.clone(),
                 version.clone(),
             ));
         }

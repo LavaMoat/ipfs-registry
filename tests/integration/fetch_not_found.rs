@@ -5,7 +5,7 @@ use semver::Version;
 use tempfile::NamedTempFile;
 
 use ipfs_registry_client::fetch;
-use ipfs_registry_core::{Namespace, PackageKey};
+use ipfs_registry_core::{Namespace, PackageKey, PackageName};
 
 use crate::test_utils::*;
 
@@ -28,7 +28,7 @@ async fn integration_fetch_not_found() -> Result<()> {
         Namespace::new_unchecked(
             "0x0000000000000000000000000000000000000000",
         ),
-        "foo-name".to_owned(),
+        PackageName::new_unchecked("foo-name"),
         Version::new(1, 0, 0),
     );
 

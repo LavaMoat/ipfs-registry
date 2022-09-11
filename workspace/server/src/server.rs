@@ -180,7 +180,10 @@ impl Server {
         let app = Router::new()
             .route("/api", get(ApiHandler::get))
             .route("/api/publisher", post(PublisherHandler::signup))
-            .route("/api/namespace/:namespace", post(NamespaceHandler::register))
+            .route(
+                "/api/namespace/:namespace",
+                post(NamespaceHandler::register),
+            )
             .route("/api/package", get(PackageHandler::fetch))
             .route("/api/package/:namespace", put(PackageHandler::publish))
             .layer(RequestBodyLimitLayer::new(limit))

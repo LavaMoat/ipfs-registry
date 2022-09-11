@@ -17,6 +17,17 @@ use crate::{
 
 const IPFS_DELIMITER: &str = "/ipfs/";
 
+/// Validate a namespace or package name.
+pub fn validate(s: &str) -> bool {
+    let invalid = "/\\ \t\n@:";
+    for c in invalid.chars() {
+        if s.find(c).is_some() {
+            return false;
+        }
+    }
+    true
+}
+
 /// Kinds or supported registries.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -65,12 +76,50 @@ impl fmt::Display for Namespace {
 
 impl FromStr for Namespace {
     type Err = Error;
-
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        if s.find('/').or_else(|| s.find(' ')).is_some() {
-            Err(Error::InvalidNamespace(s.to_owned()))
-        } else {
+        if validate(s) {
             Ok(Namespace(s.to_owned()))
+        } else {
+            Err(Error::InvalidNamespace(s.to_owned()))
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct PackageName(String);
+
+impl PackageName {
+    /// Create a new package name without checking the source is valid.
+    pub fn new_unchecked(s: &str) -> Self {
+        Self(s.to_owned())
+    }
+
+    /// Get a reference to the underlying string.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /*
+    /// Get a reference to the underlying bytes.
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+    */
+}
+
+impl fmt::Display for PackageName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl FromStr for PackageName {
+    type Err = Error;
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        if validate(s) {
+            Ok(PackageName(s.to_owned()))
+        } else {
+            Err(Error::InvalidPackageName(s.to_owned()))
         }
     }
 }
@@ -81,7 +130,7 @@ pub enum PackageKey {
     /// Direct artifact reference using an IPFS content identifier.
     Cid(Cid),
     /// Pointer reference by namespace, package name and version.
-    Pointer(Namespace, String, Version),
+    Pointer(Namespace, PackageName, Version),
 }
 
 impl fmt::Display for PackageKey {
@@ -119,12 +168,12 @@ impl FromStr for PackageKey {
                 return Err(Error::InvalidPath(s.to_owned()));
             }
 
-            let ns: Namespace = parts.remove(0).parse()?;
-            let name = parts.remove(0);
+            let namespace: Namespace = parts.remove(0).parse()?;
+            let name: PackageName = parts.remove(0).parse()?;
             let version = parts.remove(0);
             let version: Version = Version::parse(version)?;
 
-            Ok(Self::Pointer(ns, name.to_owned(), version))
+            Ok(Self::Pointer(namespace, name, version))
         }
     }
 }
@@ -205,7 +254,7 @@ impl fmt::Display for ObjectKey {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PackageMeta {
     /// Name of the package.
-    pub name: String,
+    pub name: PackageName,
     /// Version of the package.
     pub version: Version,
 }
@@ -317,7 +366,7 @@ mod tests {
         let package_key: PackageKey = key.parse()?;
         if let PackageKey::Pointer(org, name, version) = package_key {
             assert_eq!(Namespace::new_unchecked("example.com"), org);
-            assert_eq!("mock-package", name);
+            assert_eq!(PackageName::new_unchecked("mock-package"), name);
             assert_eq!(Version::new(1, 0, 0), version);
             Ok(())
         } else {

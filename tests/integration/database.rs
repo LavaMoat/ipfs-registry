@@ -6,7 +6,7 @@ use crate::test_utils::*;
 use semver::Version;
 use sqlx::SqlitePool;
 
-use ipfs_registry_core::Namespace;
+use ipfs_registry_core::{Namespace, PackageName};
 use ipfs_registry_database::{
     Error, NamespaceModel, PackageModel, PublisherModel,
 };
@@ -58,7 +58,7 @@ async fn integration_database() -> Result<()> {
 
     let pointer = mock_pointer(None)?;
 
-    let mock_package = "mock-package";
+    let mock_package = PackageName::new_unchecked("mock-package");
     let mock_version = Version::new(1, 0, 0);
 
     // Verify for publishing
@@ -91,7 +91,7 @@ async fn integration_database() -> Result<()> {
     let result = PackageModel::assert_publish_safe(
         &pool,
         &namespace_record,
-        mock_package,
+        &mock_package,
         &mock_version,
     )
     .await;
@@ -156,7 +156,7 @@ async fn integration_database() -> Result<()> {
     let package_record = PackageModel::find_by_name_version(
         &pool,
         namespace_id,
-        mock_package,
+        &mock_package,
         &mock_version,
     )
     .await?;
@@ -173,7 +173,7 @@ async fn integration_database() -> Result<()> {
     let versions = PackageModel::list_versions(
         &pool,
         &namespace,
-        mock_package,
+        &mock_package,
         Default::default(),
     )
     .await?;
