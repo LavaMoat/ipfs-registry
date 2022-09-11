@@ -1,3 +1,4 @@
+//! Database model.
 mod namespace;
 mod package;
 mod publisher;
@@ -8,6 +9,7 @@ pub use publisher::PublisherModel;
 
 use std::fmt;
 
+/// Defines parameters for paginating list queries.
 #[derive(Debug)]
 pub struct Pager {
     pub offset: i64,

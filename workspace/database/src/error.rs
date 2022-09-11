@@ -17,8 +17,14 @@ pub enum Error {
     #[error("unknown namespace {0}")]
     UnknownNamespace(Namespace),
 
+    #[error("unknown package {0}")]
+    UnknownPackage(String),
+
     #[error("failed to fetch record {0} after insert")]
     InsertFetch(i64),
+
+    #[error("could not find a version for a package")]
+    NoPackageVersion,
 
     #[error(transparent)]
     Core(#[from] ipfs_registry_core::Error),

@@ -170,13 +170,30 @@ async fn integration_database() -> Result<()> {
     assert_eq!(&package_record.version, &mock_version);
     assert_eq!(&package_record.package, &pointer.package);
 
+    let versions = PackageModel::list_versions(
+        &pool,
+        &namespace,
+        mock_package,
+        Default::default(),
+    )
+    .await?;
+
+    assert_eq!(2, versions.len());
+
     let packages =
         PackageModel::list_packages(&pool, &namespace, Default::default())
             .await?;
 
-    //println!("{:#?}", packages);
-
     assert!(packages.len() > 0);
+
+    let package = packages.get(0).unwrap();
+    // Listing packages includes the latest version for each package
+    assert!(package.versions.len() == 1);
+
+    let version = package.versions.get(0).unwrap();
+    // Check it is actually the most recent version -
+    // two packages were published above ^^^
+    assert_eq!(&Version::new(1, 0, 1), &version.version);
 
     Ok(())
 }

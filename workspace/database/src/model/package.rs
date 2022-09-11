@@ -1,6 +1,8 @@
 use semver::Version;
 
-use sqlx::{sqlite::SqliteArguments, Arguments, QueryBuilder, SqlitePool};
+use sqlx::{
+    sqlite::SqliteArguments, Arguments, QueryBuilder, Sqlite, SqlitePool,
+};
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{Namespace, PackageKey, Pointer};
@@ -40,8 +42,7 @@ impl PackageModel {
             FROM packages
             WHERE namespace_id = ?
             ORDER BY name {}
-            LIMIT ? OFFSET ?
-        "#,
+            LIMIT ? OFFSET ?"#,
             pager.direction.as_str()
         );
 
@@ -49,6 +50,57 @@ impl PackageModel {
             .fetch_all(pool)
             .await?;
 
+        let mut packages = Vec::with_capacity(records.len());
+        for mut package in records {
+            let latest = PackageModel::find_latest(pool, &package, false)
+                .await?
+                .ok_or(Error::NoPackageVersion)?;
+            package.versions.push(latest);
+            packages.push(package);
+        }
+
+        Ok(packages)
+    }
+
+    /// List versions of a package.
+    pub async fn list_versions(
+        pool: &SqlitePool,
+        namespace: &Namespace,
+        name: &str,
+        pager: Pager,
+    ) -> Result<Vec<VersionRecord>> {
+        // Find the namespace
+        let namespace_record = NamespaceModel::find_by_name(pool, namespace)
+            .await?
+            .ok_or_else(|| Error::UnknownNamespace(namespace.clone()))?;
+
+        // Find the package
+        let package_record = PackageModel::find_by_name(
+            pool,
+            namespace_record.namespace_id,
+            name,
+        )
+        .await?
+        .ok_or_else(|| Error::UnknownPackage(name.to_string()))?;
+
+        let mut args: SqliteArguments = Default::default();
+        args.add(package_record.package_id);
+        args.add(pager.limit);
+        args.add(pager.offset);
+
+        let sql = format!(
+            r#"
+            SELECT *
+            FROM versions
+            WHERE package_id = ?
+            ORDER BY major, minor, patch, pre, build {}
+            LIMIT ? OFFSET ?"#,
+            pager.direction.as_str()
+        );
+
+        let records = sqlx::query_as_with::<_, VersionRecord, _>(&sql, args)
+            .fetch_all(pool)
+            .await?;
         Ok(records)
     }
 
@@ -113,6 +165,45 @@ impl PackageModel {
         )
         .fetch_optional(pool)
         .await?;
+
+        Ok(record)
+    }
+
+    /// Find latest version of a package.
+    pub async fn find_latest(
+        pool: &SqlitePool,
+        package_record: &PackageRecord,
+        include_prerelease: bool,
+    ) -> Result<Option<VersionRecord>> {
+        let mut args: SqliteArguments = Default::default();
+        args.add(package_record.package_id);
+
+        let mut builder = QueryBuilder::<Sqlite>::new(
+            r#"
+                SELECT * FROM versions WHERE package_id =
+            "#,
+        );
+        builder.push_bind(package_record.package_id);
+
+        if include_prerelease {
+            builder.push(
+                r#"
+                    ORDER BY major DESC, minor DESC, patch DESC, pre DESC, build DESC
+                    LIMIT 1
+                "#);
+        } else {
+            builder.push(
+                r#"
+                    ORDER BY major DESC, minor DESC, patch DESC
+                    LIMIT 1
+                "#,
+            );
+        }
+
+        let sql = builder.into_sql();
+        let record = sqlx::query_as_with::<_, VersionRecord, _>(&sql, args)
+            .fetch_optional(pool)
+            .await?;
 
         Ok(record)
     }
