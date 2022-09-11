@@ -18,7 +18,7 @@ pub(crate) struct PublisherHandler;
 
 impl PublisherHandler {
     /// Create a new publisher.
-    pub(crate) async fn post(
+    pub(crate) async fn signup(
         Extension(state): Extension<ServerState>,
         TypedHeader(signature): TypedHeader<Signature>,
     ) -> std::result::Result<Json<PublisherRecord>, StatusCode> {

@@ -31,8 +31,8 @@ pub struct PackageQuery {
 pub(crate) struct PackageHandler;
 
 impl PackageHandler {
-    /// Get a package.
-    pub(crate) async fn get(
+    /// Download a package.
+    pub(crate) async fn fetch(
         Extension(state): Extension<ServerState>,
         Query(query): Query<PackageQuery>,
     ) -> std::result::Result<(HeaderMap, Bytes), StatusCode> {
@@ -69,8 +69,8 @@ impl PackageHandler {
         }
     }
 
-    /// Create a new package.
-    pub(crate) async fn put(
+    /// Publish a new package.
+    pub(crate) async fn publish(
         Extension(state): Extension<ServerState>,
         TypedHeader(mime): TypedHeader<ContentType>,
         TypedHeader(signature): TypedHeader<Signature>,

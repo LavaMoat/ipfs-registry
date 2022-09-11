@@ -17,7 +17,7 @@ pub(crate) struct NamespaceHandler;
 
 impl NamespaceHandler {
     /// Create a new namespace.
-    pub(crate) async fn post(
+    pub(crate) async fn register(
         Extension(state): Extension<ServerState>,
         TypedHeader(signature): TypedHeader<Signature>,
         Path(namespace): Path<Namespace>,
