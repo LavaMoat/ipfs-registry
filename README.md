@@ -309,8 +309,19 @@ cargo install cargo-make
 Then create a `.env` file from `.env.example`. Afterwards, create a database and run the migrations:
 
 ```
-sqlx database create
-sqlx migrate run
+cargo make dev-db
+```
+
+Typical workflow is to run the test suite and format the code:
+
+```
+cargo make dev
+```
+
+Starting a local server (requires an IPFS node running locally):
+
+```
+cargo make dev-server
 ```
 
 ## Bugs
