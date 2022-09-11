@@ -1,13 +1,15 @@
 use semver::Version;
 
 use sqlx::{sqlite::SqliteArguments, Arguments, QueryBuilder, SqlitePool};
-use time::OffsetDateTime;
 use web3_address::ethereum::Address;
 
-use crate::{value_objects::*, Error, Result};
 use ipfs_registry_core::{Namespace, PackageKey, Pointer};
 
-use super::{NamespaceModel, Pager, PublisherModel};
+use crate::{
+    model::{NamespaceModel, Pager, PublisherModel},
+    value_objects::*,
+    Error, Result,
+};
 
 pub struct PackageModel;
 
@@ -149,6 +151,22 @@ impl PackageModel {
         }
     }
 
+    /// Find a package by id.
+    pub async fn find_package_by_id(
+        pool: &SqlitePool,
+        package_id: i64,
+    ) -> Result<Option<PackageRecord>> {
+        let mut args: SqliteArguments = Default::default();
+        args.add(package_id);
+        let record = sqlx::query_as_with::<_, PackageRecord, _>(
+            r#"SELECT * FROM packages WHERE package_id = ?"#,
+            args,
+        )
+        .fetch_optional(pool)
+        .await?;
+        Ok(record)
+    }
+
     /// Find or insert a new package.
     pub async fn find_or_insert(
         pool: &SqlitePool,
@@ -179,15 +197,11 @@ impl PackageModel {
                 .await?
                 .last_insert_rowid();
 
-            // FIXME: fetch from the database!
+            let record = PackageModel::find_package_by_id(pool, id)
+                .await?
+                .ok_or(Error::InsertFetch(id))?;
 
-            Ok(PackageRecord {
-                namespace_id,
-                package_id: id,
-                name: name.to_owned(),
-                // WARN: may not exactly match the database value
-                created_at: OffsetDateTime::now_utc(),
-            })
+            Ok(record)
         }
     }
 

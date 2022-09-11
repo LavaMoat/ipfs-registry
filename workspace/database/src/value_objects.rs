@@ -156,6 +156,8 @@ pub struct PackageRecord {
     /// Creation date and time.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+    /// Collection of versions.
+    pub versions: Vec<VersionRecord>,
 }
 
 impl FromRow<'_, SqliteRow> for PackageRecord {
@@ -173,6 +175,7 @@ impl FromRow<'_, SqliteRow> for PackageRecord {
             package_id,
             name,
             created_at,
+            versions: vec![],
         })
     }
 }
