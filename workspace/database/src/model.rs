@@ -1,3 +1,5 @@
+use std::fmt;
+
 use semver::Version;
 
 use sqlx::{sqlite::SqliteArguments, Arguments, QueryBuilder, SqlitePool};
@@ -11,6 +13,7 @@ use ipfs_registry_core::{Namespace, PackageKey, Pointer};
 pub struct Pager {
     pub offset: i64,
     pub limit: i64,
+    pub direction: Direction,
 }
 
 impl Default for Pager {
@@ -18,7 +21,32 @@ impl Default for Pager {
         Self {
             offset: 0,
             limit: 25,
+            direction: Default::default(),
         }
+    }
+}
+
+/// Represents an order by direction.
+#[derive(Debug, Default)]
+pub enum Direction {
+    #[default]
+    ASC,
+    DESC,
+}
+
+impl Direction {
+    /// Get a string for each variant.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::ASC => "ASC",
+            Self::DESC => "DESC",
+        }
+    }
+}
+
+impl fmt::Display for Direction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -41,18 +69,20 @@ impl PackageModel {
         args.add(pager.limit);
         args.add(pager.offset);
 
+        let sql = format!(r#"
+            SELECT
+                namespace_id,
+                package_id,
+                created_at,
+                name
+            FROM packages
+            WHERE namespace_id = ?
+            ORDER BY name {}
+            LIMIT ? OFFSET ?
+        "#, pager.direction.as_str());
+
         let records = sqlx::query_as_with::<_, PackageRecord, _>(
-            r#"
-                SELECT
-                    namespace_id,
-                    package_id,
-                    created_at,
-                    name
-                FROM packages
-                WHERE namespace_id = ?
-                ORDER BY name ASC
-                LIMIT ? OFFSET ?
-            "#,
+            &sql,
             args,
         )
         .fetch_all(pool)
@@ -87,10 +117,7 @@ impl PackageModel {
                 args.add(cid.to_string());
 
                 let record = sqlx::query_as_with::<_, VersionRecord, _>(
-                    r#"
-                        SELECT * FROM versions
-                        WHERE content_id = ?
-                    "#,
+                    r#"SELECT * FROM versions WHERE content_id = ?"#,
                     args,
                 )
                 .fetch_optional(pool)
