@@ -1,5 +1,3 @@
-use std::fmt;
-
 use semver::Version;
 
 use sqlx::{sqlite::SqliteArguments, Arguments, QueryBuilder, SqlitePool};
@@ -9,46 +7,7 @@ use web3_address::ethereum::Address;
 use crate::{value_objects::*, Error, Result};
 use ipfs_registry_core::{Namespace, PackageKey, Pointer};
 
-#[derive(Debug)]
-pub struct Pager {
-    pub offset: i64,
-    pub limit: i64,
-    pub direction: Direction,
-}
-
-impl Default for Pager {
-    fn default() -> Self {
-        Self {
-            offset: 0,
-            limit: 25,
-            direction: Default::default(),
-        }
-    }
-}
-
-/// Represents an order by direction.
-#[derive(Debug, Default)]
-pub enum Direction {
-    #[default]
-    ASC,
-    DESC,
-}
-
-impl Direction {
-    /// Get a string for each variant.
-    pub fn as_str(&self) -> &str {
-        match self {
-            Self::ASC => "ASC",
-            Self::DESC => "DESC",
-        }
-    }
-}
-
-impl fmt::Display for Direction {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
+use super::{NamespaceModel, Pager, PublisherModel};
 
 pub struct PackageModel;
 
@@ -69,7 +28,8 @@ impl PackageModel {
         args.add(pager.limit);
         args.add(pager.offset);
 
-        let sql = format!(r#"
+        let sql = format!(
+            r#"
             SELECT
                 namespace_id,
                 package_id,
@@ -79,14 +39,13 @@ impl PackageModel {
             WHERE namespace_id = ?
             ORDER BY name {}
             LIMIT ? OFFSET ?
-        "#, pager.direction.as_str());
+        "#,
+            pager.direction.as_str()
+        );
 
-        let records = sqlx::query_as_with::<_, PackageRecord, _>(
-            &sql,
-            args,
-        )
-        .fetch_all(pool)
-        .await?;
+        let records = sqlx::query_as_with::<_, PackageRecord, _>(&sql, args)
+            .fetch_all(pool)
+            .await?;
 
         Ok(records)
     }
@@ -338,202 +297,5 @@ impl PackageModel {
         }
 
         Ok((publisher_record, namespace_record))
-    }
-}
-
-pub struct PublisherModel;
-
-impl PublisherModel {
-    /// Insert a publisher.
-    pub async fn insert(pool: &SqlitePool, owner: &Address) -> Result<i64> {
-        let mut conn = pool.acquire().await?;
-
-        let mut builder = QueryBuilder::new(
-            r#"
-                INSERT INTO publishers ( address, created_at )
-                VALUES (
-            "#,
-        );
-        let mut separated = builder.separated(", ");
-        separated.push_bind(owner.as_ref());
-        builder.push(", datetime('now') )");
-
-        let id = builder
-            .build()
-            .execute(&mut conn)
-            .await?
-            .last_insert_rowid();
-
-        Ok(id)
-    }
-
-    /// Insert a publisher and fetch the record.
-    pub async fn insert_fetch(
-        pool: &SqlitePool,
-        owner: &Address,
-    ) -> Result<PublisherRecord> {
-        let id = PublisherModel::insert(pool, owner).await?;
-        let record = PublisherModel::find_by_address(pool, owner)
-            .await?
-            .ok_or(Error::InsertFetch(id))?;
-        Ok(record)
-    }
-
-    /// Find a publisher by address.
-    pub async fn find_by_address(
-        pool: &SqlitePool,
-        publisher: &Address,
-    ) -> Result<Option<PublisherRecord>> {
-        let addr = publisher.as_ref();
-
-        let mut args: SqliteArguments = Default::default();
-        args.add(addr);
-
-        let record = sqlx::query_as_with::<_, PublisherRecord, _>(
-            r#"
-                SELECT
-                    publisher_id,
-                    address,
-                    created_at
-                FROM publishers
-                WHERE address = ?
-            "#,
-            args,
-        )
-        .fetch_optional(pool)
-        .await?;
-
-        Ok(record)
-    }
-}
-
-pub struct NamespaceModel;
-
-impl NamespaceModel {
-    /// Add a namespace.
-    pub async fn insert(
-        pool: &SqlitePool,
-        name: &Namespace,
-        publisher_id: i64,
-    ) -> Result<i64> {
-        let mut conn = pool.acquire().await?;
-
-        let mut builder = QueryBuilder::new(
-            r#"
-                INSERT INTO namespaces ( name, publisher_id, created_at )
-                VALUES (
-            "#,
-        );
-        let mut separated = builder.separated(", ");
-        separated.push_bind(name.as_str());
-        separated.push_bind(publisher_id);
-        builder.push(", datetime('now') )");
-
-        let id = builder
-            .build()
-            .execute(&mut conn)
-            .await?
-            .last_insert_rowid();
-
-        Ok(id)
-    }
-
-    /// Insert a namespace and fetch the record.
-    pub async fn insert_fetch(
-        pool: &SqlitePool,
-        name: &Namespace,
-        publisher_id: i64,
-    ) -> Result<NamespaceRecord> {
-        let id = NamespaceModel::insert(pool, name, publisher_id).await?;
-        let record = NamespaceModel::find_by_name(pool, name)
-            .await?
-            .ok_or(Error::InsertFetch(id))?;
-        Ok(record)
-    }
-
-    /// Add a publisher to a namespace.
-    pub async fn add_publisher(
-        pool: &SqlitePool,
-        namespace_id: i64,
-        publisher_id: i64,
-    ) -> Result<i64> {
-        let mut conn = pool.acquire().await?;
-        let mut builder = QueryBuilder::new(
-            r#"
-                INSERT INTO namespace_publishers ( namespace_id, publisher_id )
-                VALUES (
-            "#,
-        );
-        let mut separated = builder.separated(", ");
-        separated.push_bind(namespace_id);
-        separated.push_bind(publisher_id);
-        builder.push(" )");
-
-        let id = builder
-            .build()
-            .execute(&mut conn)
-            .await?
-            .last_insert_rowid();
-
-        Ok(id)
-    }
-
-    // TODO: allow removing a publisher from the namespace
-
-    /// Find a namespace by name.
-    pub async fn find_by_name(
-        pool: &SqlitePool,
-        name: &Namespace,
-    ) -> Result<Option<NamespaceRecord>> {
-        let ns = name.as_str();
-        let mut args: SqliteArguments = Default::default();
-        args.add(ns);
-
-        let record = sqlx::query_as_with::<_, NamespaceRecord, _>(
-            r#"
-                SELECT
-                    namespaces.namespace_id,
-                    namespaces.name,
-                    namespaces.publisher_id,
-                    namespaces.created_at,
-                    publishers.address
-                FROM namespaces
-                INNER JOIN publishers
-                ON (namespaces.publisher_id = publishers.publisher_id)
-                WHERE name = ?
-            "#,
-            args,
-        )
-        .fetch_optional(pool)
-        .await?;
-
-        if let Some(mut record) = record {
-            let mut args: SqliteArguments = Default::default();
-            args.add(record.namespace_id);
-
-            let users = sqlx::query_as_with::<_, UserRecord, _>(
-                r#"
-                    SELECT
-                        namespace_publishers.namespace_id,
-                        namespace_publishers.publisher_id,
-                        publishers.address
-                    FROM namespace_publishers
-                    INNER JOIN publishers
-                    ON (namespace_publishers.publisher_id = publishers.publisher_id)
-                    WHERE namespace_id = ?
-                "#,
-                args
-            )
-            .fetch_all(pool)
-            .await?;
-
-            for user in users {
-                record.publishers.push(user.address);
-            }
-
-            Ok(Some(record))
-        } else {
-            Ok(None)
-        }
     }
 }

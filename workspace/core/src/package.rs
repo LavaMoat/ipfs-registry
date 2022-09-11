@@ -41,7 +41,7 @@ impl fmt::Display for RegistryKind {
 pub struct Namespace(String);
 
 impl Namespace {
-    /// Create a new namespace with checking the source is valid.
+    /// Create a new namespace without checking the source is valid.
     pub fn new_unchecked(s: &str) -> Self {
         Self(s.to_owned())
     }
