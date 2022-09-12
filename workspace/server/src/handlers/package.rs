@@ -8,9 +8,9 @@ use axum::{
 
 //use axum_macros::debug_handler;
 
+use semver::Version;
 use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
-use semver::Version;
 
 use ipfs_registry_core::{
     Artifact, Definition, Namespace, ObjectKey, PackageKey, PackageName,
@@ -139,15 +139,14 @@ impl PackageHandler {
     /// Get the exact version of a package.
     pub(crate) async fn exact_version(
         Extension(state): Extension<ServerState>,
-        Path((namespace, package, version)): Path<(Namespace, PackageName, Version)>,
+        Path((namespace, package, version)): Path<(
+            Namespace,
+            PackageName,
+            Version,
+        )>,
     ) -> std::result::Result<Json<VersionRecord>, StatusCode> {
         let key = PackageKey::Pointer(namespace, package, version);
-        match PackageModel::find_by_key(
-            &state.pool,
-            &key,
-        )
-        .await
-        {
+        match PackageModel::find_by_key(&state.pool, &key).await {
             Ok(record) => {
                 let record = record.ok_or_else(|| StatusCode::NOT_FOUND)?;
                 Ok(Json(record))

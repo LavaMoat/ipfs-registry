@@ -1462,6 +1462,7 @@ dependencies = [
  "clap",
  "futures",
  "hyper",
+ "hyper-rustls",
  "indexmap",
  "ipfs-api-backend-hyper",
  "ipfs-registry-core",
