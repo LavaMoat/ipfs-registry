@@ -21,13 +21,11 @@ pub async fn start(bind: String, config: PathBuf) -> Result<()> {
     let config = config::ServerConfig::load(&config)?;
     let layers = layer::build(&config)?;
     let handle = Handle::new();
-    let state = Arc::new(server::State {
-        info: ServerInfo { name, version },
-        config,
-        layers,
-    });
+    let state = Arc::new(
+        server::State::new(config, ServerInfo { name, version }, layers)
+            .await?,
+    );
     let addr = SocketAddr::from_str(&bind)?;
-    let server: Server = Default::default();
-    server.start(addr, state, handle).await?;
+    Server.start(addr, state, handle).await?;
     Ok(())
 }

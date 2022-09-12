@@ -1,3 +1,6 @@
+[database]
+url = "sqlite:ipfs_registry.db"
+
 #[storage]
 #layers = [
   #{ url = "http://localhost:5001" }

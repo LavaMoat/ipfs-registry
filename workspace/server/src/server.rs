@@ -7,17 +7,25 @@ use axum::{
         HeaderValue, Method,
     },
     response::IntoResponse,
-    routing::get,
+    routing::{get, post, put},
     Json, Router,
 };
 use axum_server::{tls_rustls::RustlsConfig, Handle};
 use serde::Serialize;
 use serde_json::json;
-use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
+use tower_http::{
+    cors::CorsLayer, limit::RequestBodyLimitLayer, trace::TraceLayer,
+};
+
+use sqlx::SqlitePool;
 
 use crate::{
-    config::ServerConfig, config::TlsConfig, handlers::PackageHandler,
-    headers::X_SIGNATURE, layer::Layers, Result,
+    config::ServerConfig,
+    config::TlsConfig,
+    handlers::{NamespaceHandler, PackageHandler, PublisherHandler},
+    headers::X_SIGNATURE,
+    layer::Layers,
+    Result,
 };
 
 /// Type alias for the server state.
@@ -26,11 +34,41 @@ pub(crate) type ServerState = Arc<State>;
 /// Server state.
 pub struct State {
     /// The server configuration.
-    pub config: ServerConfig,
+    pub(crate) config: ServerConfig,
     /// Server information.
-    pub info: ServerInfo,
+    pub(crate) info: ServerInfo,
     /// Storage layers.
-    pub layers: Layers,
+    pub(crate) layers: Layers,
+    /// Connection pool.
+    pub(crate) pool: SqlitePool,
+}
+
+impl State {
+    /// Create a new state.
+    pub async fn new(
+        config: ServerConfig,
+        info: ServerInfo,
+        layers: Layers,
+    ) -> Result<State> {
+        let url = std::env::var("DATABASE_URL")
+            .ok()
+            .unwrap_or_else(|| config.database.url.clone());
+
+        tracing::info!(db = %url);
+
+        let pool = SqlitePool::connect(&url).await?;
+
+        if &config.database.url == "sqlite::memory:" {
+            sqlx::migrate!("../../migrations").run(&pool).await?;
+        }
+
+        Ok(State {
+            config,
+            info,
+            layers,
+            pool,
+        })
+    }
 }
 
 /// Server information.
@@ -53,9 +91,11 @@ impl Server {
         state: ServerState,
         handle: Handle,
     ) -> Result<()> {
-        let origins = Server::read_origins(&state)?;
+        let origins = self.read_origins(&state)?;
         let limit = state.config.registry.body_limit;
         let tls = state.config.tls.as_ref().cloned();
+
+        //sqlx::migrate!("../../migrations").run(&pool).await?;
 
         if let Some(tls) = tls {
             self.run_tls(addr, state, handle, origins, limit, tls).await
@@ -102,7 +142,10 @@ impl Server {
         Ok(())
     }
 
-    fn read_origins(state: &State) -> Result<Option<Vec<HeaderValue>>> {
+    fn read_origins(
+        &self,
+        state: &State,
+    ) -> Result<Option<Vec<HeaderValue>>> {
         if let Some(cors) = &state.config.cors {
             let mut origins = Vec::new();
             for url in cors.origins.iter() {
@@ -135,23 +178,46 @@ impl Server {
         };
 
         let app = Router::new()
-            .route("/api", get(api))
+            .route("/api", get(ApiHandler::get))
+            .route("/api/publisher", post(PublisherHandler::signup))
             .route(
-                "/api/package",
-                get(PackageHandler::get).put(PackageHandler::put),
+                "/api/namespace/:namespace",
+                post(NamespaceHandler::register),
             )
-            //.route("/api/package", put(PackageHandler::put))
+            .route("/api/package", get(PackageHandler::fetch))
+            .route(
+                "/api/package/:namespace",
+                put(PackageHandler::publish)
+                    .get(PackageHandler::list_packages),
+            )
+            .route(
+                "/api/package/:namespace/:package",
+                get(PackageHandler::list_versions),
+            )
+            .route(
+                "/api/package/:namespace/:package/latest",
+                get(PackageHandler::latest_version),
+            )
+            .route(
+                "/api/package/:namespace/:package/:version",
+                get(PackageHandler::exact_version),
+            )
             .layer(RequestBodyLimitLayer::new(limit))
             .layer(cors)
+            .layer(TraceLayer::new_for_http())
             .layer(Extension(state));
 
         Ok(app)
     }
 }
 
-/// Serve the API identity page.
-pub(crate) async fn api(
-    Extension(state): Extension<ServerState>,
-) -> impl IntoResponse {
-    Json(json!(&state.info))
+pub(crate) struct ApiHandler;
+
+impl ApiHandler {
+    /// Serve the API identity page.
+    pub(crate) async fn get(
+        Extension(state): Extension<ServerState>,
+    ) -> impl IntoResponse {
+        Json(json!(&state.info))
+    }
 }

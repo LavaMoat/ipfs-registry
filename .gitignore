@@ -2,3 +2,7 @@ target
 *.tgz
 *.bak
 *.profraw
+*.db
+*.db-shm
+*.db-wal
+.env

@@ -5,9 +5,9 @@ use axum::body::Bytes;
 
 use tokio::sync::RwLock;
 
-use ipfs_registry_core::{Artifact, ObjectKey, Pointer};
+use ipfs_registry_core::{Artifact, ObjectKey};
 
-use super::{get_blob_key, get_pointer_key, Layer};
+use super::{get_blob_key, Layer};
 use crate::{Error, Result};
 
 pub struct MemoryLayer {
@@ -45,28 +45,5 @@ impl Layer for MemoryLayer {
         } else {
             Err(Error::BadObjectKey)
         }
-    }
-
-    async fn add_pointer(&self, doc: Pointer) -> Result<Vec<ObjectKey>> {
-        let key = get_pointer_key(&doc.definition.artifact);
-        let data = serde_json::to_vec_pretty(&doc)?;
-        let mut writer = self.files.write().await;
-        writer.insert(key.clone(), data);
-        Ok(vec![ObjectKey::Key(key)])
-    }
-
-    async fn get_pointer(
-        &self,
-        artifact: &Artifact,
-    ) -> Result<Option<Pointer>> {
-        let key = get_pointer_key(artifact);
-        let reader = self.files.read().await;
-        let result = if let Some(res) = reader.get(&key) {
-            let doc: Pointer = serde_json::from_slice(res)?;
-            Some(doc)
-        } else {
-            None
-        };
-        Ok(result)
     }
 }

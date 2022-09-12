@@ -20,6 +20,6 @@ jobs:
       - name: Check cargo fmt
         run: cargo make format-check
       - name: Check cargo clippy
-        run: cargo make clippy
+        run: DATABASE_URL=sqlite::memory: cargo make clippy
       - name: Run tests
         run: cargo make test

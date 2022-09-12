@@ -35,13 +35,25 @@ Generate a signing key; you will be prompted to choose a password for the keysto
 ipkg keygen ./sandbox
 ```
 
+Signup so the public key is registered for publishing:
+
+```
+ipkg signup -k ./sandbox/<addr>.json
+```
+
+Replace `<addr>` with the address of the public key and enter the password for the keystore when prompted.
+
+Register a namespace for published packages:
+
+```
+ipkg register -k ./sandbox/<addr>.json mock-namespace
+```
+
 Publish a package:
 
 ```
-ipkg publish -k ./sandbox/<addr>.json fixtures/mock-package-1.0.0.tgz
+ipkg publish -k ./sandbox/<addr>.json -n mock-namespace fixtures/mock-package-1.0.0.tgz
 ```
-
-Replace `<addr>` with the address for the key and enter the password for the keystore when prompted.
 
 Download the package to a file:
 
@@ -51,25 +63,88 @@ ipkg fetch <addr>/mock-package/1.0.0 sandbox/package.tgz
 
 ## API
 
+For API calls that require authentication the `x-signature` header MUST be a base64 encoded string of a 65-byte Ethereum-style ECDSA recoverable signature.
+
+### Signup
+
+```
+POST /api/publisher
+```
+
+Register a signing key for publishing.
+
+#### Headers
+
+* `x-signature`: Signature of the well known value `.ipfs-registry`.
+
+#### Response
+
+```json
+{
+  "address": "0x1fc770ac21067a04f83101ebf19a670db9e3eb21",
+  "created_at": "2022-09-11T08:28:17Z"
+}
+```
+
+### Register
+
+```
+POST /api/namespace/:namespace
+```
+
+Register a namespace; if the namespace already exists a 409 CONFLICT response is returned.
+
+#### Headers
+
+* `x-signature`: Signature of the bytes for `:namespace`.
+
+#### Response
+
+```json
+{
+  "name": "mock-namespace",
+  "owner": "0x1fc770ac21067a04f83101ebf19a670db9e3eb21",
+  "publishers": [],
+  "created_at": "2022-09-11T08:29:27Z"
+}
+```
+
 ### Upload a package
 
 ```
-PUT /api/package
+PUT /api/package/:namespace
 ```
 
-The default mime type the server respects for packages is `application/gzip` so you should ensure the `content-type` header is set correctly.
-
-To upload a package it MUST be signed and the signature given in the `x-signature` header.
-
-The `x-signature` header MUST be a base64 encoded string of a 65-byte Ethereum-style ECDSA recoverable signature.
-
-The server will compute the address from the public key recovered from the signature and use that as the namespace for packages.
-
-If a file already exists for the given package a 409 CONFLICT response is returned.
+If the package already exists a 409 CONFLICT response is returned.
 
 If the address of the publisher has been denied based on the server configuration's `allow` and `deny` sets then a 401 UNAUTHORIZED response is returned.
 
 The default configuration limits requests to 16MiB so if the package is too large a 413 PAYLOAD TOO LARGE response is returned.
+
+#### Parameters
+
+* `:namespace`: The package namespace.
+
+#### Headers
+
+* `x-signature`: Signature of the bytes for the request body.
+* `content-type`: Should match the MIME type for the registry (default: `application/gzip`)
+
+#### Response
+
+```json
+{
+  "id": "mock-namespace/mock-package/1.0.0",
+  "artifact": {
+    "namespace": "mock-namespace",
+    "package": {
+      "name": "mock-package",
+      "version": "1.0.0"
+    }
+  },
+  "key": "/ipfs/QmSYVWjXh5GCZpxhCSHMa89X9VHnPpaxafkBAR9rjfCenb"
+}
+```
 
 ### Download a package
 
@@ -77,7 +152,7 @@ The default configuration limits requests to 16MiB so if the package is too larg
 GET /api/package?id=<package-id>
 ```
 
-To download a package construct a URL containing the package identifier; the identifier may be an explicit IPFS reference such as:
+To download a package construct a URL containing the package identifier; the identifier may be an IPFS reference such as:
 
 ```
 /ipfs/bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi
@@ -86,10 +161,135 @@ To download a package construct a URL containing the package identifier; the ide
 Or a package pointer:
 
 ```
-example.com/mock-package/1.0.0
+mock-namespace/mock-package/1.0.0
 ```
 
-When a package pointer is used to fetch a package then the checksum and signature are verified.
+#### Query
+
+* `id`: Package identifier.
+
+### List packages
+
+```
+GET /api/package/:namespace
+```
+
+List the packages for a namespace.
+
+#### Query
+
+* `versions`: Fetch versions for each package, either `none` or  `latest`. Default is `none`.
+* `limit`: Limit per page.
+* `offset`: Offset for pagination.
+* `sort`: Sort order, either `asc` or `desc`.
+
+#### Response
+
+```json
+{
+  "records": [
+    {
+      "name": "mock-package",
+      "created_at": "2022-09-11T08:30:27Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+### List versions
+
+```
+GET /api/package/:namespace/:package
+```
+
+List the versions of a package.
+
+#### Query
+
+* `limit`: Limit per page.
+* `offset`: Offset for pagination.
+* `sort`: Sort order, either `asc` or `desc`.
+
+#### Response
+
+```json
+{
+  "records": [
+    {
+      "version": "1.0.0",
+      "content_id": "QmSYVWjXh5GCZpxhCSHMa89X9VHnPpaxafkBAR9rjfCenb",
+      "signature": "9a0b6450d1f42380f826a86f2d8106d6c9db041c912d90a6063e6bf8a28989301551d0458fb4a6f49b467334d7d1d9368e3b411f4c1b2ce7052167ac422c150301",
+      "checksum": "4ad90a2c2e08374f8ccec2b604915a0ab7e97fcca983b12a6857d20df3fca9c0",
+      "created_at": "2022-09-11T08:30:27Z"
+    },
+    {
+      "version": "1.0.1",
+      "content_id": "QmQfiqgpEL7gWavVJ5r2JK17N516q9wWoL8eHjwq8zKozZ",
+      "signature": "dad0482f1096ad9f0caef5d422e742ff4052c497fcfa0a2bead256886c713770357bf810297aed168e3e0888e7e00b73f2e50d432addcd9b46ebeff03ee3d06c00",
+      "checksum": "6fb6f92379c52eeb7f18d56c6fc745755588ebbccd5db0e157c9938daaf5e359",
+      "created_at": "2022-09-12T01:34:05Z"
+    },
+    {
+      "version": "2.0.0-alpha.1",
+      "content_id": "QmbptdWzd7pzNbmTkGwtYRdQWYCmXYjQ6tJV9CkWkjD2V8",
+      "signature": "92b39f8aacaa109e136194c98a47e741d058c6a1b042fe0453f24aaedeb878b5499c388162a48e55f1f88756e9735821ac26f84b7db75060e0ac2cad1dce37b300",
+      "checksum": "58313c4525d2253048a7b7342bb63b4a914bd5ae2ee5eab9e22f35c8897b5db5",
+      "created_at": "2022-09-12T02:22:16Z"
+    }
+  ],
+  "count": 3
+}
+```
+
+### Latest version
+
+```
+GET /api/package/:namespace/:package/latest
+```
+
+Get the latest version of a package.
+
+#### Query
+
+* `prerelease`: When `true` include prerelease versions.
+
+#### Response
+
+Response with `?prerelease=true` query string:
+
+```json
+{
+  "version": "2.0.0-alpha.1",
+  "package": {
+    "author": "",
+    "description": "Mock package to test NPM registry support",
+    "license": "ISC",
+    "main": "index.js",
+    "name": "mock-package",
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "version": "2.0.0-alpha.1"
+  },
+  "content_id": "QmbptdWzd7pzNbmTkGwtYRdQWYCmXYjQ6tJV9CkWkjD2V8",
+  "signature": "92b39f8aacaa109e136194c98a47e741d058c6a1b042fe0453f24aaedeb878b5499c388162a48e55f1f88756e9735821ac26f84b7db75060e0ac2cad1dce37b300",
+  "checksum": "58313c4525d2253048a7b7342bb63b4a914bd5ae2ee5eab9e22f35c8897b5db5",
+  "created_at": "2022-09-12T02:22:16Z"
+}
+```
+
+### Package version
+
+```
+GET /api/package/:namespace/:package/:version
+```
+
+Get a specific version of a package.
+
+#### Response
+
+See example response for latest version above.
 
 ## Configuration
 
@@ -128,7 +328,7 @@ layers = [
 ]
 ```
 
-When using an AWS S3 bucket as a storage layer in production it is ***strongly recommended*** that the bucket has [versioning][] and [object locks][] enabled. 
+When using an AWS S3 bucket as a storage layer in production it is ***strongly recommended*** that the bucket has [versioning][] and [object locks][] enabled.
 Mixing layers is encouraged for redundancy:
 
 ```toml
@@ -196,6 +396,33 @@ key = "key.pem"
 ```
 
 Relative paths are resolved from the directory containing the configuration file.
+
+## Developers
+
+Install `sqlx` and `cargo make`:
+
+```
+cargo install sqlx-cli
+cargo install cargo-make
+```
+
+Then create a `.env` file from `.env.example`. Afterwards, create a database and run the migrations:
+
+```
+cargo make dev-db
+```
+
+Typical workflow is to run the test suite and format the code:
+
+```
+cargo make dev
+```
+
+Starting a local server (requires an IPFS node running locally):
+
+```
+cargo make dev-server
+```
 
 ## Bugs
 

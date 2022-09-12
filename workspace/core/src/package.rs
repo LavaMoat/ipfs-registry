@@ -17,13 +17,26 @@ use crate::{
 
 const IPFS_DELIMITER: &str = "/ipfs/";
 
+/// Validate a namespace or package name.
+pub fn validate(s: &str) -> bool {
+    let invalid = "/\\ \t\n@:";
+    for c in invalid.chars() {
+        if s.find(c).is_some() {
+            return false;
+        }
+    }
+    true
+}
+
 /// Kinds or supported registries.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Default, Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RegistryKind {
     /// NPM compatible packages.
+    #[default]
     Npm,
 }
+
 impl fmt::Display for RegistryKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -36,13 +49,82 @@ impl fmt::Display for RegistryKind {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct Namespace(String);
+
+impl Namespace {
+    /// Create a new namespace without checking the source is valid.
+    pub fn new_unchecked(s: &str) -> Self {
+        Self(s.to_owned())
+    }
+
+    /// Get a reference to the underlying string.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Get a reference to the underlying bytes.
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+}
+
+impl fmt::Display for Namespace {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl FromStr for Namespace {
+    type Err = Error;
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        if validate(s) {
+            Ok(Namespace(s.to_owned()))
+        } else {
+            Err(Error::InvalidNamespace(s.to_owned()))
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct PackageName(String);
+
+impl PackageName {
+    /// Create a new package name without checking the source is valid.
+    pub fn new_unchecked(s: &str) -> Self {
+        Self(s.to_owned())
+    }
+
+    /// Get a reference to the underlying string.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Display for PackageName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl FromStr for PackageName {
+    type Err = Error;
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        if validate(s) {
+            Ok(PackageName(s.to_owned()))
+        } else {
+            Err(Error::InvalidPackageName(s.to_owned()))
+        }
+    }
+}
+
 /// Reference to a package artifact.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PackageKey {
     /// Direct artifact reference using an IPFS content identifier.
     Cid(Cid),
     /// Pointer reference by namespace, package name and version.
-    Pointer(String, String, Version),
+    Pointer(Namespace, PackageName, Version),
 }
 
 impl fmt::Display for PackageKey {
@@ -80,12 +162,12 @@ impl FromStr for PackageKey {
                 return Err(Error::InvalidPath(s.to_owned()));
             }
 
-            let org = parts.remove(0);
-            let name = parts.remove(0);
+            let namespace: Namespace = parts.remove(0).parse()?;
+            let name: PackageName = parts.remove(0).parse()?;
             let version = parts.remove(0);
             let version: Version = Version::parse(version)?;
 
-            Ok(Self::Pointer(org.to_owned(), name.to_owned(), version))
+            Ok(Self::Pointer(namespace, name, version))
         }
     }
 }
@@ -133,21 +215,73 @@ impl<'de> Deserialize<'de> for PackageKey {
 }
 
 /// Type that represents a reference to a file object.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, Debug)]
 pub enum ObjectKey {
     /// Reference to an IPFS content identifier.
-    Cid(String),
+    Cid(Cid),
     /// Reference to a bucket key.
     Key(String),
 }
 
-impl AsRef<str> for ObjectKey {
-    fn as_ref(&self) -> &str {
-        match self {
-            Self::Cid(value) => value,
-            Self::Key(value) => value,
+impl FromStr for ObjectKey {
+    type Err = Error;
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let result: Result<Cid> = s.try_into().map_err(Error::from);
+        match result {
+            Ok(cid) => Ok(ObjectKey::Cid(cid)),
+            Err(_e) => Ok(ObjectKey::Key(s.to_owned())),
         }
+    }
+}
+
+impl fmt::Display for ObjectKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Cid(value) => write!(f, "{}", value),
+            Self::Key(value) => write!(f, "{}", value),
+        }
+    }
+}
+
+impl Serialize for ObjectKey {
+    fn serialize<S>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let value = self.to_string();
+        serializer.serialize_str(&value)
+    }
+}
+
+struct ObjectKeyVisitor;
+
+impl<'de> Visitor<'de> for ObjectKeyVisitor {
+    type Value = ObjectKey;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a string for object id")
+    }
+
+    fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let object_key: ObjectKey = v.parse().unwrap();
+        Ok(object_key)
+    }
+}
+
+impl<'de> Deserialize<'de> for ObjectKey {
+    fn deserialize<D>(
+        deserializer: D,
+    ) -> std::result::Result<ObjectKey, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(ObjectKeyVisitor)
     }
 }
 
@@ -155,7 +289,7 @@ impl AsRef<str> for ObjectKey {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PackageMeta {
     /// Name of the package.
-    pub name: String,
+    pub name: PackageName,
     /// Version of the package.
     pub version: Version,
 }
@@ -164,9 +298,10 @@ pub struct PackageMeta {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Artifact {
     /// The kind of registry.
+    #[serde(skip)]
     pub kind: RegistryKind,
     /// Organization namespace.
-    pub namespace: String,
+    pub namespace: Namespace,
     /// Package descriptor.
     pub package: PackageMeta,
 }
@@ -193,8 +328,12 @@ pub struct Definition {
 pub struct PackageSignature {
     /// Address of the signer.
     pub signer: Address,
-    /// Signature of the package file encoded as base64.
-    pub value: String,
+    /// Signature of the package file.
+    #[serde(
+        serialize_with = "hex::serde::serialize",
+        deserialize_with = "hex::serde::deserialize"
+    )]
+    pub value: [u8; 65],
 }
 
 /// Type that points to a package archive and wraps the meta
@@ -261,10 +400,10 @@ mod tests {
     fn parse_package_key_path() -> Result<()> {
         let key = "example.com/mock-package/1.0.0";
         let package_key: PackageKey = key.parse()?;
-        if let PackageKey::Pointer(org, name, version) = &package_key {
-            assert_eq!("example.com", org);
-            assert_eq!("mock-package", name);
-            assert_eq!(&Version::new(1, 0, 0), version);
+        if let PackageKey::Pointer(org, name, version) = package_key {
+            assert_eq!(Namespace::new_unchecked("example.com"), org);
+            assert_eq!(PackageName::new_unchecked("mock-package"), name);
+            assert_eq!(Version::new(1, 0, 0), version);
             Ok(())
         } else {
             panic!("expecting path for package key");

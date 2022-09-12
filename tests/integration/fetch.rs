@@ -4,15 +4,15 @@ use semver::Version;
 use serial_test::serial;
 use std::path::PathBuf;
 
-use ipfs_registry_client::{fetch, publish::publish_with_key};
-use ipfs_registry_core::PackageKey;
+use ipfs_registry_client::RegistryClient;
+use ipfs_registry_core::{Namespace, PackageKey, PackageName};
 use tempfile::NamedTempFile;
 
 use crate::test_utils::*;
 
 #[tokio::test]
 #[serial]
-async fn integration_fetch_ok() -> Result<()> {
+async fn integration_fetch_pointer() -> Result<()> {
     // Spawn the server
     let (rx, _handle) = spawn(default_server_config())?;
     let _ = rx.await?;
@@ -23,10 +23,23 @@ async fn integration_fetch_ok() -> Result<()> {
     let mime: mime::Mime = "application/gzip".parse()?;
     let signing_key = SigningKey::random(&mut rand::thread_rng());
 
-    let receipt =
-        publish_with_key(server_url.clone(), mime, signing_key, file).await?;
+    let namespace = Namespace::new_unchecked("mock-namespace");
 
-    assert_eq!("mock-package", receipt.artifact.package.name);
+    prepare_mock_namespace(&server_url, &signing_key, &namespace).await?;
+
+    let receipt = RegistryClient::publish_file(
+        server_url.clone(),
+        namespace,
+        mime,
+        signing_key,
+        file,
+    )
+    .await?;
+
+    assert_eq!(
+        PackageName::new_unchecked("mock-package"),
+        receipt.artifact.package.name
+    );
     assert_eq!(Version::new(1, 0, 0), receipt.artifact.package.version);
 
     let tmp = NamedTempFile::new()?;
@@ -41,7 +54,8 @@ async fn integration_fetch_ok() -> Result<()> {
         receipt.artifact.package.version.clone(),
     );
 
-    let result = fetch(server_url, key, output.clone()).await?;
+    let result =
+        RegistryClient::fetch_file(server_url, key, output.clone()).await?;
 
     assert_eq!(output, result);
 

@@ -6,11 +6,10 @@ use ipfs_api_backend_hyper::{IpfsApi, IpfsClient, TryFromUri};
 use std::io::Cursor;
 use url::Url;
 
-use ipfs_registry_core::{Artifact, ObjectKey, Pointer};
+use ipfs_registry_core::{Artifact, ObjectKey};
 
 use super::Layer;
 
-use super::{NAME, ROOT};
 use crate::{Error, Result};
 
 /// Layer for IPFS backed storage.
@@ -54,72 +53,17 @@ impl Layer for IpfsLayer {
         let data = Cursor::new(data);
         let add_res = self.client.add(data).await?;
         self.client.pin_add(&add_res.hash, true).await?;
-        Ok(vec![ObjectKey::Cid(add_res.hash)])
+        Ok(vec![ObjectKey::Cid(add_res.hash.try_into()?)])
     }
 
     async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>> {
+        let id = id.to_string();
         let res = self
             .client
-            .cat(id.as_ref())
+            .cat(&id)
             .map_ok(|chunk| chunk.to_vec())
             .try_concat()
             .await?;
         Ok(res)
-    }
-
-    async fn add_pointer(&self, doc: Pointer) -> Result<Vec<ObjectKey>> {
-        let artifact = &doc.definition.artifact;
-        let dir = format!(
-            "/{}/{}/{}/{}/{}",
-            ROOT,
-            &artifact.kind,
-            &artifact.namespace,
-            &artifact.package.name,
-            &artifact.package.version
-        );
-
-        self.client.files_mkdir(&dir, true).await?;
-
-        let data = serde_json::to_vec_pretty(&doc)?;
-        let path = format!("{}/{}", dir, NAME);
-
-        let data = Cursor::new(data);
-        self.client.files_write(&path, true, true, data).await?;
-        self.client.files_flush(Some(&path)).await?;
-
-        let stat = self.client.files_stat(&path).await?;
-        self.client.pin_add(&stat.hash, true).await?;
-
-        Ok(vec![ObjectKey::Cid(stat.hash)])
-    }
-
-    async fn get_pointer(
-        &self,
-        descriptor: &Artifact,
-    ) -> Result<Option<Pointer>> {
-        let path = format!(
-            "/{}/{}/{}/{}/{}/{}",
-            ROOT,
-            &descriptor.kind,
-            &descriptor.namespace,
-            &descriptor.package.name,
-            &descriptor.package.version,
-            NAME
-        );
-
-        let result = if let Ok(res) = self
-            .client
-            .files_read(&path)
-            .map_ok(|chunk| chunk.to_vec())
-            .try_concat()
-            .await
-        {
-            let doc: Pointer = serde_json::from_slice(&res)?;
-            Some(doc)
-        } else {
-            None
-        };
-
-        Ok(result)
     }
 }

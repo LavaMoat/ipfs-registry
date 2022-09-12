@@ -14,13 +14,15 @@ pub(crate) fn decompress(buffer: &[u8]) -> Result<Vec<u8>> {
     Ok(result)
 }
 
-pub(crate) fn remove_npm_scope(mut descriptor: PackageMeta) -> PackageMeta {
+pub(crate) fn remove_npm_scope(
+    mut descriptor: PackageMeta,
+) -> Result<PackageMeta> {
     let needle = "/";
-    if let Some(index) = descriptor.name.rfind(needle) {
-        let name = &descriptor.name[index + needle.len()..];
-        descriptor.name = name.to_owned();
+    if let Some(index) = descriptor.name.as_str().rfind(needle) {
+        let name = &descriptor.name.as_str()[index + needle.len()..];
+        descriptor.name = name.parse()?;
     }
-    descriptor
+    Ok(descriptor)
 }
 
 /// Read a package descriptor from an NPM compatible tarball.
@@ -30,7 +32,7 @@ pub(crate) fn read_npm_package(
     let package_path = PathBuf::from(NPM);
     let buffer = find_tar_entry(package_path, buffer)?;
     let descriptor: PackageMeta = serde_json::from_slice(buffer)?;
-    let descriptor = remove_npm_scope(descriptor);
+    let descriptor = remove_npm_scope(descriptor)?;
     Ok((descriptor, buffer))
 }
 
@@ -54,6 +56,7 @@ fn find_tar_entry(package_path: PathBuf, buffer: &[u8]) -> Result<&[u8]> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::PackageName;
     use anyhow::Result;
     use semver::Version;
     use std::path::PathBuf;
@@ -61,12 +64,15 @@ mod tests {
     #[test]
     fn scope_remove() -> Result<()> {
         let descriptor = PackageMeta {
-            name: "@mock-scope/mock-package".to_owned(),
+            name: PackageName::new_unchecked("@mock-scope/mock-package"),
             version: Version::new(1, 0, 0),
         };
 
-        let descriptor = remove_npm_scope(descriptor);
-        assert_eq!("mock-package", &descriptor.name);
+        let descriptor = remove_npm_scope(descriptor)?;
+        assert_eq!(
+            PackageName::new_unchecked("mock-package"),
+            descriptor.name
+        );
         Ok(())
     }
 
@@ -76,8 +82,11 @@ mod tests {
         let contents = std::fs::read(&file)?;
         let decompressed = decompress(&contents)?;
         let (descriptor, _) = read_npm_package(&decompressed)?;
-        assert_eq!("mock-package", &descriptor.name);
         assert_eq!(1u64, descriptor.version.major);
+        assert_eq!(
+            PackageName::new_unchecked("mock-package"),
+            descriptor.name
+        );
         Ok(())
     }
 }

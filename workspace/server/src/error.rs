@@ -83,8 +83,6 @@ pub enum Error {
     #[error(transparent)]
     Tls(#[from] rusoto_core::request::TlsError),
 
-    //#[error(transparent)]
-    //ParseRegion(#[from] rusoto_signature::region::ParseRegionError),
     #[error(transparent)]
     Credentials(#[from] rusoto_core::credential::CredentialsError),
 
@@ -99,4 +97,13 @@ pub enum Error {
 
     #[error(transparent)]
     ParseRegion(#[from] rusoto_signature::region::ParseRegionError),
+
+    #[error(transparent)]
+    Sql(#[from] sqlx::Error),
+
+    #[error(transparent)]
+    Migrate(#[from] sqlx::migrate::MigrateError),
+
+    #[error(transparent)]
+    Cid(#[from] cid::Error),
 }

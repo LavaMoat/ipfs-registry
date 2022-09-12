@@ -1,6 +1,6 @@
 {
   "name": "mock-package",
-  "version": "1.0.0",
+  "version": "2.0.0-alpha.1",
   "description": "Mock package to test NPM registry support",
   "main": "index.js",
   "scripts": {

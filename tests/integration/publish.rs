@@ -5,7 +5,8 @@ use std::path::PathBuf;
 use crate::test_utils::*;
 use semver::Version;
 
-use ipfs_registry_client::publish::publish_with_key;
+use ipfs_registry_client::RegistryClient;
+use ipfs_registry_core::{Namespace, PackageName};
 
 use k256::ecdsa::SigningKey;
 
@@ -22,13 +23,26 @@ async fn integration_publish_ok() -> Result<()> {
     let mime: mime::Mime = "application/gzip".parse()?;
     let signing_key = SigningKey::random(&mut rand::thread_rng());
 
-    let receipt =
-        publish_with_key(server_url, mime, signing_key, file).await?;
+    let namespace = Namespace::new_unchecked("mock-namespace");
 
-    assert_eq!("mock-package", receipt.artifact.package.name);
+    prepare_mock_namespace(&server_url, &signing_key, &namespace).await?;
+
+    let receipt = RegistryClient::publish_file(
+        server_url,
+        namespace,
+        mime,
+        signing_key,
+        file,
+    )
+    .await?;
+
+    assert_eq!(
+        PackageName::new_unchecked("mock-package"),
+        receipt.artifact.package.name
+    );
     assert_eq!(Version::new(1, 0, 0), receipt.artifact.package.version);
 
-    println!("receipt {:#?}", receipt);
+    //println!("receipt {:#?}", receipt);
 
     Ok(())
 }

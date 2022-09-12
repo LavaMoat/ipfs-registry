@@ -12,6 +12,10 @@ use ipfs_registry_core::RegistryKind;
 
 #[derive(Deserialize)]
 pub struct ServerConfig {
+    /// Configuration for the database.
+    #[serde(default)]
+    pub database: DatabaseConfig,
+
     /// Configuration for the primary storage layer.
     #[serde(default)]
     pub storage: StorageConfig,
@@ -36,6 +40,7 @@ impl ServerConfig {
     /// Create a new server config.
     pub fn new(storage: StorageConfig) -> Self {
         Self {
+            database: Default::default(),
             storage,
             registry: Default::default(),
             tls: None,
@@ -109,6 +114,21 @@ impl From<LayerConfig> for StorageConfig {
         let mut layers = IndexSet::new();
         layers.insert(layer);
         Self { layers }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DatabaseConfig {
+    /// URL for database connections.
+    pub url: String,
+}
+
+impl Default for DatabaseConfig {
+    fn default() -> Self {
+        Self {
+            url: "sqlite::memory:".to_owned(),
+            //url: "sqlite:ipfs_registry.db".to_owned(),
+        }
     }
 }
 
