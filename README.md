@@ -35,7 +35,7 @@ In the future support can be added to mitigate this by storing object references
 
 ### Identity
 
-Using ECDSA recoverable signatures to identify publishers avoids storing any PII and allows us to add Self-Sovereign Identity (SSI) support enabling publishers to verify their identity using DIDs and Verifiable Credentials.
+Using ECDSA recoverable signatures to identify publishers avoids storing any Personally Identifiable Information (PII) and allows us to add Self-Sovereign Identity (SSI) support enabling publishers to verify their identity using Distributed Identifiers (DID) and Verifiable Credentials (VC).
 
 All packages must be signed so we establish irrefutable proof of which identity published a package.
 
@@ -44,6 +44,10 @@ Clients could in the future support Multi-Party Computation (MPC) for package pu
 ### Discoverability
 
 A key feature of any package registry is the ability to discover packages; meta data about the published packages is stored in a database and exposed via a public API.
+
+### Redundancy
+
+The package registry supports multiple storage layers so it can be configured to automatically mirror published packages; see [storage configuration](#storage) for more information.
 
 ## Getting Started
 
