@@ -8,9 +8,7 @@ use web3_address::ethereum::Address;
 use ipfs_registry_core::{Namespace, PackageKey, PackageName, Pointer};
 
 use crate::{
-    model::{
-        NamespaceModel, Pager, PublisherModel, VersionIncludes,
-    },
+    model::{NamespaceModel, Pager, PublisherModel, VersionIncludes},
     value_objects::*,
     Error, Result,
 };
@@ -38,14 +36,14 @@ impl PackageModel {
         let sql = format!(
             r#"
             SELECT
-                COUNT(package_id) as count,
+                (SELECT COUNT(package_id) FROM packages) as count,
                 namespace_id,
                 package_id,
                 created_at,
                 name
             FROM packages
             WHERE namespace_id = ?
-            GROUP BY package_id
+            --GROUP BY package_id
             ORDER BY name {}
             LIMIT ? OFFSET ?"#,
             pager.direction.as_str()
@@ -63,7 +61,8 @@ impl PackageModel {
                         PackageModel::find_latest(pool, &package, false)
                             .await?
                             .ok_or(Error::NoPackageVersion)?;
-                    package.versions.records.push(latest);
+                    package.versions.count = latest.count;
+                    package.versions.records = vec![latest];
                     packages.push(package);
                 }
                 packages
@@ -103,7 +102,7 @@ impl PackageModel {
         let sql = format!(
             r#"
             SELECT
-                COUNT(version_id) as count,
+                (SELECT COUNT(version_id) FROM versions) as count,
                 version_id,
                 publisher_id,
                 package_id,
@@ -119,10 +118,14 @@ impl PackageModel {
                 created_at
             FROM versions
             WHERE package_id = ?
-            GROUP BY version_id
-            ORDER BY major, minor, patch, pre, build {}
+            --GROUP BY version_id
+            ORDER BY major {}, minor {}, patch {}, pre {}, build {}
             LIMIT ? OFFSET ?"#,
-            pager.direction.as_str()
+            pager.direction.as_str(),
+            pager.direction.as_str(),
+            pager.direction.as_str(),
+            pager.direction.as_str(),
+            pager.direction.as_str(),
         );
 
         let records = sqlx::query_as_with::<_, VersionRecord, _>(&sql, args)
@@ -208,7 +211,22 @@ impl PackageModel {
 
         let mut builder = QueryBuilder::<Sqlite>::new(
             r#"
-                SELECT * FROM versions WHERE package_id =
+                SELECT
+                    (SELECT COUNT(version_id) FROM versions) as count,
+                    version_id,
+                    publisher_id,
+                    package_id,
+                    major,
+                    minor,
+                    patch,
+                    pre,
+                    build,
+                    package,
+                    content_id,
+                    signature,
+                    checksum,
+                    created_at
+                FROM versions WHERE package_id =
             "#,
         );
         builder.push_bind(package_record.package_id);

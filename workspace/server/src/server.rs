@@ -187,7 +187,12 @@ impl Server {
             .route("/api/package", get(PackageHandler::fetch))
             .route(
                 "/api/package/:namespace",
-                put(PackageHandler::publish).get(PackageHandler::list),
+                put(PackageHandler::publish)
+                    .get(PackageHandler::list_packages),
+            )
+            .route(
+                "/api/package/:namespace/:package",
+                get(PackageHandler::list_versions),
             )
             .layer(RequestBodyLimitLayer::new(limit))
             .layer(cors)

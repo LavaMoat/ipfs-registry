@@ -24,6 +24,20 @@ pub struct ResultSet<T> {
     pub count: i64,
 }
 
+impl<T> ResultSet<T> {
+    pub fn len(&self) -> usize {
+        self.records.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.records.is_empty()
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.is_empty() && self.count == 0
+    }
+}
+
 /// Convert into a result set.
 pub trait IntoResultSet<T, R> {
     fn into_result_set(self) -> ResultSet<R>;
@@ -197,6 +211,7 @@ pub struct PackageRecord {
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
     /// Collection of versions.
+    #[serde(skip_serializing_if = "ResultSet::is_zero")]
     pub versions: ResultSet<VersionRecord>,
     /// Count of total rows.
     #[serde(skip)]

@@ -12,13 +12,13 @@ use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
 
 use ipfs_registry_core::{
-    Artifact, Definition, Namespace, ObjectKey, PackageKey, PackageReader,
-    PackageSignature, Pointer, Receipt,
+    Artifact, Definition, Namespace, ObjectKey, PackageKey, PackageName,
+    PackageReader, PackageSignature, Pointer, Receipt,
 };
 
 use ipfs_registry_database::{
     default_limit, Direction, Error as DatabaseError, PackageModel,
-    PackageRecord, Pager, ResultSet, VersionIncludes,
+    PackageRecord, Pager, ResultSet, VersionIncludes, VersionRecord,
 };
 
 use crate::{
@@ -31,12 +31,12 @@ pub struct PackageQuery {
     id: PackageKey,
 }
 
-// FIXME: problem using flatten, see: https://github.com/tokio-rs/axum/issues/1366
-
 #[derive(Default, Debug, Deserialize)]
 #[serde(default)]
 pub struct ListPackagesQuery {
     versions: VersionIncludes,
+    // NOTE: cannot use #[serde(flatten)]
+    // SEE: https://github.com/tokio-rs/axum/issues/1366
     offset: i64,
     #[serde(default = "default_limit")]
     limit: i64,
@@ -57,7 +57,7 @@ pub(crate) struct PackageHandler;
 
 impl PackageHandler {
     /// List packages for a namespace.
-    pub(crate) async fn list(
+    pub(crate) async fn list_packages(
         Extension(state): Extension<ServerState>,
         Path(namespace): Path<Namespace>,
         Query(query): Query<ListPackagesQuery>,
@@ -75,6 +75,29 @@ impl PackageHandler {
             Ok(records) => Ok(Json(records)),
             Err(e) => Err(match e {
                 DatabaseError::UnknownNamespace(_) => StatusCode::NOT_FOUND,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            }),
+        }
+    }
+
+    /// List versions for a namespace and package.
+    pub(crate) async fn list_versions(
+        Extension(state): Extension<ServerState>,
+        Path((namespace, package)): Path<(Namespace, PackageName)>,
+        Query(pager): Query<Pager>,
+    ) -> std::result::Result<Json<ResultSet<VersionRecord>>, StatusCode> {
+        match PackageModel::list_versions(
+            &state.pool,
+            &namespace,
+            &package,
+            &pager,
+        )
+        .await
+        {
+            Ok(records) => Ok(Json(records)),
+            Err(e) => Err(match e {
+                DatabaseError::UnknownNamespace(_)
+                | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }),
         }
