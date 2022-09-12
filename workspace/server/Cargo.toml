@@ -41,3 +41,4 @@ tokio-util = "0.7"
 sha3 = "0.10"
 cid = { version = "0.8", features = ["serde-codec"] }
 sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "sqlite", "any" ] }
+http = "0.2"

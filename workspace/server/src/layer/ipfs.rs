@@ -8,6 +8,8 @@ use url::Url;
 
 use ipfs_registry_core::{Artifact, ObjectKey};
 
+use hyper::Uri;
+
 use super::Layer;
 
 use crate::{Error, Result};
@@ -39,7 +41,19 @@ impl IpfsLayer {
         } else {
             return Err(Error::InvalidScheme(url.scheme().to_owned()));
         };
-        Ok(IpfsClient::from_host_and_port(scheme, host, port)?)
+
+        let uri: Uri = url.to_string().parse()?;
+
+        // /ip4/127.0.0.1/tcp/5001
+
+        //println!("Creating new IPFS layer with {}", uri);
+
+        if Scheme::HTTPS == scheme {
+            let client = IpfsClient::build_with_base_uri(uri);
+            Ok(client)
+        } else {
+            Ok(IpfsClient::from_host_and_port(scheme, host, port)?)
+        }
     }
 }
 
