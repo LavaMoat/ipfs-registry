@@ -1,10 +1,18 @@
-use flate2::read::GzDecoder;
 use std::{io::prelude::*, path::PathBuf};
+
+use flate2::read::GzDecoder;
+use serde::Deserialize;
 use tar::Archive;
 
 use crate::{Error, PackageMeta, Result};
 
 const NPM: &str = "package/package.json";
+const CARGO: &str = "Cargo.toml";
+
+#[derive(Deserialize)]
+struct CargoPackage {
+    package: PackageMeta,
+}
 
 /// Decompress a gzip buffer.
 pub(crate) fn decompress(buffer: &[u8]) -> Result<Vec<u8>> {
@@ -30,19 +38,40 @@ pub(crate) fn read_npm_package(
     buffer: &[u8],
 ) -> Result<(PackageMeta, &[u8])> {
     let package_path = PathBuf::from(NPM);
-    let buffer = find_tar_entry(package_path, buffer)?;
+    let buffer = find_tar_entry(package_path, buffer, true)?;
     let descriptor: PackageMeta = serde_json::from_slice(buffer)?;
     let descriptor = remove_npm_scope(descriptor)?;
     Ok((descriptor, buffer))
 }
 
+/// Read a package descriptor from a Cargo compatible tarball.
+pub(crate) fn read_cargo_package(
+    buffer: &[u8],
+) -> Result<(PackageMeta, &[u8])> {
+    let package_path = PathBuf::from(CARGO);
+    let buffer = find_tar_entry(package_path, buffer, false)?;
+    let descriptor: CargoPackage = toml::from_slice(buffer)?;
+    Ok((descriptor.package, buffer))
+}
+
 /// Find the file data for a specific entry in a tarball.
-fn find_tar_entry(package_path: PathBuf, buffer: &[u8]) -> Result<&[u8]> {
+fn find_tar_entry(
+    package_path: PathBuf,
+    buffer: &[u8],
+    exact: bool,
+) -> Result<&[u8]> {
     let mut archive = Archive::new(buffer);
     for entry in archive.entries()? {
         let entry = entry?;
         let path = entry.path()?;
-        if path.as_ref() == package_path.as_path() {
+
+        let matched = if exact {
+            path.as_ref() == package_path.as_path()
+        } else {
+            path.as_ref().ends_with(package_path.as_path())
+        };
+
+        if matched {
             let start_byte = entry.raw_file_position() as usize;
             let entry_size = entry.header().entry_size()? as usize;
             let end_byte = start_byte + entry_size;

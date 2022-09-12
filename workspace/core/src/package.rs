@@ -11,7 +11,7 @@ use std::{fmt, str::FromStr};
 use web3_address::ethereum::Address;
 
 use crate::{
-    tarball::{decompress, read_npm_package},
+    tarball::{decompress, read_cargo_package, read_npm_package},
     Error, Result,
 };
 
@@ -35,6 +35,8 @@ pub enum RegistryKind {
     /// NPM compatible packages.
     #[default]
     Npm,
+    /// Rust compatible packages.
+    Cargo,
 }
 
 impl fmt::Display for RegistryKind {
@@ -44,6 +46,7 @@ impl fmt::Display for RegistryKind {
             "{}",
             match self {
                 Self::Npm => "npm",
+                Self::Cargo => "cargo",
             }
         )
     }
@@ -373,6 +376,12 @@ impl PackageReader {
                 let value: Value = serde_json::from_slice(buffer)?;
                 Ok((descriptor, value))
             }
+            RegistryKind::Cargo => {
+                let contents = decompress(buffer)?;
+                let (descriptor, buffer) = read_cargo_package(&contents)?;
+                let value: Value = toml::from_slice(buffer)?;
+                Ok((descriptor, value))
+            }
         }
     }
 }
@@ -382,6 +391,24 @@ mod tests {
     use super::*;
     use anyhow::Result;
     use semver::Version;
+
+    #[test]
+    fn read_npm_package() -> Result<()> {
+        let buffer =
+            include_bytes!("../../../fixtures/mock-package-1.0.0.tgz");
+        let (descriptor, meta) =
+            PackageReader::read(RegistryKind::Npm, buffer)?;
+        Ok(())
+    }
+
+    #[test]
+    fn read_cargo_package() -> Result<()> {
+        let buffer =
+            include_bytes!("../../../fixtures/mock-crate-1.0.0.crate");
+        let (descriptor, meta) =
+            PackageReader::read(RegistryKind::Cargo, buffer)?;
+        Ok(())
+    }
 
     #[test]
     fn parse_package_key_ipfs() -> Result<()> {
