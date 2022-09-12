@@ -10,6 +10,7 @@ use axum::{
 
 use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
+use semver::Version;
 
 use ipfs_registry_core::{
     Artifact, Definition, Namespace, ObjectKey, PackageKey, PackageName,
@@ -120,6 +121,30 @@ impl PackageHandler {
             &namespace,
             &package,
             latest.prerelease,
+        )
+        .await
+        {
+            Ok(record) => {
+                let record = record.ok_or_else(|| StatusCode::NOT_FOUND)?;
+                Ok(Json(record))
+            }
+            Err(e) => Err(match e {
+                DatabaseError::UnknownNamespace(_)
+                | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            }),
+        }
+    }
+
+    /// Get the exact version of a package.
+    pub(crate) async fn exact_version(
+        Extension(state): Extension<ServerState>,
+        Path((namespace, package, version)): Path<(Namespace, PackageName, Version)>,
+    ) -> std::result::Result<Json<VersionRecord>, StatusCode> {
+        let key = PackageKey::Pointer(namespace, package, version);
+        match PackageModel::find_by_key(
+            &state.pool,
+            &key,
         )
         .await
         {

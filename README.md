@@ -279,6 +279,18 @@ Response with `?prerelease=true` query string:
 }
 ```
 
+### Package version
+
+```
+GET /api/package/:namespace/:package/:version
+```
+
+Get a specific version of a package.
+
+#### Response
+
+See example response for latest version above.
+
 ## Configuration
 
 This section describes the server configuration; after making changes to the configuration you must restart the server for changes to take effect.
