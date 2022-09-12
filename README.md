@@ -11,7 +11,7 @@ Minimum supported rust version (MSRV) is 1.63.0.
 
 ## Abstract
 
-Content addressing used by the IPFS network is a good fit for a package registry as it prevents packages from being tampered with and provides decentralized storage of the package archives.
+Content addressing used by the Inter-Planetary File System (IPFS) network is a good fit for a package registry as it prevents packages from being tampered with and provides decentralized storage of the package archives.
 
 However, there is a tension between using opaque identifiers and exposing human-friendly references to packages. To resolve this we support both types of references so that callers can choose from *tamper proof* in the case of an opaque Content Identifier (CID) or from *tamper protected* in the case of a human-readable package reference.
 
@@ -195,7 +195,7 @@ GET /api/package?id=<package-id>
 To download a package construct a URL containing the package identifier; the identifier may be an IPFS reference such as:
 
 ```
-/ipfs/bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi
+/ipfs/QmSYVWjXh5GCZpxhCSHMa89X9VHnPpaxafkBAR9rjfCenb
 ```
 
 Or a package pointer:
