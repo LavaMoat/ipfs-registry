@@ -9,6 +9,7 @@ use crate::{
     Result,
 };
 
+pub(crate) mod file;
 pub(crate) mod ipfs;
 pub(crate) mod memory;
 pub(crate) mod s3;
@@ -34,6 +35,9 @@ fn get_layer(
         )?)),
         LayerConfig::Memory { .. } => {
             Ok(Box::new(memory::MemoryLayer::new()))
+        }
+        LayerConfig::File { directory } => {
+            Ok(Box::new(file::FileLayer::new(directory.clone())))
         }
     }
 }
