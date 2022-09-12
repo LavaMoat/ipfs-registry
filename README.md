@@ -424,6 +424,39 @@ Starting a local server (requires an IPFS node running locally):
 cargo make dev-server
 ```
 
+### TLS Support
+
+To test TLS support for IPFS nodes, set up CORS for `https://localhost`:
+
+```
+ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["https://localhost", "http://localhost:3000", "http://127.0.0.1:5001", "https://webui.ipfs.io"]'
+ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods '["PUT", "POST"]'
+```
+
+Then install and run [caddy][] as a reverse proxy:
+
+```
+caddy reverse-proxy --to 127.0.0.1:5001
+```
+
+Make sure you can view `https://localhost/webui` and then create a configuration that connects to IPFS over HTTPS:
+
+```toml
+[database]
+url = "sqlite:ipfs_registry.db"
+
+[storage]
+layers = [
+  { url = "https://localhost" }
+]
+```
+
+And start the server:
+
+```
+cargo run -- server -c sandbox/ipfs-tls.toml
+```
+
 ## Bugs
 
 The package meta data is not immutable and theoretically the meta data could be modified to point to a different `cid` which could allow an attacker to replace the file pointer. This could be mitigated by storing the package meta data in a blockchain.
@@ -436,3 +469,4 @@ MIT or Apache-2.0
 [rust]: https://www.rust-lang.org/
 [object locks]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html
 [versioning]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html
+[caddy]: https://caddyserver.com/

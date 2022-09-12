@@ -106,7 +106,4 @@ pub enum Error {
 
     #[error(transparent)]
     Cid(#[from] cid::Error),
-
-    #[error(transparent)]
-    Uri(#[from] http::uri::InvalidUri),
 }

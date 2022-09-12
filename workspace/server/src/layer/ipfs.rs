@@ -6,9 +6,10 @@ use ipfs_api_backend_hyper::{IpfsApi, IpfsClient, TryFromUri};
 use std::io::Cursor;
 use url::Url;
 
-use ipfs_registry_core::{Artifact, ObjectKey};
+use hyper::client::HttpConnector;
+use hyper_rustls::HttpsConnector;
 
-use hyper::Uri;
+use ipfs_registry_core::{Artifact, ObjectKey};
 
 use super::Layer;
 
@@ -16,7 +17,7 @@ use crate::{Error, Result};
 
 /// Layer for IPFS backed storage.
 pub struct IpfsLayer {
-    client: IpfsClient,
+    client: IpfsClient<HttpsConnector<HttpConnector>>,
 }
 
 impl IpfsLayer {
@@ -27,7 +28,9 @@ impl IpfsLayer {
     }
 
     /// Create a new IPFS client from the configuration URL.
-    fn new_client(url: &Url) -> Result<IpfsClient> {
+    fn new_client(
+        url: &Url,
+    ) -> Result<IpfsClient<HttpsConnector<HttpConnector>>> {
         let host = url
             .host_str()
             .ok_or_else(|| Error::InvalidHost(url.clone()))?;
@@ -42,18 +45,13 @@ impl IpfsLayer {
             return Err(Error::InvalidScheme(url.scheme().to_owned()));
         };
 
-        let uri: Uri = url.to_string().parse()?;
+        tracing::info!(url = %url);
 
-        // /ip4/127.0.0.1/tcp/5001
-
-        //println!("Creating new IPFS layer with {}", uri);
-
-        if Scheme::HTTPS == scheme {
-            let client = IpfsClient::build_with_base_uri(uri);
-            Ok(client)
-        } else {
-            Ok(IpfsClient::from_host_and_port(scheme, host, port)?)
-        }
+        Ok(
+            IpfsClient::<HttpsConnector<HttpConnector>>::from_host_and_port(
+                scheme, host, port,
+            )?,
+        )
     }
 }
 
