@@ -84,10 +84,13 @@ impl ServerConfig {
                 if directory.is_relative() {
                     *directory = dir.join(directory.clone());
                 }
+
+                // Resolve symlinks now
+                *directory = directory.canonicalize()?;
+
                 if !directory.is_dir() {
                     return Err(Error::NotDirectory(directory.clone()));
                 }
-                *directory = directory.canonicalize()?;
             }
             layers.insert(layer);
         }

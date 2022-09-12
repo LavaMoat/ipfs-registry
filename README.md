@@ -363,6 +363,17 @@ layers = [
 ]
 ```
 
+Local filesystem storage can be configured using a file layer:
+
+```toml
+[storage]
+layers = [
+  { directory = "./objects" },
+]
+```
+
+Relative paths are resolved from the directory containing the configuration file; the path must be a directory.
+
 Note that all the downstream storage layers must be available for the service to work as intended; ie, requests must succeeed across all storage layers for the server to return a success response.
 
 ### Registry
