@@ -77,6 +77,26 @@ impl ServerConfig {
             tls.key = tls.key.canonicalize()?;
         }
 
+        let mut layers = IndexSet::new();
+        for mut layer in config.storage.layers.drain(..) {
+            if let LayerConfig::File { directory } = &mut layer {
+                // Make relative where necessary
+                if directory.is_relative() {
+                    *directory = dir.join(directory.clone());
+                }
+
+                // Resolve symlinks now
+                *directory = directory.canonicalize()?;
+
+                if !directory.is_dir() {
+                    return Err(Error::NotDirectory(directory.clone()));
+                }
+            }
+            layers.insert(layer);
+        }
+
+        config.storage.layers = layers;
+
         // Sanity check the MIME type
         let _: mime::Mime = config.registry.mime.parse()?;
 
@@ -203,6 +223,9 @@ pub enum LayerConfig {
     },
     Memory {
         memory: bool,
+    },
+    File {
+        directory: PathBuf,
     },
 }
 
