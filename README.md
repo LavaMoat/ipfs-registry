@@ -214,7 +214,32 @@ List the versions of a package.
 #### Response
 
 ```json
-TODO
+{
+  "records": [
+    {
+      "version": "1.0.0",
+      "content_id": "QmSYVWjXh5GCZpxhCSHMa89X9VHnPpaxafkBAR9rjfCenb",
+      "signature": "9a0b6450d1f42380f826a86f2d8106d6c9db041c912d90a6063e6bf8a28989301551d0458fb4a6f49b467334d7d1d9368e3b411f4c1b2ce7052167ac422c150301",
+      "checksum": "4ad90a2c2e08374f8ccec2b604915a0ab7e97fcca983b12a6857d20df3fca9c0",
+      "created_at": "2022-09-11T08:30:27Z"
+    },
+    {
+      "version": "1.0.1",
+      "content_id": "QmQfiqgpEL7gWavVJ5r2JK17N516q9wWoL8eHjwq8zKozZ",
+      "signature": "dad0482f1096ad9f0caef5d422e742ff4052c497fcfa0a2bead256886c713770357bf810297aed168e3e0888e7e00b73f2e50d432addcd9b46ebeff03ee3d06c00",
+      "checksum": "6fb6f92379c52eeb7f18d56c6fc745755588ebbccd5db0e157c9938daaf5e359",
+      "created_at": "2022-09-12T01:34:05Z"
+    },
+    {
+      "version": "2.0.0-alpha.1",
+      "content_id": "QmbptdWzd7pzNbmTkGwtYRdQWYCmXYjQ6tJV9CkWkjD2V8",
+      "signature": "92b39f8aacaa109e136194c98a47e741d058c6a1b042fe0453f24aaedeb878b5499c388162a48e55f1f88756e9735821ac26f84b7db75060e0ac2cad1dce37b300",
+      "checksum": "58313c4525d2253048a7b7342bb63b4a914bd5ae2ee5eab9e22f35c8897b5db5",
+      "created_at": "2022-09-12T02:22:16Z"
+    }
+  ],
+  "count": 3
+}
 ```
 
 ### Latest version
@@ -231,8 +256,27 @@ Get the latest version of a package.
 
 #### Response
 
+Response with `?prerelease=true` query string:
+
 ```json
-TODO
+{
+  "version": "2.0.0-alpha.1",
+  "package": {
+    "author": "",
+    "description": "Mock package to test NPM registry support",
+    "license": "ISC",
+    "main": "index.js",
+    "name": "mock-package",
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "version": "2.0.0-alpha.1"
+  },
+  "content_id": "QmbptdWzd7pzNbmTkGwtYRdQWYCmXYjQ6tJV9CkWkjD2V8",
+  "signature": "92b39f8aacaa109e136194c98a47e741d058c6a1b042fe0453f24aaedeb878b5499c388162a48e55f1f88756e9735821ac26f84b7db75060e0ac2cad1dce37b300",
+  "checksum": "58313c4525d2253048a7b7342bb63b4a914bd5ae2ee5eab9e22f35c8897b5db5",
+  "created_at": "2022-09-12T02:22:16Z"
+}
 ```
 
 ## Configuration

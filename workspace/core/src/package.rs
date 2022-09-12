@@ -215,8 +215,7 @@ impl<'de> Deserialize<'de> for PackageKey {
 }
 
 /// Type that represents a reference to a file object.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, Debug)]
 pub enum ObjectKey {
     /// Reference to an IPFS content identifier.
     Cid(Cid),
@@ -241,6 +240,48 @@ impl fmt::Display for ObjectKey {
             Self::Cid(value) => write!(f, "{}", value),
             Self::Key(value) => write!(f, "{}", value),
         }
+    }
+}
+
+impl Serialize for ObjectKey {
+    fn serialize<S>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let value = self.to_string();
+        serializer.serialize_str(&value)
+    }
+}
+
+struct ObjectKeyVisitor;
+
+impl<'de> Visitor<'de> for ObjectKeyVisitor {
+    type Value = ObjectKey;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a string for object id")
+    }
+
+    fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let object_key: ObjectKey = v.parse().unwrap();
+        Ok(object_key)
+    }
+}
+
+impl<'de> Deserialize<'de> for ObjectKey {
+    fn deserialize<D>(
+        deserializer: D,
+    ) -> std::result::Result<ObjectKey, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(ObjectKeyVisitor)
     }
 }
 

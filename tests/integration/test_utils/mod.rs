@@ -152,46 +152,8 @@ pub fn mock_pointer(version: Option<Version>) -> Result<Pointer> {
     let doc = json!(
         {
           "definition": {
-            "object": {
-              "cid": [
-                18,
-                32,
-                62,
-                119,
-                81,
-                194,
-                143,
-                147,
-                52,
-                6,
-                132,
-                211,
-                227,
-                135,
-                38,
-                189,
-                96,
-                172,
-                164,
-                112,
-                138,
-                247,
-                112,
-                65,
-                89,
-                133,
-                159,
-                167,
-                162,
-                75,
-                197,
-                164,
-                149,
-                32
-              ]
-            },
+            "object": "QmSYVWjXh5GCZpxhCSHMa89X9VHnPpaxafkBAR9rjfCenb",
             "artifact": {
-              "kind": "npm",
               "namespace": "mock-namespace",
               "package": {
                 "name": "mock-package",

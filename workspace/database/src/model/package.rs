@@ -111,7 +111,7 @@ impl PackageModel {
                 patch,
                 pre,
                 build,
-                package,
+                -- package,
                 content_id,
                 signature,
                 checksum,

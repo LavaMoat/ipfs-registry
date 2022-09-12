@@ -265,7 +265,8 @@ pub struct VersionRecord {
     /// Version of the package.
     pub version: Version,
     /// Package meta data.
-    pub package: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub package: Option<Value>,
     /// Content identifier.
     pub content_id: ObjectKey,
     /// Package archive signature.
@@ -301,7 +302,6 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
         let pre: Option<String> = row.try_get("pre")?;
         let build: Option<String> = row.try_get("build")?;
 
-        let package: String = row.try_get("package")?;
         let content_id: String = row.try_get("content_id")?;
 
         let signature: Vec<u8> = row.try_get("signature")?;
@@ -320,8 +320,14 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
                 .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
         }
 
-        let package: Value = serde_json::from_str(&package)
-            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+        let package = if let Ok(package) = row.try_get::<String, _>("package")
+        {
+            let package: Value = serde_json::from_str(&package)
+                .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+            Some(package)
+        } else {
+            None
+        };
 
         let content_id = content_id
             .parse()

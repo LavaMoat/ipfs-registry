@@ -168,7 +168,7 @@ async fn integration_database() -> Result<()> {
     assert!(package_record.package_id > 0);
     assert!(package_record.version_id > 0);
     assert_eq!(&package_record.version, &mock_version);
-    assert_eq!(&package_record.package, &pointer.package);
+    assert_eq!(package_record.package, Some(pointer.package.clone()));
 
     let versions = PackageModel::list_versions(
         &pool,
