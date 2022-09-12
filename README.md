@@ -335,6 +335,17 @@ See example response for latest version above.
 
 This section describes the server configuration; after making changes to the configuration you must restart the server for changes to take effect.
 
+### Database
+
+The default database is an in-memory [sqlite][] database; to configure a file on disc for the database:
+
+```toml
+[database]
+url = "sqlite:ipfs_registry.db"
+```
+
+In the future we intend to support a postgres database driver too.
+
 ### Storage
 
 Storage for packages is defined as an ordered set of layers.
@@ -517,3 +528,4 @@ MIT or Apache-2.0
 [object locks]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html
 [versioning]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html
 [caddy]: https://caddyserver.com/
+[sqlite]: https://www.sqlite.org/
