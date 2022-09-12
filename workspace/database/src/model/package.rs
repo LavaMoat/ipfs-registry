@@ -9,7 +9,7 @@ use ipfs_registry_core::{Namespace, PackageKey, PackageName, Pointer};
 
 use crate::{
     model::{
-        Direction, NamespaceModel, Pager, PublisherModel, VersionIncludes,
+        NamespaceModel, Pager, PublisherModel, VersionIncludes,
     },
     value_objects::*,
     Error, Result,
@@ -64,26 +64,6 @@ impl PackageModel {
                             .await?
                             .ok_or(Error::NoPackageVersion)?;
                     package.versions.records.push(latest);
-                    packages.push(package);
-                }
-                packages
-            }
-            VersionIncludes::All => {
-                let pager = Pager {
-                    offset: 0,
-                    limit: 100,
-                    direction: Direction::Desc,
-                };
-                let mut packages = Vec::with_capacity(records.len());
-                for mut package in records {
-                    let versions = PackageModel::list_versions(
-                        pool,
-                        namespace,
-                        &package.name,
-                        &pager,
-                    )
-                    .await?;
-                    package.versions = versions;
                     packages.push(package);
                 }
                 packages

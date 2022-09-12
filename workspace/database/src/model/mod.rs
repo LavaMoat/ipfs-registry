@@ -15,14 +15,13 @@ pub fn default_limit() -> i64 {
     25
 }
 
-/// Determines how versions should be included when listing packages.
+/// Determines how versions should be fetched when listing packages.
 #[derive(Default, Debug, Deserialize, Copy, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum VersionIncludes {
     #[default]
     None,
     Latest,
-    All,
 }
 
 /// Defines parameters for paginating list queries.

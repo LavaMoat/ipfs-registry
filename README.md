@@ -178,12 +178,10 @@ List the packages for a namespace.
 
 #### Query
 
-* `versions`: Fetch versions for each package, either `none`, `latest` or `all`. Default is `none`.
+* `versions`: Fetch versions for each package, either `none` or  `latest`. Default is `none`.
 * `limit`: Limit per page.
 * `offset`: Offset for pagination.
 * `sort`: Sort order, either `asc` or `desc`.
-
-Note that fetching `all` versions is limited to a maximum of 100.
 
 #### Response
 
