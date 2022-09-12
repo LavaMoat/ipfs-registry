@@ -200,6 +200,31 @@ impl PackageModel {
         Ok(record)
     }
 
+    /// Find latest version by namespace and package name.
+    pub async fn find_latest_by_name(
+        pool: &SqlitePool,
+        namespace: &Namespace,
+        name: &PackageName,
+        include_prerelease: bool,
+    ) -> Result<Option<VersionRecord>> {
+        // Find the namespace
+        let namespace_record = NamespaceModel::find_by_name(pool, namespace)
+            .await?
+            .ok_or_else(|| Error::UnknownNamespace(namespace.clone()))?;
+
+        // Find the package
+        let package_record = PackageModel::find_by_name(
+            pool,
+            namespace_record.namespace_id,
+            name,
+        )
+        .await?
+        .ok_or_else(|| Error::UnknownPackage(name.to_string()))?;
+
+        PackageModel::find_latest(pool, &package_record, include_prerelease)
+            .await
+    }
+
     /// Find latest version of a package.
     pub async fn find_latest(
         pool: &SqlitePool,
@@ -240,6 +265,7 @@ impl PackageModel {
         } else {
             builder.push(
                 r#"
+                    AND pre = ""
                     ORDER BY major DESC, minor DESC, patch DESC
                     LIMIT 1
                 "#,

@@ -186,7 +186,53 @@ List the packages for a namespace.
 #### Response
 
 ```json
-[{"name":"mock-package","created_at":"2022-09-11T08:30:27Z","versions":[]}]
+{
+  "records": [
+    {
+      "name": "mock-package",
+      "created_at": "2022-09-11T08:30:27Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+### List versions
+
+```
+GET /api/package/:namespace/:package
+```
+
+List the versions of a package.
+
+#### Query
+
+* `limit`: Limit per page.
+* `offset`: Offset for pagination.
+* `sort`: Sort order, either `asc` or `desc`.
+
+#### Response
+
+```json
+TODO
+```
+
+### Latest version
+
+```
+GET /api/package/:namespace/:package/latest
+```
+
+Get the latest version of a package.
+
+#### Query
+
+* `prerelease`: When `true` include prerelease versions.
+
+#### Response
+
+```json
+TODO
 ```
 
 ## Configuration

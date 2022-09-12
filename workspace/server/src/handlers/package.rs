@@ -53,6 +53,12 @@ impl ListPackagesQuery {
     }
 }
 
+#[derive(Default, Debug, Deserialize)]
+#[serde(default)]
+pub struct LatestQuery {
+    prerelease: bool,
+}
+
 pub(crate) struct PackageHandler;
 
 impl PackageHandler {
@@ -95,6 +101,32 @@ impl PackageHandler {
         .await
         {
             Ok(records) => Ok(Json(records)),
+            Err(e) => Err(match e {
+                DatabaseError::UnknownNamespace(_)
+                | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            }),
+        }
+    }
+
+    /// Get the latest version of a package.
+    pub(crate) async fn latest_version(
+        Extension(state): Extension<ServerState>,
+        Path((namespace, package)): Path<(Namespace, PackageName)>,
+        Query(latest): Query<LatestQuery>,
+    ) -> std::result::Result<Json<VersionRecord>, StatusCode> {
+        match PackageModel::find_latest_by_name(
+            &state.pool,
+            &namespace,
+            &package,
+            latest.prerelease,
+        )
+        .await
+        {
+            Ok(record) => {
+                let record = record.ok_or_else(|| StatusCode::NOT_FOUND)?;
+                Ok(Json(record))
+            }
             Err(e) => Err(match e {
                 DatabaseError::UnknownNamespace(_)
                 | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,

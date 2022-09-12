@@ -194,6 +194,10 @@ impl Server {
                 "/api/package/:namespace/:package",
                 get(PackageHandler::list_versions),
             )
+            .route(
+                "/api/package/:namespace/:package/latest",
+                get(PackageHandler::latest_version),
+            )
             .layer(RequestBodyLimitLayer::new(limit))
             .layer(cors)
             .layer(TraceLayer::new_for_http())
