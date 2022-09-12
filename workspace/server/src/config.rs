@@ -132,11 +132,22 @@ impl Default for DatabaseConfig {
     }
 }
 
+fn default_body_limit() -> usize {
+    1024 * 1024 * 16
+}
+
+fn default_mime() -> String {
+    String::from("application/gzip")
+}
+
 #[derive(Debug, Deserialize)]
+#[serde(default)]
 pub struct RegistryConfig {
     /// Maximum size of body requests.
+    #[serde(default = "default_body_limit")]
     pub body_limit: usize,
     /// Expected mime type for packages.
+    #[serde(default = "default_mime")]
     pub mime: String,
     /// Indicate the kind of registry.
     pub kind: RegistryKind,
@@ -149,9 +160,9 @@ pub struct RegistryConfig {
 impl Default for RegistryConfig {
     fn default() -> Self {
         Self {
-            body_limit: 1024 * 1024 * 16,
-            mime: String::from("application/gzip"),
-            kind: RegistryKind::Npm,
+            body_limit: default_body_limit(),
+            mime: default_mime(),
+            kind: Default::default(),
             allow: None,
             deny: None,
         }

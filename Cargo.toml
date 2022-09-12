@@ -11,6 +11,9 @@ members = [
   "workspace/database",
   "workspace/server",
 ]
+exclude = [
+  "fixtures/mock-crate"
+]
 
 [dependencies]
 

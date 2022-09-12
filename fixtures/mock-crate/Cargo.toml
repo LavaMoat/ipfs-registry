@@ -1,0 +1,6 @@
+[package]
+name = "mock-crate"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
