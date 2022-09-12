@@ -7,6 +7,7 @@ use serde::{
     Deserialize, Serialize,
 };
 use serde_json::Value;
+use sha3::{Digest, Sha3_256};
 use std::{fmt, str::FromStr};
 use web3_address::ethereum::Address;
 
@@ -101,6 +102,11 @@ impl PackageName {
     /// Get a reference to the underlying string.
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    /// Get a reference to the underlying bytes.
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_bytes()
     }
 }
 
@@ -309,6 +315,19 @@ pub struct Artifact {
     pub package: PackageMeta,
 }
 
+impl Artifact {
+    /// Get the standard key for an artifact.
+    pub fn key(&self) -> String {
+        let mut key_bytes = Vec::new();
+        key_bytes.extend_from_slice(self.namespace.as_bytes());
+        key_bytes.extend_from_slice(self.package.name.as_bytes());
+        let version = self.package.version.to_string();
+        key_bytes.extend_from_slice(version.as_bytes());
+        let checksum = Sha3_256::digest(&key_bytes);
+        hex::encode(&checksum)
+    }
+}
+
 /// Definition of a package.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Definition {
@@ -357,6 +376,7 @@ pub struct Receipt {
     /// Package descriptor.
     pub artifact: Artifact,
     /// Key for the IPFS package reference.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub key: Option<PackageKey>,
 }
 
@@ -396,8 +416,7 @@ mod tests {
     fn read_npm_package() -> Result<()> {
         let buffer =
             include_bytes!("../../../fixtures/mock-package-1.0.0.tgz");
-        let (descriptor, meta) =
-            PackageReader::read(RegistryKind::Npm, buffer)?;
+        assert!(PackageReader::read(RegistryKind::Npm, buffer).is_ok());
         Ok(())
     }
 
@@ -405,8 +424,7 @@ mod tests {
     fn read_cargo_package() -> Result<()> {
         let buffer =
             include_bytes!("../../../fixtures/mock-crate-1.0.0.crate");
-        let (descriptor, meta) =
-            PackageReader::read(RegistryKind::Cargo, buffer)?;
+        assert!(PackageReader::read(RegistryKind::Cargo, buffer).is_ok());
         Ok(())
     }
 

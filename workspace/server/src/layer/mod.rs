@@ -13,9 +13,6 @@ pub(crate) mod ipfs;
 pub(crate) mod memory;
 pub(crate) mod s3;
 
-pub(crate) const ROOT: &str = "ipkg-registry";
-pub(crate) const BLOB: &str = "package.tgz";
-
 /// Convert a configuration into a layer implementation.
 fn get_layer(
     config: &LayerConfig,
@@ -27,11 +24,13 @@ fn get_layer(
             profile,
             region,
             bucket,
+            prefix,
         } => Ok(Box::new(s3::S3Layer::new(
             profile.to_string(),
             region.to_string(),
             bucket.to_string(),
             registry.mime.clone(),
+            prefix.clone(),
         )?)),
         LayerConfig::Memory { .. } => {
             Ok(Box::new(memory::MemoryLayer::new()))
@@ -88,19 +87,6 @@ impl Layer for Layers {
     async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>> {
         self.primary().get_blob(id).await
     }
-}
-
-/// Get the key for a blob in non-content addressed storage layers.
-pub(crate) fn get_blob_key(artifact: &Artifact) -> String {
-    format!(
-        "{}/{}/{}/{}/{}/{}",
-        ROOT,
-        &artifact.kind,
-        &artifact.namespace,
-        &artifact.package.name,
-        &artifact.package.version,
-        BLOB,
-    )
 }
 
 /// Trait for a storage layer.

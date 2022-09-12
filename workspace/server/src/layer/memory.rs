@@ -7,7 +7,7 @@ use tokio::sync::RwLock;
 
 use ipfs_registry_core::{Artifact, ObjectKey};
 
-use super::{get_blob_key, Layer};
+use super::Layer;
 use crate::{Error, Result};
 
 pub struct MemoryLayer {
@@ -29,7 +29,7 @@ impl Layer for MemoryLayer {
         data: Bytes,
         artifact: &Artifact,
     ) -> Result<Vec<ObjectKey>> {
-        let key = get_blob_key(artifact);
+        let key = artifact.key();
         let mut writer = self.files.write().await;
         writer.insert(key.clone(), data.to_vec());
         Ok(vec![ObjectKey::Key(key)])

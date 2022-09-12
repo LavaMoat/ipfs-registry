@@ -197,6 +197,9 @@ pub enum LayerConfig {
         region: String,
         /// Bucket name.
         bucket: String,
+        /// Prefix for objects.
+        #[serde(default)]
+        prefix: String,
     },
     Memory {
         memory: bool,

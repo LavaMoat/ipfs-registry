@@ -15,7 +15,7 @@ use rusoto_s3::{
 
 use ipfs_registry_core::{Artifact, ObjectKey};
 
-use super::{get_blob_key, Layer};
+use super::Layer;
 use crate::{Error, Result};
 
 /// Layer for S3 backed storage.
@@ -23,6 +23,7 @@ pub struct S3Layer {
     client: S3Client,
     bucket: String,
     content_type: String,
+    prefix: String,
 }
 
 impl S3Layer {
@@ -32,6 +33,7 @@ impl S3Layer {
         region: String,
         bucket: String,
         content_type: String,
+        prefix: String,
     ) -> Result<Self> {
         let region: Region = region.parse()?;
         let client = S3Layer::new_client(&profile, &region)?;
@@ -39,6 +41,7 @@ impl S3Layer {
             client,
             bucket,
             content_type,
+            prefix,
         })
     }
 
@@ -114,8 +117,14 @@ impl Layer for S3Layer {
         data: Bytes,
         artifact: &Artifact,
     ) -> Result<Vec<ObjectKey>> {
-        let key = get_blob_key(artifact);
-        self.put_object(key.clone(), data).await?;
+        let prefix = if self.prefix.ends_with('/') {
+            self.prefix.clone()
+        } else {
+            format!("{}/", self.prefix)
+        };
+        let key = artifact.key();
+        let bucket_key = format!("{}{}", prefix, key);
+        self.put_object(bucket_key, data).await?;
         Ok(vec![ObjectKey::Key(key)])
     }
 
