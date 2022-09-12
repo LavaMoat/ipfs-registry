@@ -24,7 +24,7 @@ impl PackageModel {
         namespace: &Namespace,
         pager: &Pager,
         versions: VersionIncludes,
-    ) -> Result<Vec<PackageRecord>> {
+    ) -> Result<ResultSet<PackageRecord>> {
         // Check the namespace exists
         let namespace_record = NamespaceModel::find_by_name(pool, namespace)
             .await?
@@ -38,12 +38,14 @@ impl PackageModel {
         let sql = format!(
             r#"
             SELECT
+                COUNT(package_id) as count,
                 namespace_id,
                 package_id,
                 created_at,
                 name
             FROM packages
             WHERE namespace_id = ?
+            GROUP BY package_id
             ORDER BY name {}
             LIMIT ? OFFSET ?"#,
             pager.direction.as_str()
@@ -61,7 +63,7 @@ impl PackageModel {
                         PackageModel::find_latest(pool, &package, false)
                             .await?
                             .ok_or(Error::NoPackageVersion)?;
-                    package.versions.push(latest);
+                    package.versions.records.push(latest);
                     packages.push(package);
                 }
                 packages
@@ -89,7 +91,7 @@ impl PackageModel {
             VersionIncludes::None => records,
         };
 
-        Ok(packages)
+        Ok(packages.into_result_set())
     }
 
     /// List versions of a package.
@@ -98,7 +100,7 @@ impl PackageModel {
         namespace: &Namespace,
         name: &PackageName,
         pager: &Pager,
-    ) -> Result<Vec<VersionRecord>> {
+    ) -> Result<ResultSet<VersionRecord>> {
         // Find the namespace
         let namespace_record = NamespaceModel::find_by_name(pool, namespace)
             .await?
@@ -120,9 +122,24 @@ impl PackageModel {
 
         let sql = format!(
             r#"
-            SELECT *
+            SELECT
+                COUNT(version_id) as count,
+                version_id,
+                publisher_id,
+                package_id,
+                major,
+                minor,
+                patch,
+                pre,
+                build,
+                package,
+                content_id,
+                signature,
+                checksum,
+                created_at
             FROM versions
             WHERE package_id = ?
+            GROUP BY version_id
             ORDER BY major, minor, patch, pre, build {}
             LIMIT ? OFFSET ?"#,
             pager.direction.as_str()
@@ -131,7 +148,8 @@ impl PackageModel {
         let records = sqlx::query_as_with::<_, VersionRecord, _>(&sql, args)
             .fetch_all(pool)
             .await?;
-        Ok(records)
+
+        Ok(records.into_result_set())
     }
 
     /// Find a package version by package key.

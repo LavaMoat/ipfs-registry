@@ -178,7 +178,7 @@ async fn integration_database() -> Result<()> {
     )
     .await?;
 
-    assert_eq!(2, versions.len());
+    assert_eq!(2, versions.records.len());
 
     let packages = PackageModel::list_packages(
         &pool,
@@ -188,13 +188,13 @@ async fn integration_database() -> Result<()> {
     )
     .await?;
 
-    assert!(packages.len() > 0);
+    assert!(packages.records.len() > 0);
 
-    let package = packages.get(0).unwrap();
+    let package = packages.records.get(0).unwrap();
     // Listing packages includes the latest version for each package
-    assert!(package.versions.len() == 1);
+    assert!(package.versions.records.len() == 1);
 
-    let version = package.versions.get(0).unwrap();
+    let version = package.versions.records.get(0).unwrap();
     // Check it is actually the most recent version -
     // two packages were published above ^^^
     assert_eq!(&Version::new(1, 0, 1), &version.version);

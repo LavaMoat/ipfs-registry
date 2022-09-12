@@ -17,6 +17,46 @@ pub(crate) fn parse_date_time(date_time: &str) -> Result<OffsetDateTime> {
     Ok(PrimitiveDateTime::parse(date_time, &format)?.assume_utc())
 }
 
+/// Collection of records with associated total row count.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResultSet<T> {
+    pub records: Vec<T>,
+    pub count: i64,
+}
+
+/// Convert into a result set.
+pub trait IntoResultSet<T, R> {
+    fn into_result_set(self) -> ResultSet<R>;
+}
+
+impl IntoResultSet<Vec<PackageRecord>, PackageRecord> for Vec<PackageRecord> {
+    fn into_result_set(self) -> ResultSet<PackageRecord> {
+        let count = if self.is_empty() {
+            0
+        } else {
+            self.get(0).unwrap().count
+        };
+        ResultSet {
+            records: self,
+            count,
+        }
+    }
+}
+
+impl IntoResultSet<Vec<VersionRecord>, VersionRecord> for Vec<VersionRecord> {
+    fn into_result_set(self) -> ResultSet<VersionRecord> {
+        let count = if self.is_empty() {
+            0
+        } else {
+            self.get(0).unwrap().count
+        };
+        ResultSet {
+            records: self,
+            count,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PublisherRecord {
     /// Publisher primary key.
@@ -157,7 +197,10 @@ pub struct PackageRecord {
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
     /// Collection of versions.
-    pub versions: Vec<VersionRecord>,
+    pub versions: ResultSet<VersionRecord>,
+    /// Count of total rows.
+    #[serde(skip)]
+    pub count: i64,
 }
 
 impl FromRow<'_, SqliteRow> for PackageRecord {
@@ -173,12 +216,22 @@ impl FromRow<'_, SqliteRow> for PackageRecord {
         let created_at = parse_date_time(&created_at)
             .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
 
+        let count = if let Ok(count) = row.try_get::<i64, _>("count") {
+            count
+        } else {
+            0
+        };
+
         Ok(Self {
             namespace_id,
             package_id,
             name,
             created_at,
-            versions: vec![],
+            versions: ResultSet::<VersionRecord> {
+                records: vec![],
+                count: 0,
+            },
+            count,
         })
     }
 }
@@ -215,6 +268,9 @@ pub struct VersionRecord {
     /// Creation date and time.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+    /// Count of total rows.
+    #[serde(skip)]
+    pub count: i64,
 }
 
 impl FromRow<'_, SqliteRow> for VersionRecord {
@@ -268,6 +324,12 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
         let created_at = parse_date_time(&created_at)
             .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
 
+        let count = if let Ok(count) = row.try_get::<i64, _>("count") {
+            count
+        } else {
+            0
+        };
+
         Ok(Self {
             publisher_id,
             version_id,
@@ -278,6 +340,7 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
             signature,
             checksum,
             created_at,
+            count,
         })
     }
 }

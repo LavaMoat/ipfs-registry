@@ -18,7 +18,7 @@ use ipfs_registry_core::{
 
 use ipfs_registry_database::{
     default_limit, Direction, Error as DatabaseError, PackageModel,
-    PackageRecord, Pager, VersionIncludes,
+    PackageRecord, Pager, ResultSet, VersionIncludes,
 };
 
 use crate::{
@@ -61,7 +61,7 @@ impl PackageHandler {
         Extension(state): Extension<ServerState>,
         Path(namespace): Path<Namespace>,
         Query(query): Query<ListPackagesQuery>,
-    ) -> std::result::Result<Json<Vec<PackageRecord>>, StatusCode> {
+    ) -> std::result::Result<Json<ResultSet<PackageRecord>>, StatusCode> {
         let pager = query.into_pager();
 
         match PackageModel::list_packages(
