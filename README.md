@@ -33,6 +33,18 @@ In this case the registry will look up the object key in a database before retur
 
 In the future support can be added to mitigate this by storing object references in a smart contract ensuring that both kinds of package references are *tamper proof*.
 
+### Identity
+
+Using ECDSA recoverable signatures to identify publishers avoids storing any PII and allows us to add Self-Sovereign Identity (SSI) support enabling publishers to verify their identity using DIDs and Verifiable Credentials.
+
+All packages must be signed so we establish irrefutable proof of which identity published a package.
+
+Clients could in the future support Multi-Party Computation (MPC) for package publishing which would allow organizations to ensure multiple parties are involved in signing off a package helping increase the security of the supply chain.
+
+### Discoverability
+
+A key feature of any package registry is the ability to discover packages; meta data about the published packages is stored in a database and exposed via a public API.
+
 ## Getting Started
 
 Install the binary:
@@ -321,7 +333,7 @@ This section describes the server configuration; after making changes to the con
 
 ### Storage
 
-Storage for packages and pointers can be defined as an ordered set of layers.
+Storage for packages is defined as an ordered set of layers.
 
 You must define at least one layer; to define an IPFS layer specify an object with a `url` field that points to the node URL.
 
