@@ -9,6 +9,30 @@ Signed package registry backed by IPFS for storage.
 
 Minimum supported rust version (MSRV) is 1.63.0.
 
+## Abstract
+
+Content addressing used by the IPFS network is a good fit for a package registry as it prevents packages from being tampered with and provides decentralized storage of the package archives.
+
+However, there is a tension between using opaque identifiers and exposing human-friendly references to packages. To resolve this we support both types of references so that callers can choose from *tamper proof* in the case of an opaque Content Identifier (CID) or from *tamper protected* in the case of a human-readable package reference.
+
+For example, to fetch a package from the registry using a CID such as:
+
+```
+/ipfs/QmSYVWjXh5GCZpxhCSHMa89X9VHnPpaxafkBAR9rjfCenb
+```
+
+Can be said to be *tamper proof* as changing the package contents would also change the CID.
+
+This kind of package reference does not tell us anything about the package name or version which may not be useful depending upon the use case. The registry will also accept a *pointer* to a package such as:
+
+```
+mock-namespace/mock-package/1.0.0
+```
+
+In this case the registry will look up the object key in a database before returning the package file. Using a *pointer* reference is said to be *tamper protected* because it is possible for the registry operator to change the object key.
+
+In the future support can be added to mitigate this by storing object references in a smart contract ensuring that both kinds of package references are *tamper proof*.
+
 ## Getting Started
 
 Install the binary:
@@ -456,10 +480,6 @@ And start the server:
 ```
 cargo run -- server -c sandbox/ipfs-tls.toml
 ```
-
-## Bugs
-
-The package meta data is not immutable and theoretically the meta data could be modified to point to a different `cid` which could allow an attacker to replace the file pointer. This could be mitigated by storing the package meta data in a blockchain.
 
 ## License
 
