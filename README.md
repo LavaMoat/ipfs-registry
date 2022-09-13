@@ -164,7 +164,7 @@ Register a namespace; if the namespace already exists a 409 CONFLICT response is
 ### Upload a package
 
 ```
-PUT /api/package/:namespace
+POST /api/package/:namespace
 ```
 
 If the package already exists or is not ahead of the latest version a 409 CONFLICT response is returned.

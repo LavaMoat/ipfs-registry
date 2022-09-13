@@ -129,7 +129,7 @@ impl RegistryClient {
         let url = server.join(&format!("api/package/{}", namespace))?;
 
         let response = client
-            .put(url)
+            .post(url)
             .header(X_SIGNATURE, base64::encode(sign_bytes))
             .header("content-type", mime.to_string())
             .body(body)
