@@ -1,4 +1,4 @@
-use semver::{Version, VersionReq, Op};
+use semver::{Op, Version, VersionReq};
 
 use sqlx::{
     sqlite::SqliteArguments, Arguments, QueryBuilder, Sqlite, SqlitePool,
@@ -46,7 +46,7 @@ impl PackageModel {
             --GROUP BY package_id
             ORDER BY name {}
             LIMIT ? OFFSET ?"#,
-            pager.direction.as_str()
+            pager.sort
         );
 
         let records = sqlx::query_as_with::<_, PackageRecord, _>(&sql, args)
@@ -121,11 +121,7 @@ impl PackageModel {
             --GROUP BY version_id
             ORDER BY major {}, minor {}, patch {}, pre {}, build {}
             LIMIT ? OFFSET ?"#,
-            pager.direction.as_str(),
-            pager.direction.as_str(),
-            pager.direction.as_str(),
-            pager.direction.as_str(),
-            pager.direction.as_str(),
+            pager.sort, pager.sort, pager.sort, pager.sort, pager.sort,
         );
 
         let records = sqlx::query_as_with::<_, VersionRecord, _>(&sql, args)
@@ -201,13 +197,14 @@ impl PackageModel {
     }
 
     fn with_operator(
-        builder: &mut QueryBuilder::<Sqlite>,
+        builder: &mut QueryBuilder<Sqlite>,
         args: &mut SqliteArguments,
         operator: &str,
         major: i64,
         minor: i64,
         patch: i64,
-        pre: String) {
+        pre: String,
+    ) {
         let op = format!(" {} ", operator);
         let combined = format!("{}{}{}{}", major, minor, patch, pre);
         builder.push("version");
@@ -217,9 +214,10 @@ impl PackageModel {
     }
 
     fn version_req_condition(
-        builder: &mut QueryBuilder::<Sqlite>,
+        builder: &mut QueryBuilder<Sqlite>,
         args: &mut SqliteArguments,
-        versions: &VersionReq) {
+        versions: &VersionReq,
+    ) {
         let len = versions.comparators.len();
         for (index, comparator) in versions.comparators.iter().enumerate() {
             let major = comparator.major as i64;
@@ -230,23 +228,28 @@ impl PackageModel {
             match comparator.op {
                 Op::Exact => {
                     PackageModel::with_operator(
-                        builder, args, "=", major, minor, patch, pre);
+                        builder, args, "=", major, minor, patch, pre,
+                    );
                 }
                 Op::Greater => {
                     PackageModel::with_operator(
-                        builder, args, ">", major, minor, patch, pre);
+                        builder, args, ">", major, minor, patch, pre,
+                    );
                 }
                 Op::GreaterEq => {
                     PackageModel::with_operator(
-                        builder, args, ">=", major, minor, patch, pre);
+                        builder, args, ">=", major, minor, patch, pre,
+                    );
                 }
                 Op::Less => {
                     PackageModel::with_operator(
-                        builder, args, "<", major, minor, patch, pre);
+                        builder, args, "<", major, minor, patch, pre,
+                    );
                 }
                 Op::LessEq => {
                     PackageModel::with_operator(
-                        builder, args, "<=", major, minor, patch, pre);
+                        builder, args, "<=", major, minor, patch, pre,
+                    );
                 }
                 _ => {}
             }
@@ -305,27 +308,32 @@ impl PackageModel {
                 WHERE package_id = "#,
         );
         builder.push_bind(package_record.package_id);
-        builder.push(r#"
+        builder.push(
+            r#"
             GROUP BY version_id
-            HAVING "#);
+            HAVING "#,
+        );
 
-        PackageModel::version_req_condition(&mut builder, &mut args, versions);
+        PackageModel::version_req_condition(
+            &mut builder,
+            &mut args,
+            versions,
+        );
 
         args.add(pager.limit);
         args.add(pager.offset);
 
         let ordering = format!(
             "major {}, minor {}, patch {}, pre {}, build {}",
-            pager.direction,
-            pager.direction,
-            pager.direction,
-            pager.direction,
-            pager.direction);
+            pager.sort, pager.sort, pager.sort, pager.sort, pager.sort
+        );
 
-        builder.push(
-            format!(r#"
+        builder.push(format!(
+            r#"
                 ORDER BY {}
-                LIMIT "#, ordering));
+                LIMIT "#,
+            ordering
+        ));
         builder.push_bind(pager.limit);
         builder.push(r#" OFFSET "#);
         builder.push_bind(pager.offset);

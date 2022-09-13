@@ -18,8 +18,8 @@ use ipfs_registry_core::{
 };
 
 use ipfs_registry_database::{
-    default_limit, Direction, Error as DatabaseError, PackageModel,
-    PackageRecord, Pager, ResultSet, VersionIncludes, VersionRecord,
+    default_limit, Error as DatabaseError, PackageModel, PackageRecord,
+    Pager, ResultSet, SortOrder, VersionIncludes, VersionRecord,
 };
 
 use crate::{
@@ -41,7 +41,7 @@ pub struct ListPackagesQuery {
     offset: i64,
     #[serde(default = "default_limit")]
     limit: i64,
-    sort: Direction,
+    sort: SortOrder,
 }
 
 impl ListPackagesQuery {
@@ -49,7 +49,7 @@ impl ListPackagesQuery {
         Pager {
             offset: self.offset,
             limit: self.limit,
-            direction: self.sort,
+            sort: self.sort,
         }
     }
 }

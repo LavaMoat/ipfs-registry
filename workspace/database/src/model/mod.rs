@@ -30,8 +30,7 @@ pub enum VersionIncludes {
 pub struct Pager {
     pub offset: i64,
     pub limit: i64,
-    #[serde(rename = "sort")]
-    pub direction: Direction,
+    pub sort: SortOrder,
 }
 
 impl Default for Pager {
@@ -39,7 +38,7 @@ impl Default for Pager {
         Self {
             offset: 0,
             limit: default_limit(),
-            direction: Default::default(),
+            sort: Default::default(),
         }
     }
 }
@@ -47,13 +46,13 @@ impl Default for Pager {
 /// Represents an order by direction.
 #[derive(Debug, Default, Deserialize, Copy, Clone)]
 #[serde(rename_all = "lowercase")]
-pub enum Direction {
+pub enum SortOrder {
     #[default]
     Asc,
     Desc,
 }
 
-impl Direction {
+impl SortOrder {
     /// Get a string for each variant.
     pub fn as_str(&self) -> &str {
         match self {
@@ -63,7 +62,7 @@ impl Direction {
     }
 }
 
-impl fmt::Display for Direction {
+impl fmt::Display for SortOrder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_str())
     }

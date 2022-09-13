@@ -3,7 +3,7 @@ use serial_test::serial;
 
 use crate::test_utils::*;
 
-use semver::{Version, VersionReq};
+use semver::Version;
 use sqlx::SqlitePool;
 
 use ipfs_registry_core::{Namespace, PackageName};
@@ -58,7 +58,6 @@ async fn integration_database() -> Result<()> {
 
     let pointer = mock_pointer(None)?;
 
-    let mock_namespace = Namespace::new_unchecked("mock-namespace");
     let mock_package = PackageName::new_unchecked("mock-package");
     let mock_version = Version::new(1, 0, 0);
 
@@ -87,69 +86,6 @@ async fn integration_database() -> Result<()> {
     )
     .await?;
     assert!(result > 0);
-
-    let request = VersionReq::parse("=1.0.0")?;
-    let mut versions = PackageModel::find_versions(
-        &pool,
-        &mock_namespace,
-        &mock_package,
-        &request,
-        &Default::default()).await?;
-    assert!(versions.len() == 1);
-    assert_eq!(Version::new(1, 0, 0), versions.remove(0).version);
-
-    let request = VersionReq::parse("=1.0.0, =1.0.1")?;
-    let mut versions = PackageModel::find_versions(
-        &pool,
-        &mock_namespace,
-        &mock_package,
-        &request,
-        &Default::default()).await?;
-    assert!(versions.len() == 2);
-    assert_eq!(Version::new(1, 0, 0), versions.remove(0).version);
-    assert_eq!(Version::new(1, 0, 1), versions.remove(0).version);
-
-    let request = VersionReq::parse("<1.0.1")?;
-    let mut versions = PackageModel::find_versions(
-        &pool,
-        &mock_namespace,
-        &mock_package,
-        &request,
-        &Default::default()).await?;
-    assert!(versions.len() == 1);
-    assert_eq!(Version::new(1, 0, 0), versions.remove(0).version);
-
-    let request = VersionReq::parse(">1.0.0")?;
-    let mut versions = PackageModel::find_versions(
-        &pool,
-        &mock_namespace,
-        &mock_package,
-        &request,
-        &Default::default()).await?;
-    assert!(versions.len() == 1);
-    assert_eq!(Version::new(1, 0, 1), versions.remove(0).version);
-
-    let request = VersionReq::parse("<=1.0.1")?;
-    let mut versions = PackageModel::find_versions(
-        &pool,
-        &mock_namespace,
-        &mock_package,
-        &request,
-        &Default::default()).await?;
-    assert!(versions.len() == 2);
-    assert_eq!(Version::new(1, 0, 0), versions.remove(0).version);
-    assert_eq!(Version::new(1, 0, 1), versions.remove(0).version);
-
-    let request = VersionReq::parse(">=1.0.0")?;
-    let mut versions = PackageModel::find_versions(
-        &pool,
-        &mock_namespace,
-        &mock_package,
-        &request,
-        &Default::default()).await?;
-    assert!(versions.len() == 2);
-    assert_eq!(Version::new(1, 0, 0), versions.remove(0).version);
-    assert_eq!(Version::new(1, 0, 1), versions.remove(0).version);
 
     // Attempt to publish an existing version - `Err`
     let result = PackageModel::assert_publish_safe(
