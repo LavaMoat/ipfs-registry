@@ -42,7 +42,5 @@ async fn integration_publish_ok() -> Result<()> {
     );
     assert_eq!(Version::new(1, 0, 0), receipt.artifact.package.version);
 
-    //println!("receipt {:#?}", receipt);
-
     Ok(())
 }

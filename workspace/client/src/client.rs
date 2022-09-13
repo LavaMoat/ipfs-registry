@@ -11,7 +11,9 @@ use ipfs_registry_core::{
     Namespace, PackageKey, Receipt, WELL_KNOWN_MESSAGE, X_SIGNATURE,
 };
 
-use ipfs_registry_database::{NamespaceRecord, PublisherRecord};
+use ipfs_registry_database::{
+    NamespaceRecord, PublisherRecord, VersionRecord,
+};
 
 use crate::{Error, Result};
 
@@ -129,7 +131,7 @@ impl RegistryClient {
         let url = server.join(&format!("api/package/{}", namespace))?;
 
         let response = client
-            .put(url)
+            .post(url)
             .header(X_SIGNATURE, base64::encode(sign_bytes))
             .header("content-type", mime.to_string())
             .body(body)
@@ -143,6 +145,61 @@ impl RegistryClient {
             .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
 
         let doc: Receipt = response.json().await?;
+        Ok(doc)
+    }
+
+    /// Yank a version.
+    pub async fn yank(
+        server: Url,
+        signing_key: SigningKey,
+        id: PackageKey,
+        body: String,
+    ) -> Result<()> {
+        let signature: recoverable::Signature =
+            signing_key.sign(body.as_bytes());
+        let sign_bytes = &signature;
+
+        let client = Client::new();
+        let url = server.join("api/package/yank")?;
+
+        let response = client
+            .post(url)
+            .query(&[("id", id.to_string())])
+            .header(X_SIGNATURE, base64::encode(sign_bytes))
+            .body(body)
+            .send()
+            .await?;
+
+        response
+            .status()
+            .is_success()
+            .then_some(())
+            .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
+
+        Ok(())
+    }
+
+    /// Get an exact version.
+    pub async fn exact_version(
+        server: Url,
+        id: PackageKey,
+    ) -> Result<VersionRecord> {
+        let client = Client::new();
+        let url = server.join("api/package/version")?;
+
+        let response = client
+            .get(url)
+            .query(&[("id", id.to_string())])
+            .send()
+            .await?;
+
+        response
+            .status()
+            .is_success()
+            .then_some(())
+            .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
+
+        let doc: VersionRecord = response.json().await?;
         Ok(doc)
     }
 }

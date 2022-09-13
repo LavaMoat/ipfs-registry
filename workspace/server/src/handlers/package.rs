@@ -8,7 +8,7 @@ use axum::{
 
 //use axum_macros::debug_handler;
 
-use semver::{Version, VersionReq};
+use semver::VersionReq;
 use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
 
@@ -183,17 +183,73 @@ impl PackageHandler {
     /// Get the exact version of a package.
     pub(crate) async fn exact_version(
         Extension(state): Extension<ServerState>,
-        Path((namespace, package, version)): Path<(
-            Namespace,
-            PackageName,
-            Version,
-        )>,
+        Query(query): Query<PackageQuery>,
     ) -> std::result::Result<Json<VersionRecord>, StatusCode> {
-        let key = PackageKey::Pointer(namespace, package, version);
-        match PackageModel::find_by_key(&state.pool, &key).await {
-            Ok(record) => {
+        match PackageModel::find_by_key(&state.pool, &query.id).await {
+            Ok((_, _, record)) => {
                 let record = record.ok_or_else(|| StatusCode::NOT_FOUND)?;
                 Ok(Json(record))
+            }
+            Err(e) => Err(match e {
+                DatabaseError::UnknownNamespace(_)
+                | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            }),
+        }
+    }
+
+    /// Yank a version of a package.
+    pub(crate) async fn yank(
+        Extension(state): Extension<ServerState>,
+        TypedHeader(signature): TypedHeader<Signature>,
+        Query(query): Query<PackageQuery>,
+        body: Bytes,
+    ) -> std::result::Result<StatusCode, StatusCode> {
+        let address = verify_signature(signature.into(), &body)
+            .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+        let message = std::str::from_utf8(&body)
+            .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+        match PackageModel::find_by_key(&state.pool, &query.id).await {
+            Ok((ns, _pkg, record)) => {
+                let record = record.ok_or_else(|| StatusCode::NOT_FOUND)?;
+                if record.yanked.is_some() {
+                    return Err(StatusCode::CONFLICT);
+                }
+
+                // Should have namespace if we have version record
+                let ns = ns.unwrap();
+
+                match PackageModel::can_write_namespace(
+                    &state.pool,
+                    &address,
+                    &ns.name,
+                )
+                .await
+                {
+                    Ok(_) => {
+                        PackageModel::yank(
+                            &state.pool,
+                            record.version_id,
+                            &message,
+                        )
+                        .await
+                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+                        Ok(StatusCode::OK)
+                    }
+                    Err(e) => Err(match e {
+                        DatabaseError::Unauthorized(_) => {
+                            StatusCode::UNAUTHORIZED
+                        }
+                        DatabaseError::UnknownPublisher(_)
+                        | DatabaseError::UnknownNamespace(_) => {
+                            StatusCode::NOT_FOUND
+                        }
+                        _ => StatusCode::INTERNAL_SERVER_ERROR,
+                    }),
+                }
             }
             Err(e) => Err(match e {
                 DatabaseError::UnknownNamespace(_)
@@ -212,25 +268,25 @@ impl PackageHandler {
         let _kind = state.config.registry.kind;
 
         match PackageModel::find_by_key(&state.pool, &query.id).await {
-            Ok(version) => {
-                let version_record = version.ok_or(StatusCode::NOT_FOUND)?;
+            Ok((_, _, record)) => {
+                let record = record.ok_or(StatusCode::NOT_FOUND)?;
+
+                let content_id = record.parse_cid()
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
                 let body = state
                     .layers
-                    .fetch(
-                        &version_record.pointer_id,
-                        version_record.content_id.as_ref(),
-                    )
+                    .fetch(&record.pointer_id, content_id.as_ref())
                     .await
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
                 // Verify the checksum
                 let checksum = Sha3_256::digest(&body);
-                if checksum.as_slice() != version_record.checksum.as_slice() {
+                if checksum.as_slice() != record.checksum.as_slice() {
                     return Err(StatusCode::UNPROCESSABLE_ENTITY);
                 }
 
-                verify_signature(version_record.signature, &body)
+                verify_signature(record.signature, &body)
                     .map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?;
 
                 let mut headers = HeaderMap::new();
@@ -274,8 +330,12 @@ impl PackageHandler {
 
         // Check the publisher and namespace exist and this address
         // is allowed to publish to the target namespace
-        match PackageModel::verify_publish(&state.pool, &address, &namespace)
-            .await
+        match PackageModel::can_write_namespace(
+            &state.pool,
+            &address,
+            &namespace,
+        )
+        .await
         {
             Ok((publisher_record, namespace_record)) => {
                 let mime_type = state.config.registry.mime.clone();

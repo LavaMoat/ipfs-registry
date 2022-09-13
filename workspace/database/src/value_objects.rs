@@ -269,7 +269,9 @@ pub struct VersionRecord {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub package: Option<Value>,
     /// Content identifier.
-    pub content_id: Option<Cid>,
+    #[serde(
+        skip_serializing_if = "Option::is_none")]
+    pub content_id: Option<String>,
     /// Pointer identifier.
     pub pointer_id: String,
     /// Package archive signature.
@@ -287,9 +289,24 @@ pub struct VersionRecord {
     /// Creation date and time.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+
+    /// Yanked message.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub yanked: Option<String>,
+
     /// Count of total rows.
     #[serde(skip)]
     pub count: i64,
+}
+
+impl VersionRecord {
+    /// Parse a content id.
+    pub fn parse_cid(&self) -> Result<Option<Cid>> {
+        if let Some(cid) = &self.content_id {
+            let cid: Cid = cid.parse()?;
+            Ok(Some(cid))
+        } else { Ok(None) }
+    }
 }
 
 impl FromRow<'_, SqliteRow> for VersionRecord {
@@ -313,6 +330,8 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
 
         let created_at: String = row.try_get("created_at")?;
 
+        let yanked: Option<String> = row.try_get("yanked")?;
+
         let mut version =
             Version::new(major as u64, minor as u64, patch as u64);
         if let Some(pre) = &pre {
@@ -333,6 +352,7 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
             None
         };
 
+        /*
         let content_id = if let Some(cid) = content_id {
             let cid: Cid =
                 cid.parse().map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
@@ -340,6 +360,7 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
         } else {
             None
         };
+        */
 
         let signature: [u8; 65] = signature
             .as_slice()
@@ -370,6 +391,7 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
             signature,
             checksum,
             created_at,
+            yanked,
             count,
         })
     }

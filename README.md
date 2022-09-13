@@ -110,7 +110,13 @@ ipkg publish -k ./sandbox/<addr>.json -n mock-namespace fixtures/mock-package-1.
 Download the package to a file:
 
 ```
-ipkg fetch <addr>/mock-package/1.0.0 sandbox/package.tgz
+ipkg fetch mock-namespace/mock-package/1.0.0 sandbox/package.tgz
+```
+
+Get the package version record:
+
+```
+ipkg get mock-namespace/mock-package/1.0.0
 ```
 
 ## API
@@ -164,7 +170,7 @@ Register a namespace; if the namespace already exists a 409 CONFLICT response is
 ### Upload a package
 
 ```
-PUT /api/package/:namespace
+POST /api/package/:namespace
 ```
 
 If the package already exists or is not ahead of the latest version a 409 CONFLICT response is returned.
@@ -228,6 +234,10 @@ GET /api/package/:namespace
 
 List the packages for a namespace.
 
+#### Parameters
+
+* `:namespace`: The package namespace.
+
 #### Query
 
 * `versions`: Fetch versions for each package, either `none` or  `latest`. Default is `none`.
@@ -256,6 +266,11 @@ GET /api/package/:namespace/:package
 ```
 
 List the versions of a package.
+
+#### Parameters
+
+* `:namespace`: The package namespace.
+* `:package`: The package name.
 
 #### Query
 
@@ -303,6 +318,11 @@ GET /api/package/:namespace/:package/latest
 
 Get the latest version of a package.
 
+#### Parameters
+
+* `:namespace`: The package namespace.
+* `:package`: The package name.
+
 #### Query
 
 * `prerelease`: When `true` include prerelease versions.
@@ -335,14 +355,42 @@ Response with `?prerelease=true` query string:
 ### Package version
 
 ```
-GET /api/package/:namespace/:package/:version
+GET /api/package/version
 ```
 
 Get a specific version of a package.
 
+#### Query
+
+* `id`: Package identifier.
+
 #### Response
 
 See example response for latest version above.
+
+### Yank version
+
+```
+POST /api/package/yank
+```
+
+Mark a specific version of a package as yanked.
+
+The body should be a UTF-8 encoded string of the reason why the version was yanked; it may be the empty string.
+
+If the version is already yanked a 409 CONFLICT response is returned.
+
+#### Query
+
+* `id`: Package identifier.
+
+#### Headers
+
+* `x-signature`: Signature of the bytes for the request body.
+
+#### Response
+
+200 if successful.
 
 ## Configuration
 

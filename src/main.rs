@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use mime::Mime;
+use serde_json::json;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use url::Url;
 
@@ -82,6 +83,31 @@ enum Command {
         #[clap(parse(from_os_str))]
         file: PathBuf,
     },
+    /// Yank a package.
+    Yank {
+        /// Server URL.
+        #[clap(short, long, default_value = "http://127.0.0.1:9060")]
+        server: Url,
+
+        /// Keystore for the signing key.
+        #[clap(short, long, parse(from_os_str))]
+        key: PathBuf,
+
+        /// Package identifier.
+        id: PackageKey,
+
+        /// Reason for yanking the version.
+        message: Option<String>,
+    },
+    /// Get information about a specific package version.
+    Get {
+        /// Server URL.
+        #[clap(short, long, default_value = "http://127.0.0.1:9060")]
+        server: Url,
+
+        /// Package identifier.
+        id: PackageKey,
+    },
     /// Start a server.
     Server {
         /// Bind to host:port.
@@ -132,6 +158,23 @@ async fn run() -> Result<()> {
             let file = ipfs_registry_client::fetch(server, id, file).await?;
             let size = file.metadata()?.len();
             tracing::info!(file = ?file, size = ?size);
+        }
+        Command::Yank {
+            server,
+            key,
+            id,
+            message,
+        } => {
+            let message = message.unwrap_or(String::new());
+            ipfs_registry_client::yank(server, key, id, message).await?;
+            serde_json::to_writer_pretty(
+                std::io::stdout(),
+                &json!({"ok": true}),
+            )?;
+        }
+        Command::Get { server, id } => {
+            let doc = ipfs_registry_client::get(server, id).await?;
+            serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
         }
         Command::Server { bind, config } => {
             ipfs_registry_server::start(bind, config).await?;

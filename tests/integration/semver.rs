@@ -30,7 +30,8 @@ async fn integration_semver() -> Result<()> {
 
     // Verify for publishing
     let (publisher_record, namespace_record) =
-        PackageModel::verify_publish(&pool, &address, &namespace).await?;
+        PackageModel::can_write_namespace(&pool, &address, &namespace)
+            .await?;
 
     // Pre 1.0.0 releases
     let dev_release_1 = mock_pointer(Some(Version::new(0, 1, 0)))?;
