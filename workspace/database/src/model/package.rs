@@ -263,6 +263,27 @@ impl PackageModel {
                         builder, args, column, "<=", combined,
                     );
                 }
+                Op::Tilde => {
+                    if comparator.patch.is_none() {
+                        PackageModel::with_operator(
+                            builder, args, column, "=", combined,
+                        );
+                    } else {
+                        builder.push(column);
+                        builder.push(">=");
+                        builder.push_bind(combined.clone());
+                        args.add(combined);
+
+                        builder.push(" AND ");
+
+                        let upper_bound =
+                            format!("{}{}{}", major, minor + 1, 0);
+                        builder.push(column);
+                        builder.push("<");
+                        builder.push_bind(upper_bound.clone());
+                        args.add(upper_bound);
+                    }
+                }
                 _ => {}
             }
             builder.push(")");

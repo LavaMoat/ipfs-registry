@@ -158,6 +158,20 @@ async fn integration_semver() -> Result<()> {
     assert_eq!(Version::new(1, 0, 0), versions.remove(0).version);
     assert_eq!(Version::new(1, 0, 1), versions.remove(0).version);
 
+    let request = VersionReq::parse("~1.0.0")?;
+    let versions = PackageModel::find_versions(
+        &pool,
+        &namespace,
+        &mock_package,
+        &request,
+        &Default::default(),
+    )
+    .await?;
+    let mut versions = versions.records;
+    assert!(versions.len() == 2);
+    assert_eq!(Version::new(1, 0, 0), versions.remove(0).version);
+    assert_eq!(Version::new(1, 0, 1), versions.remove(0).version);
+
     let request = VersionReq::parse("=1")?;
     let versions = PackageModel::find_versions(
         &pool,
