@@ -1,4 +1,4 @@
-use semver::Version;
+use semver::{Version, VersionReq, Op};
 
 use sqlx::{
     sqlite::SqliteArguments, Arguments, QueryBuilder, Sqlite, SqlitePool,
@@ -198,6 +198,147 @@ impl PackageModel {
         .await?;
 
         Ok(record)
+    }
+
+    fn with_operator(
+        builder: &mut QueryBuilder::<Sqlite>,
+        args: &mut SqliteArguments,
+        operator: &str,
+        major: i64,
+        minor: i64,
+        patch: i64,
+        pre: String) {
+        let op = format!(" {} ", operator);
+        let combined = format!("{}{}{}{}", major, minor, patch, pre);
+        builder.push("version");
+        builder.push(&op);
+        builder.push_bind(combined.clone());
+        args.add(combined);
+    }
+
+    fn version_req_condition(
+        builder: &mut QueryBuilder::<Sqlite>,
+        args: &mut SqliteArguments,
+        versions: &VersionReq) {
+        let len = versions.comparators.len();
+        for (index, comparator) in versions.comparators.iter().enumerate() {
+            let major = comparator.major as i64;
+            let minor = comparator.minor.unwrap_or(0) as i64;
+            let patch = comparator.patch.unwrap_or(0) as i64;
+            let pre = comparator.pre.to_string();
+            builder.push("(");
+            match comparator.op {
+                Op::Exact => {
+                    PackageModel::with_operator(
+                        builder, args, "=", major, minor, patch, pre);
+                }
+                Op::Greater => {
+                    PackageModel::with_operator(
+                        builder, args, ">", major, minor, patch, pre);
+                }
+                Op::GreaterEq => {
+                    PackageModel::with_operator(
+                        builder, args, ">=", major, minor, patch, pre);
+                }
+                Op::Less => {
+                    PackageModel::with_operator(
+                        builder, args, "<", major, minor, patch, pre);
+                }
+                Op::LessEq => {
+                    PackageModel::with_operator(
+                        builder, args, "<=", major, minor, patch, pre);
+                }
+                _ => {}
+            }
+            builder.push(")");
+
+            if index < len - 1 {
+                builder.push(" OR ");
+            }
+        }
+    }
+
+    /// Find versions of a package that match the request.
+    pub async fn find_versions(
+        pool: &SqlitePool,
+        namespace: &Namespace,
+        name: &PackageName,
+        versions: &VersionReq,
+        pager: &Pager,
+    ) -> Result<Vec<VersionRecord>> {
+        // Find the namespace
+        let namespace_record = NamespaceModel::find_by_name(pool, namespace)
+            .await?
+            .ok_or_else(|| Error::UnknownNamespace(namespace.clone()))?;
+
+        // Find the package
+        let package_record = PackageModel::find_by_name(
+            pool,
+            namespace_record.namespace_id,
+            name,
+        )
+        .await?
+        .ok_or_else(|| Error::UnknownPackage(name.to_string()))?;
+
+        let mut args: SqliteArguments = Default::default();
+        args.add(package_record.package_id);
+
+        let mut builder = QueryBuilder::<Sqlite>::new(
+            r#"
+                SELECT
+                    (SELECT COUNT(version_id) FROM versions) as count,
+                    version_id,
+                    publisher_id,
+                    package_id,
+                    major,
+                    minor,
+                    patch,
+                    pre,
+                    build,
+                    (major || minor || patch || pre) as version,
+                    package,
+                    content_id,
+                    signature,
+                    checksum,
+                    created_at
+                FROM versions
+                WHERE package_id = "#,
+        );
+        builder.push_bind(package_record.package_id);
+        builder.push(r#"
+            GROUP BY version_id
+            HAVING "#);
+
+        PackageModel::version_req_condition(&mut builder, &mut args, versions);
+
+        args.add(pager.limit);
+        args.add(pager.offset);
+
+        let ordering = format!(
+            "major {}, minor {}, patch {}, pre {}, build {}",
+            pager.direction,
+            pager.direction,
+            pager.direction,
+            pager.direction,
+            pager.direction);
+
+        builder.push(
+            format!(r#"
+                ORDER BY {}
+                LIMIT "#, ordering));
+        builder.push_bind(pager.limit);
+        builder.push(r#" OFFSET "#);
+        builder.push_bind(pager.offset);
+
+        let sql = builder.into_sql();
+
+        //println!("{}", sql);
+
+        let records = sqlx::query_as_with::<_, VersionRecord, _>(&sql, args)
+            .fetch_all(pool)
+            .await?;
+
+        Ok(records)
     }
 
     /// Find latest version by namespace and package name.
