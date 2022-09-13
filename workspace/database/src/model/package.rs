@@ -144,13 +144,14 @@ impl PackageModel {
                         .ok_or_else(|| {
                             Error::UnknownNamespace(namespace.clone())
                         })?;
-                PackageModel::find_by_name_version(
+                let (_, version_record) = PackageModel::find_by_name_version(
                     pool,
                     namespace_record.namespace_id,
                     name,
                     version,
                 )
-                .await
+                .await?;
+                Ok(version_record)
             }
             PackageKey::Cid(cid) => {
                 let mut args: SqliteArguments = Default::default();
@@ -435,7 +436,7 @@ impl PackageModel {
         namespace_id: i64,
         name: &PackageName,
         version: &Version,
-    ) -> Result<Option<VersionRecord>> {
+    ) -> Result<(Option<PackageRecord>, Option<VersionRecord>)> {
         if let Some(package_record) =
             PackageModel::find_by_name(pool, namespace_id, name).await?
         {
@@ -457,9 +458,9 @@ impl PackageModel {
             .fetch_optional(pool)
             .await?;
 
-            Ok(record)
+            Ok((Some(package_record), record))
         } else {
-            Ok(None)
+            Ok((None, None))
         }
     }
 
@@ -583,21 +584,41 @@ impl PackageModel {
         version: &Version,
     ) -> Result<()> {
         // Check the package / version does not already exist
-        if PackageModel::find_by_name_version(
-            pool,
-            namespace_record.namespace_id,
-            name,
-            version,
-        )
-        .await?
-        .is_some()
-        {
+        let (package_record, version_record) =
+            PackageModel::find_by_name_version(
+                pool,
+                namespace_record.namespace_id,
+                name,
+                version,
+            )
+            .await?;
+        if version_record.is_some() {
             return Err(Error::PackageExists(
                 namespace_record.name.clone(),
                 name.clone(),
                 version.clone(),
             ));
         }
+
+        if package_record.is_some() {
+            // Verify the version to publish is ahead of the latest version
+            if let Some(latest) = PackageModel::find_latest_by_name(
+                pool,
+                &namespace_record.name,
+                name,
+                true,
+            )
+            .await?
+            {
+                if version <= &latest.version {
+                    return Err(Error::VersionNotAhead(
+                        version.clone(),
+                        latest.version,
+                    ));
+                }
+            }
+        }
+
         Ok(())
     }
 

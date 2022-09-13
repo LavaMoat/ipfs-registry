@@ -20,6 +20,9 @@ pub enum Error {
     #[error("unknown package {0}")]
     UnknownPackage(String),
 
+    #[error("version {0} is not ahead of latest {1}")]
+    VersionNotAhead(Version, Version),
+
     #[error("failed to fetch record {0} after insert")]
     InsertFetch(i64),
 
