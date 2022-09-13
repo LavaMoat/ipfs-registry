@@ -271,9 +271,12 @@ impl PackageHandler {
             Ok((_, _, record)) => {
                 let record = record.ok_or(StatusCode::NOT_FOUND)?;
 
+                let content_id = record.parse_cid()
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
                 let body = state
                     .layers
-                    .fetch(&record.pointer_id, record.content_id.as_ref())
+                    .fetch(&record.pointer_id, content_id.as_ref())
                     .await
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

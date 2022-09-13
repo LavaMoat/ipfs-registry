@@ -269,7 +269,9 @@ pub struct VersionRecord {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub package: Option<Value>,
     /// Content identifier.
-    pub content_id: Option<Cid>,
+    #[serde(
+        skip_serializing_if = "Option::is_none")]
+    pub content_id: Option<String>,
     /// Pointer identifier.
     pub pointer_id: String,
     /// Package archive signature.
@@ -295,6 +297,16 @@ pub struct VersionRecord {
     /// Count of total rows.
     #[serde(skip)]
     pub count: i64,
+}
+
+impl VersionRecord {
+    /// Parse a content id.
+    pub fn parse_cid(&self) -> Result<Option<Cid>> {
+        if let Some(cid) = &self.content_id {
+            let cid: Cid = cid.parse()?;
+            Ok(Some(cid))
+        } else { Ok(None) }
+    }
 }
 
 impl FromRow<'_, SqliteRow> for VersionRecord {
@@ -340,6 +352,7 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
             None
         };
 
+        /*
         let content_id = if let Some(cid) = content_id {
             let cid: Cid =
                 cid.parse().map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
@@ -347,6 +360,7 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
         } else {
             None
         };
+        */
 
         let signature: [u8; 65] = signature
             .as_slice()
