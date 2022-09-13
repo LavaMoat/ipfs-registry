@@ -19,19 +19,7 @@ use crate::{
 const IPFS_DELIMITER: &str = "/ipfs/";
 
 const INVALID: &[char] = &[
-    '/',
-    '\\',
-    ' ',
-    '\t',
-    '\n',
-    '@',
-    ':',
-    '?',
-    '#',
-    '_',
-    '&',
-    '!',
-    ';'
+    '/', '\\', ' ', '\t', '\n', '@', ':', '?', '#', '_', '&', '!', ';',
 ];
 
 /// Validate a namespace or package name.

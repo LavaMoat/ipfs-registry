@@ -12,7 +12,7 @@ use k256::ecdsa::SigningKey;
 
 #[tokio::test]
 #[serial]
-async fn integration_publish_ok() -> Result<()> {
+async fn integration_yank() -> Result<()> {
     // Spawn the server
     let (rx, _handle) = spawn(default_server_config())?;
     let _ = rx.await?;
@@ -24,23 +24,38 @@ async fn integration_publish_ok() -> Result<()> {
     let signing_key = SigningKey::random(&mut rand::thread_rng());
 
     let namespace = Namespace::new_unchecked("mock-namespace");
+    let package = PackageName::new_unchecked("mock-package");
+    let version = Version::new(1, 0, 0);
+    let message = String::from("mock yank message");
 
     prepare_mock_namespace(&server_url, &signing_key, &namespace).await?;
 
-    let receipt = RegistryClient::publish_file(
-        server_url,
-        namespace,
+    let _ = RegistryClient::publish_file(
+        server_url.clone(),
+        namespace.clone(),
         mime,
-        signing_key,
+        signing_key.clone(),
         file,
     )
     .await?;
 
-    assert_eq!(
-        PackageName::new_unchecked("mock-package"),
-        receipt.artifact.package.name
-    );
-    assert_eq!(Version::new(1, 0, 0), receipt.artifact.package.version);
+    assert!(RegistryClient::yank(
+        server_url.clone(),
+        signing_key.clone(),
+        namespace.clone(),
+        package.clone(),
+        version.clone(),
+        message.clone(),
+    )
+    .await
+    .is_ok());
+
+    let doc = RegistryClient::exact_version(
+        server_url, namespace, package, version,
+    )
+    .await?;
+
+    assert_eq!(Some(message), doc.yanked);
 
     Ok(())
 }

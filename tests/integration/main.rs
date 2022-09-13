@@ -9,3 +9,4 @@ mod publish_conflict;
 mod publish_deny_unauthorized;
 mod publish_too_large;
 mod semver;
+mod yank;

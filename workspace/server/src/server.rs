@@ -202,10 +202,10 @@ impl Server {
                 "/api/package/:namespace/:package/:version",
                 get(PackageHandler::exact_version),
             )
-            //.route(
-                //"/api/package/:namespace/:package/:version/yank",
-                    //put(PackageHandler::yank),
-            //)
+            .route(
+                "/api/package/:namespace/:package/:version/yank",
+                post(PackageHandler::yank),
+            )
             .layer(RequestBodyLimitLayer::new(limit))
             .layer(cors)
             .layer(TraceLayer::new_for_http())

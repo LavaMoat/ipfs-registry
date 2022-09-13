@@ -139,12 +139,14 @@ pub async fn prepare_mock_namespace(
 ) -> Result<(PublisherRecord, NamespaceRecord)> {
     let publisher_record =
         RegistryClient::signup(server.clone(), key.clone()).await?;
+
     let namespace_record = RegistryClient::register(
         server.clone(),
         key.clone(),
         namespace.clone(),
     )
     .await?;
+
     Ok((publisher_record, namespace_record))
 }
 

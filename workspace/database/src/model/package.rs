@@ -585,8 +585,6 @@ impl PackageModel {
         {
             Ok(record)
         } else {
-            let mut conn = pool.acquire().await?;
-
             let mut builder = QueryBuilder::new(
                 r#"
                     INSERT INTO packages ( namespace_id, name, created_at )
@@ -598,11 +596,7 @@ impl PackageModel {
             separated.push_bind(name.as_str());
             builder.push(", datetime('now') )");
 
-            let id = builder
-                .build()
-                .execute(&mut conn)
-                .await?
-                .last_insert_rowid();
+            let id = builder.build().execute(pool).await?.last_insert_rowid();
 
             let record = PackageModel::find_package_by_id(pool, id)
                 .await?
@@ -647,8 +641,6 @@ impl PackageModel {
         .await?;
 
         // Insert the package version
-        let mut conn = pool.acquire().await?;
-
         let mut builder = QueryBuilder::new(
             r#"
                 INSERT INTO versions ( publisher_id, package_id, major, minor, patch, pre, build, package, content_id, pointer_id, signature, checksum, created_at )
@@ -670,11 +662,7 @@ impl PackageModel {
         separated.push_bind(pointer.definition.checksum.to_vec());
         builder.push(", datetime('now') )");
 
-        let id = builder
-            .build()
-            .execute(&mut conn)
-            .await?
-            .last_insert_rowid();
+        let id = builder.build().execute(pool).await?.last_insert_rowid();
 
         Ok(id)
     }
@@ -727,7 +715,7 @@ impl PackageModel {
     }
 
     /// Verify the publisher and namespace before publishing.
-    pub async fn verify_publish(
+    pub async fn can_write_namespace(
         pool: &SqlitePool,
         publisher: &Address,
         namespace: &Namespace,
@@ -748,5 +736,28 @@ impl PackageModel {
         }
 
         Ok((publisher_record, namespace_record))
+    }
+
+    /// Yank a specific package version.
+    pub async fn yank(
+        pool: &SqlitePool,
+        version_id: i64,
+        message: &str,
+    ) -> Result<()> {
+        let mut builder =
+            QueryBuilder::<Sqlite>::new("UPDATE versions SET yanked = ");
+        builder.push_bind(message);
+        builder.push("WHERE version_id = ");
+        builder.push_bind(version_id);
+
+        let mut args: SqliteArguments = Default::default();
+        args.add(message);
+        args.add(version_id);
+
+        let sql = builder.into_sql();
+
+        sqlx::query_with::<_, _>(&sql, args).execute(pool).await?;
+
+        Ok(())
     }
 }

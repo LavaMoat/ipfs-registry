@@ -228,6 +228,10 @@ GET /api/package/:namespace
 
 List the packages for a namespace.
 
+#### Parameters
+
+* `:namespace`: The package namespace.
+
 #### Query
 
 * `versions`: Fetch versions for each package, either `none` or  `latest`. Default is `none`.
@@ -256,6 +260,11 @@ GET /api/package/:namespace/:package
 ```
 
 List the versions of a package.
+
+#### Parameters
+
+* `:namespace`: The package namespace.
+* `:package`: The package name.
 
 #### Query
 
@@ -303,6 +312,11 @@ GET /api/package/:namespace/:package/latest
 
 Get the latest version of a package.
 
+#### Parameters
+
+* `:namespace`: The package namespace.
+* `:package`: The package name.
+
 #### Query
 
 * `prerelease`: When `true` include prerelease versions.
@@ -340,9 +354,41 @@ GET /api/package/:namespace/:package/:version
 
 Get a specific version of a package.
 
+#### Parameters
+
+* `:namespace`: The package namespace.
+* `:package`: The package name.
+* `:version`: The package version.
+
 #### Response
 
 See example response for latest version above.
+
+### Yank version
+
+```
+POST /api/package/:namespace/:package/:version/yank
+```
+
+Mark a specific version of a package as yanked.
+
+The body should be a UTF-8 encoded string of the reason why the version was yanked; it may be the empty string.
+
+If the version is already yanked a 409 CONFLICT response is returned.
+
+#### Parameters
+
+* `:namespace`: The package namespace.
+* `:package`: The package name.
+* `:version`: The package version.
+
+#### Headers
+
+* `x-signature`: Signature of the bytes for the request body.
+
+#### Response
+
+200 if successful.
 
 ## Configuration
 

@@ -3,15 +3,19 @@ use std::{borrow::BorrowMut, path::PathBuf};
 use k256::ecdsa::{recoverable, signature::Signer, SigningKey};
 use mime::Mime;
 use reqwest::Client;
+use semver::Version;
 
 use tokio::io::AsyncWriteExt;
 use url::Url;
 
 use ipfs_registry_core::{
-    Namespace, PackageKey, Receipt, WELL_KNOWN_MESSAGE, X_SIGNATURE,
+    Namespace, PackageKey, PackageName, Receipt, WELL_KNOWN_MESSAGE,
+    X_SIGNATURE,
 };
 
-use ipfs_registry_database::{NamespaceRecord, PublisherRecord};
+use ipfs_registry_database::{
+    NamespaceRecord, PublisherRecord, VersionRecord,
+};
 
 use crate::{Error, Result};
 
@@ -58,8 +62,7 @@ impl RegistryClient {
         let sign_bytes = &signature;
 
         let client = Client::new();
-        let url = server.join("api/namespace")?
-            .join(namespace.as_str())?;
+        let url = server.join(&format!("api/namespace/{}", namespace))?;
 
         let response = client
             .post(url)
@@ -127,7 +130,7 @@ impl RegistryClient {
         let sign_bytes = &signature;
 
         let client = Client::new();
-        let url = server.join("api/package")?.join(namespace.as_str())?;
+        let url = server.join(&format!("api/package/{}", namespace))?;
 
         let response = client
             .post(url)
@@ -144,6 +147,66 @@ impl RegistryClient {
             .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
 
         let doc: Receipt = response.json().await?;
+        Ok(doc)
+    }
+
+    /// Yank a version.
+    pub async fn yank(
+        server: Url,
+        signing_key: SigningKey,
+        namespace: Namespace,
+        package: PackageName,
+        version: Version,
+        body: String,
+    ) -> Result<()> {
+        let signature: recoverable::Signature =
+            signing_key.sign(body.as_bytes());
+        let sign_bytes = &signature;
+
+        let client = Client::new();
+        let url = server.join(&format!(
+            "api/package/{}/{}/{}/yank",
+            namespace, package, version
+        ))?;
+
+        let response = client
+            .post(url)
+            .header(X_SIGNATURE, base64::encode(sign_bytes))
+            .body(body)
+            .send()
+            .await?;
+
+        response
+            .status()
+            .is_success()
+            .then_some(())
+            .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
+
+        Ok(())
+    }
+
+    /// Get an exact version.
+    pub async fn exact_version(
+        server: Url,
+        namespace: Namespace,
+        package: PackageName,
+        version: Version,
+    ) -> Result<VersionRecord> {
+        let client = Client::new();
+        let url = server.join(&format!(
+            "api/package/{}/{}/{}",
+            namespace, package, version
+        ))?;
+
+        let response = client.get(url).send().await?;
+
+        response
+            .status()
+            .is_success()
+            .then_some(())
+            .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
+
+        let doc: VersionRecord = response.json().await?;
         Ok(doc)
     }
 }

@@ -63,7 +63,8 @@ async fn integration_database() -> Result<()> {
 
     // Verify for publishing
     let (publisher_record, namespace_record) =
-        PackageModel::verify_publish(&pool, &address, &namespace).await?;
+        PackageModel::can_write_namespace(&pool, &address, &namespace)
+            .await?;
 
     // Publish as the namespace owner
     let result = PackageModel::insert(
@@ -123,9 +124,12 @@ async fn integration_database() -> Result<()> {
     assert!(is_package_exists);
 
     // Publish using an address that is not registered - `Err`
-    let result =
-        PackageModel::verify_publish(&pool, &unknown_address, &namespace)
-            .await;
+    let result = PackageModel::can_write_namespace(
+        &pool,
+        &unknown_address,
+        &namespace,
+    )
+    .await;
     assert!(result.is_err());
 
     let is_unknown_publisher = if let Err(Error::UnknownPublisher(_)) = result
@@ -137,7 +141,7 @@ async fn integration_database() -> Result<()> {
     assert!(is_unknown_publisher);
 
     // Publish using an address that is not authorized - `Err`
-    let result = PackageModel::verify_publish(
+    let result = PackageModel::can_write_namespace(
         &pool,
         &unauthorized_address,
         &namespace,
@@ -153,7 +157,7 @@ async fn integration_database() -> Result<()> {
     assert!(is_unauthorized);
 
     // Publish using a namespace that does not exist - `Err`
-    let result = PackageModel::verify_publish(
+    let result = PackageModel::can_write_namespace(
         &pool,
         &address,
         &Namespace::new_unchecked("unknown-namespace"),
