@@ -4,7 +4,8 @@ use serde_json::Value;
 use time::{format_description, OffsetDateTime, PrimitiveDateTime};
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{Namespace, ObjectKey, PackageName};
+use cid::Cid;
+use ipfs_registry_core::{Namespace, PackageName};
 
 use sqlx::{sqlite::SqliteRow, FromRow, Row};
 
@@ -268,7 +269,9 @@ pub struct VersionRecord {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub package: Option<Value>,
     /// Content identifier.
-    pub content_id: ObjectKey,
+    pub content_id: Option<Cid>,
+    /// Pointer identifier.
+    pub pointer_id: String,
     /// Package archive signature.
     #[serde(
         serialize_with = "hex::serde::serialize",
@@ -302,7 +305,8 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
         let pre: Option<String> = row.try_get("pre")?;
         let build: Option<String> = row.try_get("build")?;
 
-        let content_id: String = row.try_get("content_id")?;
+        let content_id: Option<String> = row.try_get("content_id")?;
+        let pointer_id: String = row.try_get("pointer_id")?;
 
         let signature: Vec<u8> = row.try_get("signature")?;
         let checksum: Vec<u8> = row.try_get("checksum")?;
@@ -329,9 +333,13 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
             None
         };
 
-        let content_id = content_id
-            .parse()
-            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+        let content_id = if let Some(cid) = content_id {
+            let cid: Cid =
+                cid.parse().map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+            Some(cid)
+        } else {
+            None
+        };
 
         let signature: [u8; 65] = signature
             .as_slice()
@@ -356,6 +364,7 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
             version_id,
             package_id,
             content_id,
+            pointer_id,
             version,
             package,
             signature,

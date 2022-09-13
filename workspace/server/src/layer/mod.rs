@@ -1,12 +1,13 @@
 //! Traits and types for storage layers.
 use async_trait::async_trait;
 use axum::body::Bytes;
+use cid::Cid;
 
 use ipfs_registry_core::{Artifact, ObjectKey};
 
 use crate::{
     config::{LayerConfig, RegistryConfig, ServerConfig},
-    Result,
+    Error, Result,
 };
 
 pub(crate) mod file;
@@ -58,51 +59,84 @@ pub struct Layers {
 }
 
 impl Layers {
-    /// Primary storage layer.
-    ///
-    /// The configuration loader ensures we always have at least one
-    /// layer configuration so we can be certain we have a primary layer.
-    #[allow(clippy::borrowed_box)]
-    fn primary(&self) -> &Box<dyn Layer + Send + Sync + 'static> {
-        self.storage.get(0).unwrap()
-    }
-}
-
-#[async_trait]
-impl Layer for Layers {
-    async fn add_blob(
+    /// Publish an artifact to all storage layers.
+    pub async fn publish(
         &self,
         data: Bytes,
-        descriptor: &Artifact,
+        artifact: &Artifact,
     ) -> Result<Vec<ObjectKey>> {
+        // Do it like this to avoid an unnecessary clone() on the
+        // buffer when only a single storage layer is configured
         let has_mirrors = self.storage.len() > 1;
         if has_mirrors {
             let mut keys = Vec::new();
             for layer in self.storage.iter() {
-                let mut id = layer.add_blob(data.clone(), descriptor).await?;
-                keys.append(&mut id);
+                let id = layer.add_artifact(data.clone(), artifact).await?;
+                keys.push(id);
             }
             Ok(keys)
         } else {
-            self.primary().add_blob(data, descriptor).await
+            let primary = self
+                .storage
+                .get(0)
+                .expect("failed to get primary storage layer");
+            Ok(vec![primary.add_artifact(data, artifact).await?])
         }
     }
 
-    async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>> {
-        self.primary().get_blob(id).await
+    /// Fetch an artifact from the storage layers.
+    pub async fn fetch(
+        &self,
+        pointer_id: &str,
+        content_id: Option<&Cid>,
+    ) -> Result<Vec<u8>> {
+        let pointer_id = ObjectKey::Pointer(pointer_id.to_string());
+        let content_id = content_id.map(|c| ObjectKey::Cid(c.clone()));
+
+        let len = self.storage.len();
+        for (index, layer) in self.storage.iter().enumerate() {
+            let is_last = index == len - 1;
+            let result = if layer.supports_content_id() {
+                if let Some(content_id) = &content_id {
+                    layer.get_artifact(content_id).await
+                } else {
+                    continue;
+                }
+            } else {
+                layer.get_artifact(&pointer_id).await
+            };
+
+            match result {
+                Ok(result) => return Ok(result),
+                Err(e) => {
+                    tracing::error!("{}", e);
+                    if is_last {
+                        return Err(e);
+                    }
+                }
+            }
+        }
+
+        Err(Error::ArtifactNotFound(
+            pointer_id.to_string(),
+            content_id.map(|c| c.to_string()),
+        ))
     }
 }
 
 /// Trait for a storage layer.
 #[async_trait]
 pub trait Layer {
-    /// Add a blob to the storage and return an identifier.
-    async fn add_blob(
+    /// Determine if this layer supports a content identifier.
+    fn supports_content_id(&self) -> bool;
+
+    /// Add an artifact to the storage layer and return an identifier.
+    async fn add_artifact(
         &self,
         data: Bytes,
         artifact: &Artifact,
-    ) -> Result<Vec<ObjectKey>>;
+    ) -> Result<ObjectKey>;
 
-    /// Get a blob from storage by identifier.
-    async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>>;
+    /// Get an artifact from storage by identifier.
+    async fn get_artifact(&self, id: &ObjectKey) -> Result<Vec<u8>>;
 }

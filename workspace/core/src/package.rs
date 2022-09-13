@@ -228,8 +228,8 @@ impl<'de> Deserialize<'de> for PackageKey {
 pub enum ObjectKey {
     /// Reference to an IPFS content identifier.
     Cid(Cid),
-    /// Reference to a bucket key.
-    Key(String),
+    /// Reference by pointer id.
+    Pointer(String),
 }
 
 impl FromStr for ObjectKey {
@@ -238,7 +238,7 @@ impl FromStr for ObjectKey {
         let result: Result<Cid> = s.try_into().map_err(Error::from);
         match result {
             Ok(cid) => Ok(ObjectKey::Cid(cid)),
-            Err(_e) => Ok(ObjectKey::Key(s.to_owned())),
+            Err(_e) => Ok(ObjectKey::Pointer(s.to_owned())),
         }
     }
 }
@@ -247,7 +247,7 @@ impl fmt::Display for ObjectKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Cid(value) => write!(f, "{}", value),
-            Self::Key(value) => write!(f, "{}", value),
+            Self::Pointer(value) => write!(f, "{}", value),
         }
     }
 }
@@ -316,8 +316,8 @@ pub struct Artifact {
 }
 
 impl Artifact {
-    /// Get the standard key for an artifact.
-    pub fn key(&self) -> String {
+    /// Get the standard pointer id for an artifact.
+    pub fn pointer_id(&self) -> String {
         let mut key_bytes = Vec::new();
         key_bytes.extend_from_slice(self.namespace.as_bytes());
         key_bytes.extend_from_slice(self.package.name.as_bytes());
@@ -331,8 +331,8 @@ impl Artifact {
 /// Definition of a package.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Definition {
-    /// The id of the package archive.
-    pub object: ObjectKey,
+    /// The object keys for the artifacts.
+    pub objects: Vec<ObjectKey>,
     /// Package descriptor.
     pub artifact: Artifact,
     /// Signature of the package.

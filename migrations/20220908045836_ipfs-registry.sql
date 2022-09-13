@@ -47,8 +47,10 @@ CREATE TABLE IF NOT EXISTS versions
     pre                   TEXT,
     build                 TEXT,
 
-    -- IPFS content identifier or key path
-    content_id            TEXT                NOT NULL,
+    -- IPFS content identifier
+    content_id            TEXT,
+    -- Pointer identifier
+    pointer_id            TEXT                NOT NULL,
     -- Signature using the publisher's private key
     signature             BLOB(65)            NOT NULL,
     -- SHA-256 checksum or the package archive

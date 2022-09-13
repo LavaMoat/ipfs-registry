@@ -8,7 +8,7 @@ use axum::{
 
 //use axum_macros::debug_handler;
 
-use semver::Version;
+use semver::{Version, VersionReq};
 use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
 
@@ -18,13 +18,12 @@ use ipfs_registry_core::{
 };
 
 use ipfs_registry_database::{
-    default_limit, Direction, Error as DatabaseError, PackageModel,
-    PackageRecord, Pager, ResultSet, VersionIncludes, VersionRecord,
+    default_limit, Error as DatabaseError, PackageModel, PackageRecord,
+    Pager, ResultSet, SortOrder, VersionIncludes, VersionRecord,
 };
 
 use crate::{
-    handlers::verify_signature, headers::Signature, layer::Layer,
-    server::ServerState,
+    handlers::verify_signature, headers::Signature, server::ServerState,
 };
 
 #[derive(Debug, Deserialize)]
@@ -41,7 +40,7 @@ pub struct ListPackagesQuery {
     offset: i64,
     #[serde(default = "default_limit")]
     limit: i64,
-    sort: Direction,
+    sort: SortOrder,
 }
 
 impl ListPackagesQuery {
@@ -49,7 +48,27 @@ impl ListPackagesQuery {
         Pager {
             offset: self.offset,
             limit: self.limit,
-            direction: self.sort,
+            sort: self.sort,
+        }
+    }
+}
+
+#[derive(Default, Debug, Deserialize)]
+#[serde(default)]
+pub struct ListVersionsQuery {
+    range: Option<VersionReq>,
+    offset: i64,
+    #[serde(default = "default_limit")]
+    limit: i64,
+    sort: SortOrder,
+}
+
+impl ListVersionsQuery {
+    fn into_pager(&self) -> Pager {
+        Pager {
+            offset: self.offset,
+            limit: self.limit,
+            sort: self.sort,
         }
     }
 }
@@ -91,22 +110,47 @@ impl PackageHandler {
     pub(crate) async fn list_versions(
         Extension(state): Extension<ServerState>,
         Path((namespace, package)): Path<(Namespace, PackageName)>,
-        Query(pager): Query<Pager>,
+        Query(query): Query<ListVersionsQuery>,
     ) -> std::result::Result<Json<ResultSet<VersionRecord>>, StatusCode> {
-        match PackageModel::list_versions(
-            &state.pool,
-            &namespace,
-            &package,
-            &pager,
-        )
-        .await
-        {
-            Ok(records) => Ok(Json(records)),
-            Err(e) => Err(match e {
-                DatabaseError::UnknownNamespace(_)
-                | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
-                _ => StatusCode::INTERNAL_SERVER_ERROR,
-            }),
+        let pager = query.into_pager();
+
+        if let Some(range) = query.range {
+            match PackageModel::find_versions(
+                &state.pool,
+                &namespace,
+                &package,
+                &range,
+                &pager,
+            )
+            .await
+            {
+                Ok(records) => Ok(Json(records)),
+                Err(e) => Err(match e {
+                    DatabaseError::UnknownNamespace(_)
+                    | DatabaseError::UnknownPackage(_) => {
+                        StatusCode::NOT_FOUND
+                    }
+                    _ => StatusCode::INTERNAL_SERVER_ERROR,
+                }),
+            }
+        } else {
+            match PackageModel::list_versions(
+                &state.pool,
+                &namespace,
+                &package,
+                &pager,
+            )
+            .await
+            {
+                Ok(records) => Ok(Json(records)),
+                Err(e) => Err(match e {
+                    DatabaseError::UnknownNamespace(_)
+                    | DatabaseError::UnknownPackage(_) => {
+                        StatusCode::NOT_FOUND
+                    }
+                    _ => StatusCode::INTERNAL_SERVER_ERROR,
+                }),
+            }
         }
     }
 
@@ -173,7 +217,10 @@ impl PackageHandler {
 
                 let body = state
                     .layers
-                    .get_blob(&version_record.content_id)
+                    .fetch(
+                        &version_record.pointer_id,
+                        version_record.content_id.as_ref(),
+                    )
                     .await
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -271,9 +318,9 @@ impl PackageHandler {
 
                         let checksum = Sha3_256::digest(&body);
 
-                        let mut objects = state
+                        let objects = state
                             .layers
-                            .add_blob(body, &descriptor)
+                            .publish(body, &descriptor)
                             .await
                             .map_err(|e| {
                                 tracing::error!("{}", e);
@@ -291,12 +338,10 @@ impl PackageHandler {
                             }
                         });
 
-                        let object = objects.remove(0);
-
                         let doc = Pointer {
                             definition: Definition {
                                 artifact: descriptor,
-                                object,
+                                objects,
                                 signature: PackageSignature {
                                     signer: address,
                                     value: signature.into(),
@@ -326,7 +371,8 @@ impl PackageHandler {
                         Ok(Json(receipt))
                     }
                     Err(e) => Err(match e {
-                        DatabaseError::PackageExists(_, _, _) => {
+                        DatabaseError::PackageExists(_, _, _)
+                        | DatabaseError::VersionNotAhead(_, _) => {
                             StatusCode::CONFLICT
                         }
                         _ => StatusCode::INTERNAL_SERVER_ERROR,

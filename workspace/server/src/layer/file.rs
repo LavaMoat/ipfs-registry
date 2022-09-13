@@ -20,25 +20,28 @@ impl FileLayer {
 
 #[async_trait]
 impl Layer for FileLayer {
-    async fn add_blob(
+    fn supports_content_id(&self) -> bool {
+        false
+    }
+
+    async fn add_artifact(
         &self,
         data: Bytes,
         artifact: &Artifact,
-    ) -> Result<Vec<ObjectKey>> {
-        let key = artifact.key();
+    ) -> Result<ObjectKey> {
+        let key = artifact.pointer_id();
         let path = self.directory.join(key.clone());
         if !path.exists() {
             tokio::fs::write(path, &data).await?;
         }
-        Ok(vec![ObjectKey::Key(key)])
+        Ok(ObjectKey::Pointer(key))
     }
 
-    async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>> {
-        if let ObjectKey::Key(key) = id {
+    async fn get_artifact(&self, id: &ObjectKey) -> Result<Vec<u8>> {
+        if let ObjectKey::Pointer(key) = id {
             let path = self.directory.join(key.clone());
             if path.exists() {
-                let contents = tokio::fs::read(path).await?;
-                Ok(contents)
+                Ok(tokio::fs::read(path).await?)
             } else {
                 Err(Error::NotFile(path))
             }

@@ -87,6 +87,23 @@ async fn integration_database() -> Result<()> {
     .await?;
     assert!(result > 0);
 
+    // Attempt to publish an old version - `Err`
+    let result = PackageModel::assert_publish_safe(
+        &pool,
+        &namespace_record,
+        &mock_package,
+        &Version::new(0, 1, 0),
+    )
+    .await;
+    assert!(result.is_err());
+
+    let is_not_ahead = if let Err(Error::VersionNotAhead(_, _)) = result {
+        true
+    } else {
+        false
+    };
+    assert!(is_not_ahead);
+
     // Attempt to publish an existing version - `Err`
     let result = PackageModel::assert_publish_safe(
         &pool,
@@ -153,7 +170,7 @@ async fn integration_database() -> Result<()> {
     assert!(is_unknown_namespace);
 
     // Check we can get the published package / version
-    let package_record = PackageModel::find_by_name_version(
+    let (_, package_record) = PackageModel::find_by_name_version(
         &pool,
         namespace_id,
         &mock_package,
