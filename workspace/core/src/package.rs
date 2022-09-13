@@ -316,8 +316,8 @@ pub struct Artifact {
 }
 
 impl Artifact {
-    /// Get the standard key for an artifact.
-    pub fn key(&self) -> String {
+    /// Get the standard pointer id for an artifact.
+    pub fn pointer_id(&self) -> String {
         let mut key_bytes = Vec::new();
         key_bytes.extend_from_slice(self.namespace.as_bytes());
         key_bytes.extend_from_slice(self.package.name.as_bytes());

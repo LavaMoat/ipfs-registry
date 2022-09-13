@@ -29,7 +29,7 @@ impl Layer for MemoryLayer {
         data: Bytes,
         artifact: &Artifact,
     ) -> Result<Vec<ObjectKey>> {
-        let key = artifact.key();
+        let key = artifact.pointer_id();
         let mut writer = self.files.write().await;
         writer.insert(key.clone(), data.to_vec());
         Ok(vec![ObjectKey::Key(key)])

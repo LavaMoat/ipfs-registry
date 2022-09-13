@@ -25,7 +25,7 @@ impl Layer for FileLayer {
         data: Bytes,
         artifact: &Artifact,
     ) -> Result<Vec<ObjectKey>> {
-        let key = artifact.key();
+        let key = artifact.pointer_id();
         let path = self.directory.join(key.clone());
         if !path.exists() {
             tokio::fs::write(path, &data).await?;

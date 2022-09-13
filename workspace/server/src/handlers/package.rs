@@ -23,7 +23,7 @@ use ipfs_registry_database::{
 };
 
 use crate::{
-    handlers::verify_signature, headers::Signature, layer::Layer,
+    handlers::verify_signature, headers::Signature,
     server::ServerState,
 };
 
@@ -173,7 +173,7 @@ impl PackageHandler {
 
                 let body = state
                     .layers
-                    .get_blob(&version_record.content_id)
+                    .fetch(&version_record.content_id)
                     .await
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -273,7 +273,7 @@ impl PackageHandler {
 
                         let mut objects = state
                             .layers
-                            .add_blob(body, &descriptor)
+                            .publish(body, &descriptor)
                             .await
                             .map_err(|e| {
                                 tracing::error!("{}", e);

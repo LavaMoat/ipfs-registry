@@ -66,11 +66,8 @@ impl Layers {
     fn primary(&self) -> &Box<dyn Layer + Send + Sync + 'static> {
         self.storage.get(0).unwrap()
     }
-}
 
-#[async_trait]
-impl Layer for Layers {
-    async fn add_blob(
+    pub async fn publish(
         &self,
         data: Bytes,
         descriptor: &Artifact,
@@ -88,7 +85,7 @@ impl Layer for Layers {
         }
     }
 
-    async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>> {
+    pub async fn fetch(&self, id: &ObjectKey) -> Result<Vec<u8>> {
         self.primary().get_blob(id).await
     }
 }

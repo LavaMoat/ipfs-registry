@@ -127,7 +127,7 @@ impl Layer for S3Layer {
         data: Bytes,
         artifact: &Artifact,
     ) -> Result<Vec<ObjectKey>> {
-        let key = artifact.key();
+        let key = artifact.pointer_id();
         let bucket_key = self.get_bucket_key(&key);
         self.put_object(bucket_key, data).await?;
         Ok(vec![ObjectKey::Key(key)])
