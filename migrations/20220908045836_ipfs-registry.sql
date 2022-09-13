@@ -58,6 +58,9 @@ CREATE TABLE IF NOT EXISTS versions
     -- Package meta data as JSON (eg: package.json)
     package               TEXT                NOT NULL,
 
+    -- Yanked message when not NULL
+    yanked                TEXT,
+
     FOREIGN KEY (publisher_id) REFERENCES publishers (publisher_id),
     FOREIGN KEY (package_id) REFERENCES packages (package_id)
 );

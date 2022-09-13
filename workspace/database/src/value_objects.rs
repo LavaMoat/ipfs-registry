@@ -287,6 +287,11 @@ pub struct VersionRecord {
     /// Creation date and time.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+
+    /// Yanked message.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub yanked: Option<String>,
+
     /// Count of total rows.
     #[serde(skip)]
     pub count: i64,
@@ -312,6 +317,8 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
         let checksum: Vec<u8> = row.try_get("checksum")?;
 
         let created_at: String = row.try_get("created_at")?;
+
+        let yanked: Option<String> = row.try_get("yanked")?;
 
         let mut version =
             Version::new(major as u64, minor as u64, patch as u64);
@@ -370,6 +377,7 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
             signature,
             checksum,
             created_at,
+            yanked,
             count,
         })
     }

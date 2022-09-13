@@ -118,6 +118,7 @@ impl PackageModel {
                 pointer_id,
                 signature,
                 checksum,
+                yanked,
                 created_at
             FROM versions
             WHERE package_id = ?
@@ -394,6 +395,7 @@ impl PackageModel {
                     pointer_id,
                     signature,
                     checksum,
+                    yanked,
                     created_at
                 FROM versions
                 WHERE package_id = "#,
@@ -491,6 +493,7 @@ impl PackageModel {
                     pointer_id,
                     signature,
                     checksum,
+                    yanked,
                     created_at
                 FROM versions WHERE package_id =
             "#,
