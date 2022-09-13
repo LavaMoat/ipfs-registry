@@ -3,14 +3,12 @@ use std::{borrow::BorrowMut, path::PathBuf};
 use k256::ecdsa::{recoverable, signature::Signer, SigningKey};
 use mime::Mime;
 use reqwest::Client;
-use semver::Version;
 
 use tokio::io::AsyncWriteExt;
 use url::Url;
 
 use ipfs_registry_core::{
-    Namespace, PackageKey, PackageName, Receipt, WELL_KNOWN_MESSAGE,
-    X_SIGNATURE,
+    Namespace, PackageKey, Receipt, WELL_KNOWN_MESSAGE, X_SIGNATURE,
 };
 
 use ipfs_registry_database::{
@@ -184,17 +182,16 @@ impl RegistryClient {
     /// Get an exact version.
     pub async fn exact_version(
         server: Url,
-        namespace: Namespace,
-        package: PackageName,
-        version: Version,
+        id: PackageKey,
     ) -> Result<VersionRecord> {
         let client = Client::new();
-        let url = server.join(&format!(
-            "api/package/{}/{}/{}",
-            namespace, package, version
-        ))?;
+        let url = server.join("api/package/version")?;
 
-        let response = client.get(url).send().await?;
+        let response = client
+            .get(url)
+            .query(&[("id", id.to_string())])
+            .send()
+            .await?;
 
         response
             .status()

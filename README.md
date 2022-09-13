@@ -110,7 +110,13 @@ ipkg publish -k ./sandbox/<addr>.json -n mock-namespace fixtures/mock-package-1.
 Download the package to a file:
 
 ```
-ipkg fetch <addr>/mock-package/1.0.0 sandbox/package.tgz
+ipkg fetch mock-namespace/mock-package/1.0.0 sandbox/package.tgz
+```
+
+Get the package version record:
+
+```
+ipkg get mock-namespace/mock-package/1.0.0
 ```
 
 ## API
@@ -349,16 +355,14 @@ Response with `?prerelease=true` query string:
 ### Package version
 
 ```
-GET /api/package/:namespace/:package/:version
+GET /api/package/version
 ```
 
 Get a specific version of a package.
 
-#### Parameters
+#### Query
 
-* `:namespace`: The package namespace.
-* `:package`: The package name.
-* `:version`: The package version.
+* `id`: Package identifier.
 
 #### Response
 

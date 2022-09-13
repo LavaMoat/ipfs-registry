@@ -2,14 +2,15 @@ use k256::ecdsa::SigningKey;
 use mime::Mime;
 
 use secrecy::ExposeSecret;
-use semver::Version;
 use std::path::PathBuf;
 use url::Url;
 use web3_address::ethereum::Address;
 use web3_keystore::encrypt;
 
-use ipfs_registry_core::{Namespace, PackageKey, PackageName, Receipt};
-use ipfs_registry_database::{NamespaceRecord, PublisherRecord};
+use ipfs_registry_core::{Namespace, PackageKey, Receipt};
+use ipfs_registry_database::{
+    NamespaceRecord, PublisherRecord, VersionRecord,
+};
 
 use crate::{helpers, input, Error, RegistryClient, Result};
 
@@ -91,4 +92,9 @@ pub async fn yank(
 ) -> Result<()> {
     let signing_key = helpers::read_keystore_file(key)?;
     RegistryClient::yank(server, signing_key, id, message).await
+}
+
+/// Get a package.
+pub async fn get(server: Url, id: PackageKey) -> Result<VersionRecord> {
+    RegistryClient::exact_version(server, id).await
 }

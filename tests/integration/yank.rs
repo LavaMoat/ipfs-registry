@@ -47,16 +47,13 @@ async fn integration_yank() -> Result<()> {
     assert!(RegistryClient::yank(
         server_url.clone(),
         signing_key.clone(),
-        id,
+        id.clone(),
         message.clone(),
     )
     .await
     .is_ok());
 
-    let doc = RegistryClient::exact_version(
-        server_url, namespace, package, version,
-    )
-    .await?;
+    let doc = RegistryClient::exact_version(server_url, id).await?;
 
     assert_eq!(Some(message), doc.yanked);
 

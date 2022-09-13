@@ -99,6 +99,15 @@ enum Command {
         /// Reason for yanking the version.
         message: Option<String>,
     },
+    /// Get information about a specific package version.
+    Get {
+        /// Server URL.
+        #[clap(short, long, default_value = "http://127.0.0.1:9060")]
+        server: Url,
+
+        /// Package identifier.
+        id: PackageKey,
+    },
     /// Start a server.
     Server {
         /// Bind to host:port.
@@ -162,6 +171,10 @@ async fn run() -> Result<()> {
                 std::io::stdout(),
                 &json!({"ok": true}),
             )?;
+        }
+        Command::Get { server, id } => {
+            let doc = ipfs_registry_client::get(server, id).await?;
+            serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
         }
         Command::Server { bind, config } => {
             ipfs_registry_server::start(bind, config).await?;

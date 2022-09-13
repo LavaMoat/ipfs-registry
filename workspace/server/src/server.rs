@@ -198,10 +198,7 @@ impl Server {
                 "/api/package/:namespace/:package/latest",
                 get(PackageHandler::latest_version),
             )
-            .route(
-                "/api/package/:namespace/:package/:version",
-                get(PackageHandler::exact_version),
-            )
+            .route("/api/package/version", get(PackageHandler::exact_version))
             .route("/api/package/yank", post(PackageHandler::yank))
             .layer(RequestBodyLimitLayer::new(limit))
             .layer(cors)

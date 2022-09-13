@@ -8,7 +8,7 @@ use axum::{
 
 //use axum_macros::debug_handler;
 
-use semver::{Version, VersionReq};
+use semver::VersionReq;
 use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
 
@@ -183,14 +183,9 @@ impl PackageHandler {
     /// Get the exact version of a package.
     pub(crate) async fn exact_version(
         Extension(state): Extension<ServerState>,
-        Path((namespace, package, version)): Path<(
-            Namespace,
-            PackageName,
-            Version,
-        )>,
+        Query(query): Query<PackageQuery>,
     ) -> std::result::Result<Json<VersionRecord>, StatusCode> {
-        let key = PackageKey::Pointer(namespace, package, version);
-        match PackageModel::find_by_key(&state.pool, &key).await {
+        match PackageModel::find_by_key(&state.pool, &query.id).await {
             Ok((_, _, record)) => {
                 let record = record.ok_or_else(|| StatusCode::NOT_FOUND)?;
                 Ok(Json(record))
@@ -217,7 +212,7 @@ impl PackageHandler {
             .map_err(|_| StatusCode::BAD_REQUEST)?;
 
         match PackageModel::find_by_key(&state.pool, &query.id).await {
-            Ok((ns, pkg, record)) => {
+            Ok((ns, _pkg, record)) => {
                 let record = record.ok_or_else(|| StatusCode::NOT_FOUND)?;
                 if record.yanked.is_some() {
                     return Err(StatusCode::CONFLICT);
