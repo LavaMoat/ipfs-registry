@@ -132,4 +132,20 @@ impl NamespaceModel {
             Ok(None)
         }
     }
+
+    /// Find a namespace by id.
+    pub async fn find_namespace_by_id(
+        pool: &SqlitePool,
+        namespace_id: i64,
+    ) -> Result<Option<NamespaceRecord>> {
+        let mut args: SqliteArguments = Default::default();
+        args.add(namespace_id);
+        let record = sqlx::query_as_with::<_, NamespaceRecord, _>(
+            r#"SELECT * FROM namespaces WHERE namespace_id = ?"#,
+            args,
+        )
+        .fetch_optional(pool)
+        .await?;
+        Ok(record)
+    }
 }

@@ -191,7 +191,7 @@ impl PackageHandler {
     ) -> std::result::Result<Json<VersionRecord>, StatusCode> {
         let key = PackageKey::Pointer(namespace, package, version);
         match PackageModel::find_by_key(&state.pool, &key).await {
-            Ok(record) => {
+            Ok((_, _, record)) => {
                 let record = record.ok_or_else(|| StatusCode::NOT_FOUND)?;
                 Ok(Json(record))
             }
@@ -207,11 +207,7 @@ impl PackageHandler {
     pub(crate) async fn yank(
         Extension(state): Extension<ServerState>,
         TypedHeader(signature): TypedHeader<Signature>,
-        Path((namespace, package, version)): Path<(
-            Namespace,
-            PackageName,
-            Version,
-        )>,
+        Query(query): Query<PackageQuery>,
         body: Bytes,
     ) -> std::result::Result<StatusCode, StatusCode> {
         let address = verify_signature(signature.into(), &body)
@@ -220,23 +216,24 @@ impl PackageHandler {
         let message = std::str::from_utf8(&body)
             .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-        match PackageModel::can_write_namespace(
-            &state.pool,
-            &address,
-            &namespace,
-        )
-        .await
-        {
-            Ok(_) => {
-                let key = PackageKey::Pointer(namespace, package, version);
-                match PackageModel::find_by_key(&state.pool, &key).await {
-                    Ok(record) => {
-                        let record =
-                            record.ok_or_else(|| StatusCode::NOT_FOUND)?;
-                        if record.yanked.is_some() {
-                            return Err(StatusCode::CONFLICT);
-                        }
+        match PackageModel::find_by_key(&state.pool, &query.id).await {
+            Ok((ns, pkg, record)) => {
+                let record = record.ok_or_else(|| StatusCode::NOT_FOUND)?;
+                if record.yanked.is_some() {
+                    return Err(StatusCode::CONFLICT);
+                }
 
+                // Should have namespace if we have version record
+                let ns = ns.unwrap();
+
+                match PackageModel::can_write_namespace(
+                    &state.pool,
+                    &address,
+                    &ns.name,
+                )
+                .await
+                {
+                    Ok(_) => {
                         PackageModel::yank(
                             &state.pool,
                             record.version_id,
@@ -248,8 +245,11 @@ impl PackageHandler {
                         Ok(StatusCode::OK)
                     }
                     Err(e) => Err(match e {
-                        DatabaseError::UnknownNamespace(_)
-                        | DatabaseError::UnknownPackage(_) => {
+                        DatabaseError::Unauthorized(_) => {
+                            StatusCode::UNAUTHORIZED
+                        }
+                        DatabaseError::UnknownPublisher(_)
+                        | DatabaseError::UnknownNamespace(_) => {
                             StatusCode::NOT_FOUND
                         }
                         _ => StatusCode::INTERNAL_SERVER_ERROR,
@@ -257,9 +257,8 @@ impl PackageHandler {
                 }
             }
             Err(e) => Err(match e {
-                DatabaseError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
-                DatabaseError::UnknownPublisher(_)
-                | DatabaseError::UnknownNamespace(_) => StatusCode::NOT_FOUND,
+                DatabaseError::UnknownNamespace(_)
+                | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }),
         }
@@ -274,25 +273,22 @@ impl PackageHandler {
         let _kind = state.config.registry.kind;
 
         match PackageModel::find_by_key(&state.pool, &query.id).await {
-            Ok(version) => {
-                let version_record = version.ok_or(StatusCode::NOT_FOUND)?;
+            Ok((_, _, record)) => {
+                let record = record.ok_or(StatusCode::NOT_FOUND)?;
 
                 let body = state
                     .layers
-                    .fetch(
-                        &version_record.pointer_id,
-                        version_record.content_id.as_ref(),
-                    )
+                    .fetch(&record.pointer_id, record.content_id.as_ref())
                     .await
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
                 // Verify the checksum
                 let checksum = Sha3_256::digest(&body);
-                if checksum.as_slice() != version_record.checksum.as_slice() {
+                if checksum.as_slice() != record.checksum.as_slice() {
                     return Err(StatusCode::UNPROCESSABLE_ENTITY);
                 }
 
-                verify_signature(version_record.signature, &body)
+                verify_signature(record.signature, &body)
                     .map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?;
 
                 let mut headers = HeaderMap::new();

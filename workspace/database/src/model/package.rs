@@ -139,7 +139,11 @@ impl PackageModel {
     pub async fn find_by_key(
         pool: &SqlitePool,
         package_key: &PackageKey,
-    ) -> Result<Option<VersionRecord>> {
+    ) -> Result<(
+        Option<NamespaceRecord>,
+        Option<PackageRecord>,
+        Option<VersionRecord>,
+    )> {
         match package_key {
             PackageKey::Pointer(namespace, name, version) => {
                 let namespace_record =
@@ -148,14 +152,16 @@ impl PackageModel {
                         .ok_or_else(|| {
                             Error::UnknownNamespace(namespace.clone())
                         })?;
-                let (_, version_record) = PackageModel::find_by_name_version(
-                    pool,
-                    namespace_record.namespace_id,
-                    name,
-                    version,
-                )
-                .await?;
-                Ok(version_record)
+                let (package_record, version_record) =
+                    PackageModel::find_by_name_version(
+                        pool,
+                        namespace_record.namespace_id,
+                        name,
+                        version,
+                    )
+                    .await?;
+
+                Ok((Some(namespace_record), package_record, version_record))
             }
             PackageKey::Cid(cid) => {
                 let mut args: SqliteArguments = Default::default();
@@ -168,7 +174,24 @@ impl PackageModel {
                 .fetch_optional(pool)
                 .await?;
 
-                Ok(record)
+                let package_record = if let Some(record) = &record {
+                    PackageModel::find_package_by_id(pool, record.package_id)
+                        .await?
+                } else {
+                    None
+                };
+
+                let namespace_record = if let Some(record) = &package_record {
+                    NamespaceModel::find_namespace_by_id(
+                        pool,
+                        record.namespace_id,
+                    )
+                    .await?
+                } else {
+                    None
+                };
+
+                Ok((namespace_record, package_record, record))
             }
         }
     }

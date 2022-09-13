@@ -367,7 +367,7 @@ See example response for latest version above.
 ### Yank version
 
 ```
-POST /api/package/:namespace/:package/:version/yank
+POST /api/package/yank
 ```
 
 Mark a specific version of a package as yanked.
@@ -376,11 +376,9 @@ The body should be a UTF-8 encoded string of the reason why the version was yank
 
 If the version is already yanked a 409 CONFLICT response is returned.
 
-#### Parameters
+#### Query
 
-* `:namespace`: The package namespace.
-* `:package`: The package name.
-* `:version`: The package version.
+* `id`: Package identifier.
 
 #### Headers
 

@@ -154,9 +154,7 @@ impl RegistryClient {
     pub async fn yank(
         server: Url,
         signing_key: SigningKey,
-        namespace: Namespace,
-        package: PackageName,
-        version: Version,
+        id: PackageKey,
         body: String,
     ) -> Result<()> {
         let signature: recoverable::Signature =
@@ -164,13 +162,11 @@ impl RegistryClient {
         let sign_bytes = &signature;
 
         let client = Client::new();
-        let url = server.join(&format!(
-            "api/package/{}/{}/{}/yank",
-            namespace, package, version
-        ))?;
+        let url = server.join("api/package/yank")?;
 
         let response = client
             .post(url)
+            .query(&[("id", id.to_string())])
             .header(X_SIGNATURE, base64::encode(sign_bytes))
             .body(body)
             .send()

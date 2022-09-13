@@ -6,7 +6,7 @@ use crate::test_utils::*;
 use semver::Version;
 
 use ipfs_registry_client::RegistryClient;
-use ipfs_registry_core::{Namespace, PackageName};
+use ipfs_registry_core::{Namespace, PackageKey, PackageName};
 
 use k256::ecdsa::SigningKey;
 
@@ -39,12 +39,15 @@ async fn integration_yank() -> Result<()> {
     )
     .await?;
 
-    assert!(RegistryClient::yank(
-        server_url.clone(),
-        signing_key.clone(),
+    let id = PackageKey::Pointer(
         namespace.clone(),
         package.clone(),
         version.clone(),
+    );
+    assert!(RegistryClient::yank(
+        server_url.clone(),
+        signing_key.clone(),
+        id,
         message.clone(),
     )
     .await
