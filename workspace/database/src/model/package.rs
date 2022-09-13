@@ -280,7 +280,7 @@ impl PackageModel {
         name: &PackageName,
         versions: &VersionReq,
         pager: &Pager,
-    ) -> Result<Vec<VersionRecord>> {
+    ) -> Result<ResultSet<VersionRecord>> {
         // Find the namespace
         let namespace_record = NamespaceModel::find_by_name(pool, namespace)
             .await?
@@ -361,7 +361,7 @@ impl PackageModel {
             .fetch_all(pool)
             .await?;
 
-        Ok(records)
+        Ok(records.into_result_set())
     }
 
     /// Find latest version by namespace and package name.

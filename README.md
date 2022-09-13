@@ -259,6 +259,7 @@ List the versions of a package.
 
 #### Query
 
+* `range`: Version range query, see [semver crate][] for details.
 * `limit`: Limit per page.
 * `offset`: Offset for pagination.
 * `sort`: Sort order, either `asc` or `desc`.
@@ -556,5 +557,6 @@ MIT or Apache-2.0
 [caddy]: https://caddyserver.com/
 [sqlite]: https://www.sqlite.org/
 [semver]: https://semver.org/
+[semver crate]: https://docs.rs/semver/
 [npm]: https://www.npmjs.com/
 [crates]: https://crates.io/

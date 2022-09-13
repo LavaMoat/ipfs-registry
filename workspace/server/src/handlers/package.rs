@@ -8,7 +8,7 @@ use axum::{
 
 //use axum_macros::debug_handler;
 
-use semver::Version;
+use semver::{Version, VersionReq};
 use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
 
@@ -55,6 +55,26 @@ impl ListPackagesQuery {
 
 #[derive(Default, Debug, Deserialize)]
 #[serde(default)]
+pub struct ListVersionsQuery {
+    range: Option<VersionReq>,
+    offset: i64,
+    #[serde(default = "default_limit")]
+    limit: i64,
+    sort: SortOrder,
+}
+
+impl ListVersionsQuery {
+    fn into_pager(&self) -> Pager {
+        Pager {
+            offset: self.offset,
+            limit: self.limit,
+            sort: self.sort,
+        }
+    }
+}
+
+#[derive(Default, Debug, Deserialize)]
+#[serde(default)]
 pub struct LatestQuery {
     prerelease: bool,
 }
@@ -90,22 +110,44 @@ impl PackageHandler {
     pub(crate) async fn list_versions(
         Extension(state): Extension<ServerState>,
         Path((namespace, package)): Path<(Namespace, PackageName)>,
-        Query(pager): Query<Pager>,
+        Query(query): Query<ListVersionsQuery>,
     ) -> std::result::Result<Json<ResultSet<VersionRecord>>, StatusCode> {
-        match PackageModel::list_versions(
-            &state.pool,
-            &namespace,
-            &package,
-            &pager,
-        )
-        .await
-        {
-            Ok(records) => Ok(Json(records)),
-            Err(e) => Err(match e {
-                DatabaseError::UnknownNamespace(_)
-                | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
-                _ => StatusCode::INTERNAL_SERVER_ERROR,
-            }),
+        let pager = query.into_pager();
+
+        if let Some(range) = query.range {
+            match PackageModel::find_versions(
+                &state.pool,
+                &namespace,
+                &package,
+                &range,
+                &pager,
+            )
+            .await
+            {
+                Ok(records) => Ok(Json(records)),
+                Err(e) => Err(match e {
+                    DatabaseError::UnknownNamespace(_)
+                    | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
+                    _ => StatusCode::INTERNAL_SERVER_ERROR,
+                }),
+            }
+
+        } else {
+            match PackageModel::list_versions(
+                &state.pool,
+                &namespace,
+                &package,
+                &pager,
+            )
+            .await
+            {
+                Ok(records) => Ok(Json(records)),
+                Err(e) => Err(match e {
+                    DatabaseError::UnknownNamespace(_)
+                    | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
+                    _ => StatusCode::INTERNAL_SERVER_ERROR,
+                }),
+            }
         }
     }
 
