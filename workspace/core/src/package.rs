@@ -18,11 +18,26 @@ use crate::{
 
 const IPFS_DELIMITER: &str = "/ipfs/";
 
+const INVALID: &[char] = &[
+    '/',
+    '\\',
+    ' ',
+    '\t',
+    '\n',
+    '@',
+    ':',
+    '?',
+    '#',
+    '_',
+    '&',
+    '!',
+    ';'
+];
+
 /// Validate a namespace or package name.
 pub fn validate(s: &str) -> bool {
-    let invalid = "/\\ \t\n@:";
-    for c in invalid.chars() {
-        if s.find(c).is_some() {
+    for c in INVALID {
+        if s.find(*c).is_some() {
             return false;
         }
     }

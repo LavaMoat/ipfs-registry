@@ -7,7 +7,7 @@ use axum::{
         HeaderValue, Method,
     },
     response::IntoResponse,
-    routing::{get, post, put},
+    routing::{get, post},
     Json, Router,
 };
 use axum_server::{tls_rustls::RustlsConfig, Handle};
@@ -203,8 +203,8 @@ impl Server {
                 get(PackageHandler::exact_version),
             )
             //.route(
-            //"/api/package/:namespace/:package/:version/yank",
-            //get(PackageHandler::yank),
+                //"/api/package/:namespace/:package/:version/yank",
+                    //put(PackageHandler::yank),
             //)
             .layer(RequestBodyLimitLayer::new(limit))
             .layer(cors)

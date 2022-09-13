@@ -58,7 +58,8 @@ impl RegistryClient {
         let sign_bytes = &signature;
 
         let client = Client::new();
-        let url = server.join(&format!("api/namespace/{}", namespace))?;
+        let url = server.join("api/namespace")?
+            .join(namespace.as_str())?;
 
         let response = client
             .post(url)
@@ -126,7 +127,7 @@ impl RegistryClient {
         let sign_bytes = &signature;
 
         let client = Client::new();
-        let url = server.join(&format!("api/package/{}", namespace))?;
+        let url = server.join("api/package")?.join(namespace.as_str())?;
 
         let response = client
             .post(url)
