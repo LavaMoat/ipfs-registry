@@ -175,7 +175,7 @@ POST /api/package/:namespace
 
 If the package already exists or is not ahead of the latest version a 409 CONFLICT response is returned.
 
-If the address of the publisher has been denied based on the server configuration's `allow` and `deny` sets then a 401 UNAUTHORIZED response is returned.
+If the address of the publisher has been denied then a 401 UNAUTHORIZED response is returned.
 
 The default configuration limits requests to 16MiB so if the package is too large a 413 PAYLOAD TOO LARGE response is returned.
 
@@ -355,7 +355,7 @@ Response with `?prerelease=true` query string:
 ### Package version
 
 ```
-GET /api/package/version
+GET /api/package/version?id=<package-id>
 ```
 
 Get a specific version of a package.
@@ -371,7 +371,7 @@ See example response for latest version above.
 ### Yank version
 
 ```
-POST /api/package/yank
+POST /api/package/yank?id=<package-id>
 ```
 
 Mark a specific version of a package as yanked.
@@ -462,7 +462,7 @@ layers = [
 
 Relative paths are resolved from the directory containing the configuration file; the path must be a directory.
 
-Note that all the downstream storage layers must be available for the service to work as intended; ie, requests must succeeed across all storage layers for the server to return a success response.
+Note that all the downstream storage layers must be available for the service to work as intended; ie, requests must succeed across all storage layers for the server to return a success response.
 
 ### Registry
 
