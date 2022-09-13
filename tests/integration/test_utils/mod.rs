@@ -152,7 +152,7 @@ pub fn mock_pointer(version: Option<Version>) -> Result<Pointer> {
     let doc = json!(
         {
           "definition": {
-            "object": "QmSYVWjXh5GCZpxhCSHMa89X9VHnPpaxafkBAR9rjfCenb",
+            "objects": ["QmSYVWjXh5GCZpxhCSHMa89X9VHnPpaxafkBAR9rjfCenb"],
             "artifact": {
               "namespace": "mock-namespace",
               "package": {

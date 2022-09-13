@@ -1,12 +1,13 @@
 //! Traits and types for storage layers.
 use async_trait::async_trait;
 use axum::body::Bytes;
+use cid::Cid;
 
 use ipfs_registry_core::{Artifact, ObjectKey};
 
 use crate::{
     config::{LayerConfig, RegistryConfig, ServerConfig},
-    Result,
+    Error, Result,
 };
 
 pub(crate) mod file;
@@ -58,15 +59,6 @@ pub struct Layers {
 }
 
 impl Layers {
-    /// Primary storage layer.
-    ///
-    /// The configuration loader ensures we always have at least one
-    /// layer configuration so we can be certain we have a primary layer.
-    #[allow(clippy::borrowed_box)]
-    fn primary(&self) -> &Box<dyn Layer + Send + Sync + 'static> {
-        self.storage.get(0).unwrap()
-    }
-
     /// Publish an artifact to all storage layers.
     pub async fn publish(
         &self,
@@ -84,14 +76,51 @@ impl Layers {
             }
             Ok(keys)
         } else {
-            Ok(vec![self.primary().add_artifact(data, artifact).await?])
+            let primary = self
+                .storage
+                .get(0)
+                .expect("failed to get primary storage layer");
+            Ok(vec![primary.add_artifact(data, artifact).await?])
         }
     }
 
     /// Fetch an artifact from the storage layers.
-    pub async fn fetch(&self, id: &ObjectKey) -> Result<Vec<u8>> {
-        // FIXME: find first responding layer that returns an object...
-        self.primary().get_artifact(id).await
+    pub async fn fetch(
+        &self,
+        pointer_id: &str,
+        content_id: Option<&Cid>,
+    ) -> Result<Vec<u8>> {
+        let pointer_id = ObjectKey::Pointer(pointer_id.to_string());
+        let content_id = content_id.map(|c| ObjectKey::Cid(c.clone()));
+
+        let len = self.storage.len();
+        for (index, layer) in self.storage.iter().enumerate() {
+            let is_last = index == len - 1;
+            let result = if layer.supports_content_id() {
+                if let Some(content_id) = &content_id {
+                    layer.get_artifact(content_id).await
+                } else {
+                    continue;
+                }
+            } else {
+                layer.get_artifact(&pointer_id).await
+            };
+
+            match result {
+                Ok(result) => return Ok(result),
+                Err(e) => {
+                    tracing::error!("{}", e);
+                    if is_last {
+                        return Err(e);
+                    }
+                }
+            }
+        }
+
+        Err(Error::ArtifactNotFound(
+            pointer_id.to_string(),
+            content_id.map(|c| c.to_string()),
+        ))
     }
 }
 

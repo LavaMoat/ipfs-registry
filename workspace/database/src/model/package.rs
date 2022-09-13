@@ -5,7 +5,9 @@ use sqlx::{
 };
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{Namespace, PackageKey, PackageName, Pointer};
+use ipfs_registry_core::{
+    Namespace, ObjectKey, PackageKey, PackageName, Pointer,
+};
 
 use crate::{
     model::{NamespaceModel, Pager, PublisherModel, VersionIncludes},
@@ -113,6 +115,7 @@ impl PackageModel {
                 build,
                 -- package,
                 content_id,
+                pointer_id,
                 signature,
                 checksum,
                 created_at
@@ -312,6 +315,7 @@ impl PackageModel {
                     (major || minor || patch || pre) as version,
                     package,
                     content_id,
+                    pointer_id,
                     signature,
                     checksum,
                     created_at
@@ -408,6 +412,7 @@ impl PackageModel {
                     build,
                     package,
                     content_id,
+                    pointer_id,
                     signature,
                     checksum,
                     created_at
@@ -542,6 +547,15 @@ impl PackageModel {
         let name = &pointer.definition.artifact.package.name;
         let version = &pointer.definition.artifact.package.version;
 
+        let pointer_id = pointer.definition.artifact.pointer_id();
+        let content_id = pointer.definition.objects.iter().find_map(|o| {
+            if let ObjectKey::Cid(cid) = o {
+                Some(cid.to_string())
+            } else {
+                None
+            }
+        });
+
         // Find or insert the package
         let package = serde_json::to_string(&pointer.package)?;
 
@@ -558,7 +572,7 @@ impl PackageModel {
 
         let mut builder = QueryBuilder::new(
             r#"
-                INSERT INTO versions ( publisher_id, package_id, major, minor, patch, pre, build, package, content_id, signature, checksum, created_at )
+                INSERT INTO versions ( publisher_id, package_id, major, minor, patch, pre, build, package, content_id, pointer_id, signature, checksum, created_at )
                 VALUES (
             "#,
         );
@@ -571,7 +585,8 @@ impl PackageModel {
         separated.push_bind(version.pre.to_string());
         separated.push_bind(version.build.to_string());
         separated.push_bind(package);
-        separated.push_bind(pointer.definition.object.to_string());
+        separated.push_bind(content_id);
+        separated.push_bind(pointer_id);
         separated.push_bind(pointer.definition.signature.value.to_vec());
         separated.push_bind(pointer.definition.checksum.to_vec());
         builder.push(", datetime('now') )");

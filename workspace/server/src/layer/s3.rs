@@ -134,11 +134,11 @@ impl Layer for S3Layer {
         let key = artifact.pointer_id();
         let bucket_key = self.get_bucket_key(&key);
         self.put_object(bucket_key, data).await?;
-        Ok(ObjectKey::Key(key))
+        Ok(ObjectKey::Pointer(key))
     }
 
     async fn get_artifact(&self, id: &ObjectKey) -> Result<Vec<u8>> {
-        if let ObjectKey::Key(key) = id {
+        if let ObjectKey::Pointer(key) = id {
             let bucket_key = self.get_bucket_key(key);
             let result = self
                 .get_object(bucket_key)

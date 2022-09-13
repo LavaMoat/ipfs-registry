@@ -172,7 +172,10 @@ impl PackageHandler {
 
                 let body = state
                     .layers
-                    .fetch(&version_record.content_id)
+                    .fetch(
+                        &version_record.pointer_id,
+                        version_record.content_id.as_ref(),
+                    )
                     .await
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -270,7 +273,7 @@ impl PackageHandler {
 
                         let checksum = Sha3_256::digest(&body);
 
-                        let mut objects = state
+                        let objects = state
                             .layers
                             .publish(body, &descriptor)
                             .await
@@ -290,12 +293,10 @@ impl PackageHandler {
                             }
                         });
 
-                        let object = objects.remove(0);
-
                         let doc = Pointer {
                             definition: Definition {
                                 artifact: descriptor,
-                                object,
+                                objects,
                                 signature: PackageSignature {
                                     signer: address,
                                     value: signature.into(),

@@ -24,6 +24,10 @@ pub enum Error {
     #[error("not a recognised scheme {0}")]
     InvalidScheme(String),
 
+    /// Error generated when an artifact could not be retrieved.
+    #[error("artifact could not be found for {0} ({1:?}), possibly layer configuration has been changed")]
+    ArtifactNotFound(String, Option<String>),
+
     /// Error generated when no storage layers are configured.
     #[error("no storage layers, check configuration")]
     NoStorageLayers,

@@ -36,11 +36,11 @@ impl Layer for MemoryLayer {
         let key = artifact.pointer_id();
         let mut writer = self.files.write().await;
         writer.insert(key.clone(), data.to_vec());
-        Ok(ObjectKey::Key(key))
+        Ok(ObjectKey::Pointer(key))
     }
 
     async fn get_artifact(&self, id: &ObjectKey) -> Result<Vec<u8>> {
-        if let ObjectKey::Key(key) = id {
+        if let ObjectKey::Pointer(key) = id {
             let reader = self.files.read().await;
             let result = reader
                 .get(key)

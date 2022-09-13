@@ -34,11 +34,11 @@ impl Layer for FileLayer {
         if !path.exists() {
             tokio::fs::write(path, &data).await?;
         }
-        Ok(ObjectKey::Key(key))
+        Ok(ObjectKey::Pointer(key))
     }
 
     async fn get_artifact(&self, id: &ObjectKey) -> Result<Vec<u8>> {
-        if let ObjectKey::Key(key) = id {
+        if let ObjectKey::Pointer(key) = id {
             let path = self.directory.join(key.clone());
             if path.exists() {
                 let contents = tokio::fs::read(path).await?;

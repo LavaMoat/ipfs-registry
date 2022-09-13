@@ -57,7 +57,6 @@ impl IpfsLayer {
 
 #[async_trait]
 impl Layer for IpfsLayer {
-
     fn supports_content_id(&self) -> bool {
         true
     }
