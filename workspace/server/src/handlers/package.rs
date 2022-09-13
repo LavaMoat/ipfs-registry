@@ -127,11 +127,12 @@ impl PackageHandler {
                 Ok(records) => Ok(Json(records)),
                 Err(e) => Err(match e {
                     DatabaseError::UnknownNamespace(_)
-                    | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
+                    | DatabaseError::UnknownPackage(_) => {
+                        StatusCode::NOT_FOUND
+                    }
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 }),
             }
-
         } else {
             match PackageModel::list_versions(
                 &state.pool,
@@ -144,7 +145,9 @@ impl PackageHandler {
                 Ok(records) => Ok(Json(records)),
                 Err(e) => Err(match e {
                     DatabaseError::UnknownNamespace(_)
-                    | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
+                    | DatabaseError::UnknownPackage(_) => {
+                        StatusCode::NOT_FOUND
+                    }
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 }),
             }

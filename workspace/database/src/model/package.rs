@@ -269,19 +269,32 @@ impl PackageModel {
                             builder, args, column, "=", combined,
                         );
                     } else {
-                        builder.push(column);
-                        builder.push(">=");
-                        builder.push_bind(combined.clone());
-                        args.add(combined);
+                        PackageModel::with_operator(
+                            builder, args, column, ">=", combined,
+                        );
 
                         builder.push(" AND ");
 
                         let upper_bound =
                             format!("{}{}{}", major, minor + 1, 0);
-                        builder.push(column);
-                        builder.push("<");
-                        builder.push_bind(upper_bound.clone());
-                        args.add(upper_bound);
+
+                        PackageModel::with_operator(
+                            builder,
+                            args,
+                            column,
+                            "<",
+                            upper_bound,
+                        );
+                    }
+                }
+                Op::Wildcard => {
+                    if comparator.minor.is_none()
+                        || (comparator.minor.is_some()
+                            && comparator.patch.is_none())
+                    {
+                        PackageModel::with_operator(
+                            builder, args, column, "=", combined,
+                        );
                     }
                 }
                 _ => {}
