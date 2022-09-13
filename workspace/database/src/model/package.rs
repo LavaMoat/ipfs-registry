@@ -200,17 +200,14 @@ impl PackageModel {
     fn with_operator(
         builder: &mut QueryBuilder<Sqlite>,
         args: &mut SqliteArguments,
+        column: &str,
         operator: &str,
-        major: i64,
-        minor: i64,
-        patch: i64,
-        pre: String,
+        combined: String,
     ) {
         let op = format!(" {} ", operator);
-        let combined = format!("{}{}{}{}", major, minor, patch, pre);
-        builder.push("version");
+        builder.push(column);
         builder.push(&op);
-        builder.push_bind(combined.clone());
+        builder.push_bind(combined.to_string());
         args.add(combined);
     }
 
@@ -225,31 +222,41 @@ impl PackageModel {
             let minor = comparator.minor.unwrap_or(0) as i64;
             let patch = comparator.patch.unwrap_or(0) as i64;
             let pre = comparator.pre.to_string();
+            let (combined, column) = if comparator.minor.is_none() {
+                (format!("{}", major), "major")
+            } else if comparator.minor.is_some() && comparator.patch.is_none() {
+                (format!("{}{}", major, minor), "major_minor")
+            } else if comparator.patch.is_some() {
+                (format!("{}{}{}", major, minor, patch), "major_minor_patch")
+            } else {
+                (format!("{}{}{}{}", major, minor, patch, pre), "version")
+            };
+
             builder.push("(");
             match comparator.op {
                 Op::Exact => {
                     PackageModel::with_operator(
-                        builder, args, "=", major, minor, patch, pre,
+                        builder, args, column, "=", combined,
                     );
                 }
                 Op::Greater => {
                     PackageModel::with_operator(
-                        builder, args, ">", major, minor, patch, pre,
+                        builder, args, column, ">", combined,
                     );
                 }
                 Op::GreaterEq => {
                     PackageModel::with_operator(
-                        builder, args, ">=", major, minor, patch, pre,
+                        builder, args, column, ">=", combined,
                     );
                 }
                 Op::Less => {
                     PackageModel::with_operator(
-                        builder, args, "<", major, minor, patch, pre,
+                        builder, args, column, "<", combined,
                     );
                 }
                 Op::LessEq => {
                     PackageModel::with_operator(
-                        builder, args, "<=", major, minor, patch, pre,
+                        builder, args, column, "<=", combined,
                     );
                 }
                 _ => {}
@@ -299,6 +306,8 @@ impl PackageModel {
                     patch,
                     pre,
                     build,
+                    (major || minor) as major_minor,
+                    (major || minor || patch) as major_minor_patch,
                     (major || minor || patch || pre) as version,
                     package,
                     content_id,

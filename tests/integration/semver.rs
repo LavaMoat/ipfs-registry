@@ -156,6 +156,20 @@ async fn integration_semver() -> Result<()> {
     assert_eq!(Version::new(1, 0, 0), versions.remove(0).version);
     assert_eq!(Version::new(1, 0, 1), versions.remove(0).version);
 
+    let request = VersionReq::parse("=1")?;
+    let mut versions = PackageModel::find_versions(
+        &pool,
+        &namespace,
+        &mock_package,
+        &request,
+        &Default::default(),
+    )
+    .await?;
+    assert!(versions.len() == 3);
+    assert_eq!(Version::new(1, 0, 0), versions.remove(0).version);
+    assert_eq!(Version::new(1, 0, 1), versions.remove(0).version);
+    assert_eq!(Version::new(1, 1, 0), versions.remove(0).version);
+
     let request = VersionReq::parse("<1.0.1")?;
     let mut versions = PackageModel::find_versions(
         &pool,
@@ -215,6 +229,19 @@ async fn integration_semver() -> Result<()> {
     assert_eq!(Version::new(1, 0, 0), versions.remove(0).version);
     assert_eq!(Version::new(1, 0, 1), versions.remove(0).version);
     assert_eq!(Version::new(1, 1, 0), versions.remove(0).version);
+    assert_eq!(Version::parse("2.0.0-alpha.1")?, versions.remove(0).version);
+    assert_eq!(Version::parse("2.0.0-alpha.2")?, versions.remove(0).version);
+
+    let request = VersionReq::parse(">=2")?;
+    let mut versions = PackageModel::find_versions(
+        &pool,
+        &namespace,
+        &mock_package,
+        &request,
+        &Default::default(),
+    )
+    .await?;
+    assert!(versions.len() == 2);
     assert_eq!(Version::parse("2.0.0-alpha.1")?, versions.remove(0).version);
     assert_eq!(Version::parse("2.0.0-alpha.2")?, versions.remove(0).version);
 
