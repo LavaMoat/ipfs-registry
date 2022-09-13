@@ -67,39 +67,47 @@ impl Layers {
         self.storage.get(0).unwrap()
     }
 
+    /// Publish an artifact to all storage layers.
     pub async fn publish(
         &self,
         data: Bytes,
-        descriptor: &Artifact,
+        artifact: &Artifact,
     ) -> Result<Vec<ObjectKey>> {
+        // Do it like this to avoid an unnecessary clone() on the
+        // buffer when only a single storage layer is configured
         let has_mirrors = self.storage.len() > 1;
         if has_mirrors {
             let mut keys = Vec::new();
             for layer in self.storage.iter() {
-                let mut id = layer.add_blob(data.clone(), descriptor).await?;
-                keys.append(&mut id);
+                let id = layer.add_artifact(data.clone(), artifact).await?;
+                keys.push(id);
             }
             Ok(keys)
         } else {
-            self.primary().add_blob(data, descriptor).await
+            Ok(vec![self.primary().add_artifact(data, artifact).await?])
         }
     }
 
+    /// Fetch an artifact from the storage layers.
     pub async fn fetch(&self, id: &ObjectKey) -> Result<Vec<u8>> {
-        self.primary().get_blob(id).await
+        // FIXME: find first responding layer that returns an object...
+        self.primary().get_artifact(id).await
     }
 }
 
 /// Trait for a storage layer.
 #[async_trait]
 pub trait Layer {
-    /// Add a blob to the storage and return an identifier.
-    async fn add_blob(
+    /// Determine if this layer supports a content identifier.
+    fn supports_content_id(&self) -> bool;
+
+    /// Add an artifact to the storage layer and return an identifier.
+    async fn add_artifact(
         &self,
         data: Bytes,
         artifact: &Artifact,
-    ) -> Result<Vec<ObjectKey>>;
+    ) -> Result<ObjectKey>;
 
-    /// Get a blob from storage by identifier.
-    async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>>;
+    /// Get an artifact from storage by identifier.
+    async fn get_artifact(&self, id: &ObjectKey) -> Result<Vec<u8>>;
 }

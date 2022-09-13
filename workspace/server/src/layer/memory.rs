@@ -24,18 +24,22 @@ impl MemoryLayer {
 
 #[async_trait]
 impl Layer for MemoryLayer {
-    async fn add_blob(
+    fn supports_content_id(&self) -> bool {
+        false
+    }
+
+    async fn add_artifact(
         &self,
         data: Bytes,
         artifact: &Artifact,
-    ) -> Result<Vec<ObjectKey>> {
+    ) -> Result<ObjectKey> {
         let key = artifact.pointer_id();
         let mut writer = self.files.write().await;
         writer.insert(key.clone(), data.to_vec());
-        Ok(vec![ObjectKey::Key(key)])
+        Ok(ObjectKey::Key(key))
     }
 
-    async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>> {
+    async fn get_artifact(&self, id: &ObjectKey) -> Result<Vec<u8>> {
         if let ObjectKey::Key(key) = id {
             let reader = self.files.read().await;
             let result = reader

@@ -23,8 +23,7 @@ use ipfs_registry_database::{
 };
 
 use crate::{
-    handlers::verify_signature, headers::Signature,
-    server::ServerState,
+    handlers::verify_signature, headers::Signature, server::ServerState,
 };
 
 #[derive(Debug, Deserialize)]

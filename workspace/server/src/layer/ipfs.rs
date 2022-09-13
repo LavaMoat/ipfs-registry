@@ -57,18 +57,23 @@ impl IpfsLayer {
 
 #[async_trait]
 impl Layer for IpfsLayer {
-    async fn add_blob(
+
+    fn supports_content_id(&self) -> bool {
+        true
+    }
+
+    async fn add_artifact(
         &self,
         data: Bytes,
         _descriptor: &Artifact,
-    ) -> Result<Vec<ObjectKey>> {
+    ) -> Result<ObjectKey> {
         let data = Cursor::new(data);
         let add_res = self.client.add(data).await?;
         self.client.pin_add(&add_res.hash, true).await?;
-        Ok(vec![ObjectKey::Cid(add_res.hash.try_into()?)])
+        Ok(ObjectKey::Cid(add_res.hash.try_into()?))
     }
 
-    async fn get_blob(&self, id: &ObjectKey) -> Result<Vec<u8>> {
+    async fn get_artifact(&self, id: &ObjectKey) -> Result<Vec<u8>> {
         let id = id.to_string();
         let res = self
             .client
