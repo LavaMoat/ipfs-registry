@@ -53,7 +53,7 @@ The package registry supports multiple storage layers so it can be configured to
 
 Namespaces are useful as a means to establish trust for a collection of packages and to allow publishers to name their packages without collisions.
 
-They don't prevent name-squatting as that problem just moves from the package name level to the namespace level; but they do help to make it easier to identify the author of a package so we designed the registry with namespaces baked in.
+They don't prevent name-squatting as that problem just moves from the package name level to the namespace level; but they do help to make it easier to identify the author(s) of a package so we designed the registry with namespaces baked in.
 
 ### Generic Archives
 
@@ -167,7 +167,7 @@ Register a namespace; if the namespace already exists a 409 CONFLICT response is
 PUT /api/package/:namespace
 ```
 
-If the package already exists a 409 CONFLICT response is returned.
+If the package already exists or is not ahead of the latest version a 409 CONFLICT response is returned.
 
 If the address of the publisher has been denied based on the server configuration's `allow` and `deny` sets then a 401 UNAUTHORIZED response is returned.
 

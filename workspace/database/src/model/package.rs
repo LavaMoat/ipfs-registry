@@ -224,7 +224,8 @@ impl PackageModel {
             let pre = comparator.pre.to_string();
             let (combined, column) = if comparator.minor.is_none() {
                 (format!("{}", major), "major")
-            } else if comparator.minor.is_some() && comparator.patch.is_none() {
+            } else if comparator.minor.is_some() && comparator.patch.is_none()
+            {
                 (format!("{}{}", major, minor), "major_minor")
             } else if comparator.patch.is_some() {
                 (format!("{}{}{}", major, minor, patch), "major_minor_patch")

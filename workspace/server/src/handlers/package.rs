@@ -326,7 +326,8 @@ impl PackageHandler {
                         Ok(Json(receipt))
                     }
                     Err(e) => Err(match e {
-                        DatabaseError::PackageExists(_, _, _) => {
+                        DatabaseError::PackageExists(_, _, _)
+                        | DatabaseError::VersionNotAhead(_, _) => {
                             StatusCode::CONFLICT
                         }
                         _ => StatusCode::INTERNAL_SERVER_ERROR,
