@@ -297,6 +297,48 @@ impl PackageModel {
                         );
                     }
                 }
+                Op::Caret => {
+                    if comparator.patch.is_some() {
+                        // ^0.J.K (for J>0) — equivalent to >=0.J.K, <0.(J+1).0
+                        if major == 0 && minor > 0 {
+                            PackageModel::with_operator(
+                                builder, args, column, ">=", combined,
+                            );
+                            builder.push(" AND ");
+                            let upper_bound =
+                                format!("{}{}{}", major, minor + 1, 0);
+                            PackageModel::with_operator(
+                                builder,
+                                args,
+                                column,
+                                "<",
+                                upper_bound,
+                            );
+                        } else if major > 0 {
+                            PackageModel::with_operator(
+                                builder, args, column, ">=", combined,
+                            );
+                            builder.push(" AND ");
+                            let upper_bound =
+                                format!("{}{}{}", major + 1, 0, 0);
+                            PackageModel::with_operator(
+                                builder,
+                                args,
+                                column,
+                                "<",
+                                upper_bound,
+                            );
+                        } else {
+                            PackageModel::with_operator(
+                                builder, args, column, "=", combined,
+                            );
+                        }
+                    } else {
+                        PackageModel::with_operator(
+                            builder, args, column, "=", combined,
+                        );
+                    }
+                }
                 _ => {}
             }
             builder.push(")");

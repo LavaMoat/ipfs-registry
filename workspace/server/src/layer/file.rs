@@ -41,8 +41,7 @@ impl Layer for FileLayer {
         if let ObjectKey::Pointer(key) = id {
             let path = self.directory.join(key.clone());
             if path.exists() {
-                let contents = tokio::fs::read(path).await?;
-                Ok(contents)
+                Ok(tokio::fs::read(path).await?)
             } else {
                 Err(Error::NotFile(path))
             }
