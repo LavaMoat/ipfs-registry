@@ -63,7 +63,7 @@ Currently support is provided for [npm][] packages (the default) as well as [cra
 
 ### Confusables & Security
 
-To prevent identifier based attacks all namespace and package names are subject to the [unicode security mechanisms][]; confusable detection is thanks to the [unicode security crate][].
+To mitigate identifier based attacks all namespace and package names are subject to the [unicode security mechanisms][]; confusable detection is thanks to the [unicode security crate][].
 
 ## Getting Started
 
