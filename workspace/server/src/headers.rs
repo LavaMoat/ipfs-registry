@@ -27,6 +27,7 @@ impl Header for Signature {
     {
         let value = values.next().ok_or_else(headers::Error::invalid)?;
         let value = value.to_str().map_err(|_| headers::Error::invalid())?;
+
         let value =
             base64::decode(value).map_err(|_| headers::Error::invalid())?;
         let value: [u8; 65] = value

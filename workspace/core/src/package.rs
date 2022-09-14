@@ -7,6 +7,7 @@ use serde::{
     Deserialize, Serialize,
 };
 use serde_json::Value;
+use serde_with::{serde_as, base64::Base64};
 use sha3::{Digest, Sha3_256};
 use std::{fmt, str::FromStr};
 use web3_address::ethereum::Address;
@@ -345,19 +346,17 @@ pub struct Definition {
         serialize_with = "hex::serde::serialize",
         deserialize_with = "hex::serde::deserialize"
     )]
-    pub checksum: Vec<u8>,
+    pub checksum: [u8; 32],
 }
 
 /// Package signature and address of the verifying key.
+#[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PackageSignature {
     /// Address of the signer.
     pub signer: Address,
     /// Signature of the package file.
-    #[serde(
-        serialize_with = "hex::serde::serialize",
-        deserialize_with = "hex::serde::deserialize"
-    )]
+    #[serde_as(as = "Base64")]
     pub value: [u8; 65],
 }
 

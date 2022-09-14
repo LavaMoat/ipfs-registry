@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use time::{format_description, OffsetDateTime, PrimitiveDateTime};
 use web3_address::ethereum::Address;
+use serde_with::{serde_as, DisplayFromStr};
 
 use cid::Cid;
 use ipfs_registry_core::{Namespace, PackageName};
@@ -252,6 +253,7 @@ impl FromRow<'_, SqliteRow> for PackageRecord {
     }
 }
 
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VersionRecord {
     /// Publisher foreign key.
@@ -271,7 +273,8 @@ pub struct VersionRecord {
     /// Content identifier.
     #[serde(
         skip_serializing_if = "Option::is_none")]
-    pub content_id: Option<String>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub content_id: Option<Cid>,
     /// Pointer identifier.
     pub pointer_id: String,
     /// Package archive signature.
@@ -297,16 +300,6 @@ pub struct VersionRecord {
     /// Count of total rows.
     #[serde(skip)]
     pub count: i64,
-}
-
-impl VersionRecord {
-    /// Parse a content id.
-    pub fn parse_cid(&self) -> Result<Option<Cid>> {
-        if let Some(cid) = &self.content_id {
-            let cid: Cid = cid.parse()?;
-            Ok(Some(cid))
-        } else { Ok(None) }
-    }
 }
 
 impl FromRow<'_, SqliteRow> for VersionRecord {
@@ -352,7 +345,6 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
             None
         };
 
-        /*
         let content_id = if let Some(cid) = content_id {
             let cid: Cid =
                 cid.parse().map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
@@ -360,7 +352,6 @@ impl FromRow<'_, SqliteRow> for VersionRecord {
         } else {
             None
         };
-        */
 
         let signature: [u8; 65] = signature
             .as_slice()

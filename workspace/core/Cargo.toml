@@ -11,6 +11,7 @@ tar = "0.4"
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_with = { version = "2", features = ["base64"] }
 web3-address = { version = "0.4", features = ["ethereum"] }
 hex = { version = "0.4", features = ["serde"] }
 cid = { version = "0.8", features = ["serde-codec"] }
