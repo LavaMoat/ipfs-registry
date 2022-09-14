@@ -108,6 +108,8 @@ impl FromRow<'_, SqliteRow> for PublisherRecord {
     }
 }
 
+/// User given permission to publish to a namespace by the
+/// namespace owner.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserRecord {
     /// Namespace foreign key.
@@ -118,6 +120,9 @@ pub struct UserRecord {
     pub publisher_id: i64,
     /// Address of the publisher.
     pub address: Address,
+    /// Packages that this user is restricted to.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub restrictions: Vec<i64>,
 }
 
 impl FromRow<'_, SqliteRow> for UserRecord {
@@ -125,6 +130,22 @@ impl FromRow<'_, SqliteRow> for UserRecord {
         let namespace_id: i64 = row.try_get("namespace_id")?;
         let publisher_id: i64 = row.try_get("publisher_id")?;
         let address: Vec<u8> = row.try_get("address")?;
+
+        let restrictions =
+            if let Ok(ids) = row.try_get::<String, _>("package_ids") {
+                let mut restrictions: Vec<i64> = Vec::new();
+                if !ids.is_empty() {
+                    for id in ids.split(",") {
+                        let id = id
+                            .parse::<i64>()
+                            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+                        restrictions.push(id);
+                    }
+                }
+                restrictions
+            } else {
+                Default::default()
+            };
 
         let address: [u8; 20] = address
             .as_slice()
@@ -136,6 +157,7 @@ impl FromRow<'_, SqliteRow> for UserRecord {
             namespace_id,
             publisher_id,
             address,
+            restrictions,
         })
     }
 }
@@ -151,7 +173,7 @@ pub struct NamespaceRecord {
     pub owner: Address,
     /// Additional publishers.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub publishers: Vec<Address>,
+    pub publishers: Vec<UserRecord>,
     /// Creation date and time.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -179,8 +201,7 @@ impl FromRow<'_, SqliteRow> for NamespaceRecord {
 
         Ok(Self {
             namespace_id,
-            //publisher_id,
-            publishers: vec![],
+            publishers: Default::default(),
             name,
             owner: address,
             created_at,
@@ -195,7 +216,7 @@ impl NamespaceRecord {
         if &self.owner == address {
             true
         } else {
-            self.publishers.iter().any(|a| a == address)
+            self.publishers.iter().any(|u| &u.address == address)
         }
     }
 }

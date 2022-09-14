@@ -26,6 +26,15 @@ CREATE TABLE IF NOT EXISTS namespace_publishers
     FOREIGN KEY (publisher_id) REFERENCES publishers (publisher_id)
 );
 
+CREATE TABLE IF NOT EXISTS publisher_restrictions
+(
+    publisher_id          INTEGER             NOT NULL,
+    package_id            INTEGER             NOT NULL,
+
+    FOREIGN KEY (publisher_id) REFERENCES publishers (publisher_id),
+    FOREIGN KEY (package_id) REFERENCES packages (package_id)
+);
+
 CREATE TABLE IF NOT EXISTS packages
 (
     package_id            INTEGER PRIMARY KEY NOT NULL,

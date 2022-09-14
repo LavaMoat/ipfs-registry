@@ -52,11 +52,13 @@ impl NamespaceModel {
         pool: &SqlitePool,
         namespace_id: i64,
         publisher_id: i64,
+        restrictions: Vec<i64>,
     ) -> Result<i64> {
-        let mut conn = pool.acquire().await?;
+        let mut tx = pool.begin().await?;
         let mut builder = QueryBuilder::new(
             r#"
-                INSERT INTO namespace_publishers ( namespace_id, publisher_id )
+                INSERT INTO namespace_publishers
+                    ( namespace_id, publisher_id )
                 VALUES (
             "#,
         );
@@ -65,11 +67,25 @@ impl NamespaceModel {
         separated.push_bind(publisher_id);
         builder.push(" )");
 
-        let id = builder
-            .build()
-            .execute(&mut conn)
-            .await?
-            .last_insert_rowid();
+        let id = builder.build().execute(&mut tx).await?.last_insert_rowid();
+
+        for package_id in restrictions {
+            let mut builder = QueryBuilder::new(
+                r#"
+                    INSERT INTO publisher_restrictions
+                        ( publisher_id, package_id )
+                    VALUES (
+                "#,
+            );
+            let mut separated = builder.separated(", ");
+            separated.push_bind(publisher_id);
+            separated.push_bind(package_id);
+            builder.push(" )");
+
+            builder.build().execute(&mut tx).await?;
+        }
+
+        tx.commit().await?;
 
         Ok(id)
     }
@@ -94,7 +110,7 @@ impl NamespaceModel {
                     namespaces.created_at,
                     publishers.address
                 FROM namespaces
-                INNER JOIN publishers
+                LEFT JOIN publishers
                 ON (namespaces.publisher_id = publishers.publisher_id)
                 WHERE name = ?
             "#,
@@ -112,19 +128,25 @@ impl NamespaceModel {
                     SELECT
                         namespace_publishers.namespace_id,
                         namespace_publishers.publisher_id,
-                        publishers.address
+                        publishers.address,
+                        GROUP_CONCAT(publisher_restrictions.package_id) as package_ids
                     FROM namespace_publishers
-                    INNER JOIN publishers
-                    ON (namespace_publishers.publisher_id = publishers.publisher_id)
+                    LEFT JOIN publishers
+                        ON (namespace_publishers.publisher_id = publishers.publisher_id)
+                    LEFT JOIN publisher_restrictions
+                        ON (namespace_publishers.publisher_id = publisher_restrictions.publisher_id)
                     WHERE namespace_id = ?
+                    GROUP BY namespace_publishers.publisher_id
                 "#,
                 args
             )
             .fetch_all(pool)
             .await?;
 
+            //(SELECT package_id FROM publisher_packages WHERE publisher_id = namespace_publishers.publisher_id) as restrictions
+
             for user in users {
-                record.publishers.push(user.address);
+                record.publishers.push(user);
             }
 
             Ok(Some(record))

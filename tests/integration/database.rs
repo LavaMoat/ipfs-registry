@@ -41,8 +41,13 @@ async fn integration_database() -> Result<()> {
     assert!(namespace_id > 0);
 
     // Add another publisher to the namespace
-    NamespaceModel::add_publisher(&pool, namespace_id, user_publisher_id)
-        .await?;
+    NamespaceModel::add_publisher(
+        &pool,
+        namespace_id,
+        user_publisher_id,
+        vec![],
+    )
+    .await?;
 
     let ns = NamespaceModel::find_by_name(&pool, &namespace).await?;
 
@@ -54,7 +59,7 @@ async fn integration_database() -> Result<()> {
     assert!(ns.can_publish(&unauthorized_address) == false);
 
     assert_eq!(address, ns.owner);
-    assert_eq!(&authorized_address, ns.publishers.get(0).unwrap());
+    assert_eq!(&authorized_address, &ns.publishers.get(0).unwrap().address);
 
     let pointer = mock_pointer(None)?;
 

@@ -1,5 +1,6 @@
 mod test_utils;
 
+mod access_control;
 mod database;
 mod fetch;
 mod fetch_not_found;
