@@ -1,7 +1,12 @@
 use sqlx::{sqlite::SqliteArguments, Arguments, QueryBuilder, SqlitePool};
-
+use web3_address::ethereum::Address;
 use crate::{value_objects::*, Error, Result};
-use ipfs_registry_core::Namespace;
+
+use ipfs_registry_core::{Namespace, PackageName};
+
+use crate::{
+    model::{PublisherModel, PackageModel},
+};
 
 pub struct NamespaceModel;
 
@@ -47,8 +52,74 @@ impl NamespaceModel {
         Ok(record)
     }
 
+    /// Verify an address can access a namespace.
+    ///
+    /// Further access control checks may be required depending
+    /// upon the operation.
+    pub async fn can_access_namespace(
+        pool: &SqlitePool,
+        publisher: &Address,
+        namespace: &Namespace,
+    ) -> Result<(PublisherRecord, NamespaceRecord)> {
+        // Check the publisher exists
+        let publisher_record =
+            PublisherModel::find_by_address(pool, publisher)
+                .await?
+                .ok_or(Error::UnknownPublisher(*publisher))?;
+
+        // Check the namespace exists
+        let namespace_record = NamespaceModel::find_by_name(pool, namespace)
+            .await?
+            .ok_or_else(|| Error::UnknownNamespace(namespace.clone()))?;
+
+        if !namespace_record.can_write(publisher) {
+            return Err(Error::Unauthorized(*publisher));
+        }
+
+        Ok((publisher_record, namespace_record))
+    }
+
+    /// Add a user to this namespace.
+    pub async fn add_user(
+        pool: &SqlitePool,
+        namespace: &Namespace,
+        caller: &Address,
+        user: &Address,
+        restrictions: Vec<&PackageName>) -> Result<i64> {
+
+        let (_, namespace_record) =
+            NamespaceModel::can_access_namespace(
+                pool, caller, namespace).await?;
+
+        if !namespace_record.can_administrate(caller) {
+            return Err(Error::Unauthorized(*caller));
+        }
+
+        // User must already be registered
+        let user_record =
+            PublisherModel::find_by_address(pool, user)
+                .await?
+                .ok_or(Error::UnknownPublisher(*user))?;
+
+        let packages = PackageModel::find_many_by_name(
+            pool, namespace_record.namespace_id, restrictions).await?;
+
+        let mut restrictions = Vec::new();
+        for (name, pkg) in packages {
+            let pkg = pkg
+                .ok_or(Error::UnknownPackage(name.to_string()))?;
+            restrictions.push(pkg.package_id);
+        }
+
+        NamespaceModel::add_publisher(
+            pool,
+            namespace_record.namespace_id,
+            user_record.publisher_id,
+            restrictions).await
+    }
+
     /// Add a publisher to a namespace.
-    pub async fn add_publisher(
+    async fn add_publisher(
         pool: &SqlitePool,
         namespace_id: i64,
         publisher_id: i64,

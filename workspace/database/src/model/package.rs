@@ -10,7 +10,7 @@ use ipfs_registry_core::{
 };
 
 use crate::{
-    model::{NamespaceModel, Pager, PublisherModel, VersionIncludes},
+    model::{NamespaceModel, Pager, VersionIncludes},
     value_objects::*,
     Error, Result,
 };
@@ -194,6 +194,22 @@ impl PackageModel {
                 Ok((namespace_record, package_record, record))
             }
         }
+    }
+
+    /// Find multiple packages by name.
+    pub async fn find_many_by_name<'a>(
+        pool: &SqlitePool,
+        namespace_id: i64,
+        packages: Vec<&'a PackageName>,
+    ) -> Result<Vec<(&'a PackageName, Option<PackageRecord>)>> {
+        let mut records = Vec::new();
+        for name in packages {
+            records.push(
+                (name,
+                PackageModel::find_by_name(pool, namespace_id, name).await?)
+            );
+        }
+        Ok(records)
     }
 
     /// Find a package by name.
@@ -772,30 +788,6 @@ impl PackageModel {
         }
 
         Ok(package_record)
-    }
-
-    /// Verify the publisher and namespace before publishing.
-    pub async fn can_write_namespace(
-        pool: &SqlitePool,
-        publisher: &Address,
-        namespace: &Namespace,
-    ) -> Result<(PublisherRecord, NamespaceRecord)> {
-        // Check the publisher exists
-        let publisher_record =
-            PublisherModel::find_by_address(pool, publisher)
-                .await?
-                .ok_or(Error::UnknownPublisher(*publisher))?;
-
-        // Check the namespace exists
-        let namespace_record = NamespaceModel::find_by_name(pool, namespace)
-            .await?
-            .ok_or_else(|| Error::UnknownNamespace(namespace.clone()))?;
-
-        if !namespace_record.can_publish(publisher) {
-            return Err(Error::Unauthorized(*publisher));
-        }
-
-        Ok((publisher_record, namespace_record))
     }
 
     /// Yank a specific package version.

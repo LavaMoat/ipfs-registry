@@ -30,7 +30,7 @@ async fn integration_semver() -> Result<()> {
 
     // Verify for publishing
     let (publisher_record, namespace_record) =
-        PackageModel::can_write_namespace(&pool, &address, &namespace)
+        NamespaceModel::can_access_namespace(&pool, &address, &namespace)
             .await?;
 
     // Pre 1.0.0 releases

@@ -19,7 +19,7 @@ use ipfs_registry_core::{
 
 use ipfs_registry_database::{
     default_limit, Error as DatabaseError, PackageModel, PackageRecord,
-    Pager, ResultSet, SortOrder, VersionIncludes, VersionRecord,
+    Pager, ResultSet, SortOrder, VersionIncludes, VersionRecord, NamespaceModel,
 };
 
 use crate::{
@@ -221,7 +221,7 @@ impl PackageHandler {
                 // Should have namespace if we have version record
                 let ns = ns.unwrap();
 
-                match PackageModel::can_write_namespace(
+                match NamespaceModel::can_access_namespace(
                     &state.pool,
                     &address,
                     &ns.name,
@@ -330,7 +330,7 @@ impl PackageHandler {
 
         // Check the publisher and namespace exist and this address
         // is allowed to publish to the target namespace
-        match PackageModel::can_write_namespace(
+        match NamespaceModel::can_access_namespace(
             &state.pool,
             &address,
             &namespace,

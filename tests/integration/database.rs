@@ -41,10 +41,11 @@ async fn integration_database() -> Result<()> {
     assert!(namespace_id > 0);
 
     // Add another publisher to the namespace
-    NamespaceModel::add_publisher(
+    NamespaceModel::add_user(
         &pool,
-        namespace_id,
-        user_publisher_id,
+        &namespace,
+        &address,
+        &authorized_address,
         vec![],
     )
     .await?;
@@ -54,9 +55,9 @@ async fn integration_database() -> Result<()> {
     assert!(ns.is_some());
     let ns = ns.unwrap();
 
-    assert!(ns.can_publish(&address));
-    assert!(ns.can_publish(&authorized_address));
-    assert!(ns.can_publish(&unauthorized_address) == false);
+    assert!(ns.can_write(&address));
+    assert!(ns.can_write(&authorized_address));
+    assert!(ns.can_write(&unauthorized_address) == false);
 
     assert_eq!(address, ns.owner);
     assert_eq!(&authorized_address, &ns.publishers.get(0).unwrap().address);
@@ -68,7 +69,7 @@ async fn integration_database() -> Result<()> {
 
     // Verify for publishing
     let (publisher_record, namespace_record) =
-        PackageModel::can_write_namespace(&pool, &address, &namespace)
+        NamespaceModel::can_access_namespace(&pool, &address, &namespace)
             .await?;
 
     // Publish as the namespace owner
@@ -131,7 +132,7 @@ async fn integration_database() -> Result<()> {
     assert!(is_package_exists);
 
     // Publish using an address that is not registered - `Err`
-    let result = PackageModel::can_write_namespace(
+    let result = NamespaceModel::can_access_namespace(
         &pool,
         &unknown_address,
         &namespace,
@@ -148,7 +149,7 @@ async fn integration_database() -> Result<()> {
     assert!(is_unknown_publisher);
 
     // Publish using an address that is not authorized - `Err`
-    let result = PackageModel::can_write_namespace(
+    let result = NamespaceModel::can_access_namespace(
         &pool,
         &unauthorized_address,
         &namespace,
@@ -164,7 +165,7 @@ async fn integration_database() -> Result<()> {
     assert!(is_unauthorized);
 
     // Publish using a namespace that does not exist - `Err`
-    let result = PackageModel::can_write_namespace(
+    let result = NamespaceModel::can_access_namespace(
         &pool,
         &address,
         &Namespace::new_unchecked("unknown-namespace"),

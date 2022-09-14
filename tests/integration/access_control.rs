@@ -7,7 +7,7 @@ use semver::Version;
 use sqlx::SqlitePool;
 
 use ipfs_registry_core::{Namespace, PackageName};
-use ipfs_registry_database::{NamespaceModel, PackageModel, PublisherModel};
+use ipfs_registry_database::{Error, NamespaceModel, PackageModel, PublisherModel};
 
 #[tokio::test]
 #[serial]
@@ -42,10 +42,11 @@ async fn integration_access_control() -> Result<()> {
     assert!(namespace_id > 0);
 
     // Add a user to the namespace with no restrictions
-    NamespaceModel::add_publisher(
+    NamespaceModel::add_user(
         &pool,
-        namespace_id,
-        user_publisher_id,
+        &namespace,
+        &address,
+        &authorized_address,
         vec![],
     )
     .await?;
@@ -56,10 +57,11 @@ async fn integration_access_control() -> Result<()> {
     let mock_version = Version::new(1, 0, 0);
 
     let alt_package = PackageName::new_unchecked("alt-package");
+    let private_package = PackageName::new_unchecked("private-package");
 
     // Verify for publishing
     let (publisher_record, namespace_record) =
-        PackageModel::can_write_namespace(&pool, &address, &namespace)
+        NamespaceModel::can_access_namespace(&pool, &address, &namespace)
             .await?;
 
     // Publish as the namespace owner
@@ -75,6 +77,17 @@ async fn integration_access_control() -> Result<()> {
 
     // Publish another package
     pointer.definition.artifact.package.name = alt_package.clone();
+    let result = PackageModel::insert(
+        &pool,
+        &publisher_record,
+        &namespace_record,
+        &address,
+        &pointer,
+    )
+    .await?;
+    assert!(result > 0);
+
+    pointer.definition.artifact.package.name = private_package.clone();
     let result = PackageModel::insert(
         &pool,
         &publisher_record,
@@ -112,11 +125,12 @@ async fn integration_access_control() -> Result<()> {
         vec![package_record.package_id, alt_record.package_id];
 
     // Add a restricted user to the namespace
-    NamespaceModel::add_publisher(
+    NamespaceModel::add_user(
         &pool,
-        namespace_id,
-        restricted_publisher_id,
-        package_restrictions.clone(),
+        &namespace,
+        &address,
+        &restricted_address,
+        vec![&mock_package, &alt_package],
     )
     .await?;
 
@@ -128,9 +142,9 @@ async fn integration_access_control() -> Result<()> {
     //println!("{:#?}", ns);
 
     assert_eq!(2, ns.publishers.len());
-    assert!(ns.can_publish(&address));
-    assert!(ns.can_publish(&authorized_address));
-    assert!(ns.can_publish(&unauthorized_address) == false);
+    assert!(ns.can_write(&address));
+    assert!(ns.can_write(&authorized_address));
+    assert!(ns.can_write(&unauthorized_address) == false);
 
     assert_eq!(address, ns.owner);
     assert_eq!(&authorized_address, &ns.publishers.get(0).unwrap().address);
@@ -144,6 +158,68 @@ async fn integration_access_control() -> Result<()> {
     let restricted_user = restricted_user.unwrap();
 
     assert_eq!(&package_restrictions, &restricted_user.restrictions);
+
+    // The namespace owner can publish a newer version
+    assert!(PackageModel::can_publish_package(
+        &pool,
+        &address,
+        &ns,
+        &mock_package,
+        &Version::new(2, 0, 0),
+    )
+    .await.is_ok());
+
+    // An authorized unrestricted user can also publish
+    assert!(PackageModel::can_publish_package(
+        &pool,
+        &authorized_address,
+        &ns,
+        &mock_package,
+        &Version::new(2, 0, 0),
+    )
+    .await.is_ok());
+
+    // Restricted user can also publish as it has access to this package
+    assert!(PackageModel::can_publish_package(
+        &pool,
+        &restricted_address,
+        &ns,
+        &mock_package,
+        &Version::new(2, 0, 0),
+    )
+    .await.is_ok());
+
+    // Unauthorized address is denied
+    let result = PackageModel::can_publish_package(
+        &pool,
+        &unauthorized_address,
+        &ns,
+        &mock_package,
+        &Version::new(2, 0, 0),
+    )
+    .await;
+    let is_unauthorized = if let Err(Error::Unauthorized(_)) = result {
+        true
+    } else {
+        false
+    };
+    assert!(is_unauthorized);
+
+    // Restricted user has not been granted access to the private package
+    let result = PackageModel::can_publish_package(
+        &pool,
+        &restricted_address,
+        &ns,
+        &private_package,
+        &Version::new(2, 0, 0),
+    )
+    .await;
+    let is_unauthorized = if let Err(Error::Unauthorized(_)) = result {
+        true
+    } else {
+        false
+    };
+    assert!(is_unauthorized);
 
     Ok(())
 }

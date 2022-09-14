@@ -210,9 +210,16 @@ impl FromRow<'_, SqliteRow> for NamespaceRecord {
 }
 
 impl NamespaceRecord {
+
+    /// Determine if an address can make administrative changes
+    /// to the namespace.
+    pub fn can_administrate(&self, address: &Address) -> bool {
+        &self.owner == address
+    }
+
     /// Determine if an address is allowed to publish to
     /// this namespace.
-    pub fn can_publish(&self, address: &Address) -> bool {
+    pub fn can_write(&self, address: &Address) -> bool {
         if &self.owner == address {
             true
         } else {
