@@ -272,7 +272,7 @@ impl PackageHandler {
                 let record = record.ok_or(StatusCode::NOT_FOUND)?;
 
                 //let content_id = record.parse_cid()
-                    //.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+                //.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
                 let body = state
                     .layers
@@ -398,7 +398,9 @@ impl PackageHandler {
                             }
                         });
 
-                        let checksum: [u8; 32] = checksum.as_slice().try_into()
+                        let checksum: [u8; 32] = checksum
+                            .as_slice()
+                            .try_into()
                             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
                         let doc = Pointer {
@@ -430,7 +432,12 @@ impl PackageHandler {
                             artifact.package.version.clone(),
                         );
 
-                        let receipt = Receipt { id, artifact, key, checksum };
+                        let receipt = Receipt {
+                            id,
+                            artifact,
+                            key,
+                            checksum,
+                        };
                         Ok(Json(receipt))
                     }
                     Err(e) => Err(match e {

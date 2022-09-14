@@ -1,9 +1,9 @@
 use semver::{BuildMetadata, Prerelease, Version};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use serde_with::{base64::Base64, serde_as, DisplayFromStr};
 use time::{format_description, OffsetDateTime, PrimitiveDateTime};
 use web3_address::ethereum::Address;
-use serde_with::{serde_as, DisplayFromStr, base64::Base64};
 
 use cid::Cid;
 use ipfs_registry_core::{Namespace, PackageName};
@@ -272,8 +272,7 @@ pub struct VersionRecord {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub package: Option<Value>,
     /// Content identifier.
-    #[serde(
-        skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub content_id: Option<Cid>,
     /// Pointer identifier.

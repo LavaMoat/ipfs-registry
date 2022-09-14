@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS namespaces
 
     FOREIGN KEY (publisher_id) REFERENCES publishers (publisher_id)
 );
+CREATE INDEX IF NOT EXISTS namespaces_name_idx ON namespaces (name);
 
 CREATE TABLE IF NOT EXISTS publishers
 (
@@ -14,6 +15,7 @@ CREATE TABLE IF NOT EXISTS publishers
     created_at            TEXT                NOT NULL,
     address               BLOB(20)            NOT NULL UNIQUE
 );
+CREATE INDEX IF NOT EXISTS publishers_address_idx ON publishers (address);
 
 CREATE TABLE IF NOT EXISTS namespace_publishers
 (
@@ -33,6 +35,7 @@ CREATE TABLE IF NOT EXISTS packages
 
     FOREIGN KEY (namespace_id) REFERENCES namespaces (namespace_id)
 );
+CREATE INDEX IF NOT EXISTS packages_name_idx ON packages(name);
 
 CREATE TABLE IF NOT EXISTS versions
 (
@@ -64,3 +67,7 @@ CREATE TABLE IF NOT EXISTS versions
     FOREIGN KEY (publisher_id) REFERENCES publishers (publisher_id),
     FOREIGN KEY (package_id) REFERENCES packages (package_id)
 );
+CREATE INDEX IF NOT EXISTS versions_semver_idx
+  ON versions(major, minor, patch, pre, build);
+CREATE INDEX IF NOT EXISTS versions_content_id_idx ON versions(content_id);
+CREATE INDEX IF NOT EXISTS versions_pointer_id_idx ON versions(pointer_id);
