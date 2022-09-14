@@ -121,7 +121,7 @@ pub struct UserRecord {
     /// Address of the publisher.
     pub address: Address,
     /// Packages that this user is restricted to.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip)]
     pub restrictions: Vec<i64>,
 }
 

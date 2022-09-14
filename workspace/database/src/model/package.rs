@@ -692,12 +692,30 @@ impl PackageModel {
 
     /// Assert publishing is ok by checking a package
     /// with the given name and version does not already exist.
-    pub async fn assert_publish_safe(
+    pub async fn can_publish_package(
         pool: &SqlitePool,
+        address: &Address,
         namespace_record: &NamespaceRecord,
         name: &PackageName,
         version: &Version,
-    ) -> Result<()> {
+    ) -> Result<Option<PackageRecord>> {
+        let not_owner = address != &namespace_record.owner;
+        let user = namespace_record
+            .publishers
+            .iter()
+            .find(|u| &u.address == address);
+        let is_restricted = if let (Some(user), true) = (user, not_owner) {
+            !user.restrictions.is_empty()
+        } else {
+            false
+        };
+
+        // Not the owner and no user found for the namespace
+        // so access is denied
+        if not_owner && user.is_none() {
+            return Err(Error::Unauthorized(*address));
+        }
+
         // Check the package / version does not already exist
         let (package_record, version_record) =
             PackageModel::find_by_name_version(
@@ -715,7 +733,19 @@ impl PackageModel {
             ));
         }
 
-        if package_record.is_some() {
+        if let Some(package_record) = &package_record {
+            // Package already exists and the user is restricted
+            // so verify the user can publish to the target package
+            if let (Some(user), true) = (user, is_restricted) {
+                let can_publish =
+                    user.restrictions.iter().any(|package_id| {
+                        package_id == &package_record.package_id
+                    });
+                if !can_publish {
+                    return Err(Error::Unauthorized(*address));
+                }
+            }
+
             // Verify the version to publish is ahead of the latest version
             if let Some(latest) = PackageModel::find_latest_by_name(
                 pool,
@@ -732,9 +762,16 @@ impl PackageModel {
                     ));
                 }
             }
+        } else {
+            // No existing package record so this is the first
+            // publish for the package, restricted users should
+            // be denied access
+            if let (Some(_), true) = (user, is_restricted) {
+                return Err(Error::Unauthorized(*address));
+            }
         }
 
-        Ok(())
+        Ok(package_record)
     }
 
     /// Verify the publisher and namespace before publishing.

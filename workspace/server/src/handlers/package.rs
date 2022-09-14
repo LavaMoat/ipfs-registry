@@ -359,8 +359,9 @@ impl PackageHandler {
                         .map_err(|_| StatusCode::BAD_REQUEST)?;
 
                 // Check the package does not already exist
-                match PackageModel::assert_publish_safe(
+                match PackageModel::can_publish_package(
                     &state.pool,
+                    &address,
                     &namespace_record,
                     &package.name,
                     &package.version,

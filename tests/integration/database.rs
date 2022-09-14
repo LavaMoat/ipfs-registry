@@ -94,8 +94,9 @@ async fn integration_database() -> Result<()> {
     assert!(result > 0);
 
     // Attempt to publish an old version - `Err`
-    let result = PackageModel::assert_publish_safe(
+    let result = PackageModel::can_publish_package(
         &pool,
+        &address,
         &namespace_record,
         &mock_package,
         &Version::new(0, 1, 0),
@@ -111,8 +112,9 @@ async fn integration_database() -> Result<()> {
     assert!(is_not_ahead);
 
     // Attempt to publish an existing version - `Err`
-    let result = PackageModel::assert_publish_safe(
+    let result = PackageModel::can_publish_package(
         &pool,
+        &address,
         &namespace_record,
         &mock_package,
         &mock_version,
