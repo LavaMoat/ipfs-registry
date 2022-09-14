@@ -120,6 +120,8 @@ pub struct UserRecord {
     pub publisher_id: i64,
     /// Address of the publisher.
     pub address: Address,
+    /// User is allowed to administrate the namespace.
+    pub administrator: bool,
     /// Packages that this user is restricted to.
     #[serde(skip)]
     pub restrictions: Vec<i64>,
@@ -130,6 +132,8 @@ impl FromRow<'_, SqliteRow> for UserRecord {
         let namespace_id: i64 = row.try_get("namespace_id")?;
         let publisher_id: i64 = row.try_get("publisher_id")?;
         let address: Vec<u8> = row.try_get("address")?;
+        let administrator: i64  = row.try_get("administrator")?;
+        let administrator = administrator > 0;
 
         let restrictions =
             if let Ok(ids) = row.try_get::<String, _>("package_ids") {
@@ -157,6 +161,7 @@ impl FromRow<'_, SqliteRow> for UserRecord {
             namespace_id,
             publisher_id,
             address,
+            administrator,
             restrictions,
         })
     }
@@ -210,16 +215,23 @@ impl FromRow<'_, SqliteRow> for NamespaceRecord {
 }
 
 impl NamespaceRecord {
+    /// Determine if this address if the namespace owner.
+    pub fn is_owner(&self, address: &Address) -> bool {
+        &self.owner == address
+    }
 
     /// Determine if an address can make administrative changes
     /// to the namespace.
     pub fn can_administrate(&self, address: &Address) -> bool {
-        &self.owner == address
+        if &self.owner == address {
+            true
+        } else {
+            self.publishers.iter().any(|u| &u.address == address && u.administrator)
+        }
     }
 
-    /// Determine if an address is allowed to publish to
-    /// this namespace.
-    pub fn can_write(&self, address: &Address) -> bool {
+    /// Determine if an address belongs to this namespace.
+    pub fn has_user(&self, address: &Address) -> bool {
         if &self.owner == address {
             true
         } else {

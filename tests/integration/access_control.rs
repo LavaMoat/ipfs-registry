@@ -47,6 +47,7 @@ async fn integration_access_control() -> Result<()> {
         &namespace,
         &address,
         &authorized_address,
+        false,
         vec![],
     )
     .await?;
@@ -130,6 +131,7 @@ async fn integration_access_control() -> Result<()> {
         &namespace,
         &address,
         &restricted_address,
+        false,
         vec![&mock_package, &alt_package],
     )
     .await?;
@@ -142,9 +144,9 @@ async fn integration_access_control() -> Result<()> {
     //println!("{:#?}", ns);
 
     assert_eq!(2, ns.publishers.len());
-    assert!(ns.can_write(&address));
-    assert!(ns.can_write(&authorized_address));
-    assert!(ns.can_write(&unauthorized_address) == false);
+    assert!(ns.has_user(&address));
+    assert!(ns.has_user(&authorized_address));
+    assert!(ns.has_user(&unauthorized_address) == false);
 
     assert_eq!(address, ns.owner);
     assert_eq!(&authorized_address, &ns.publishers.get(0).unwrap().address);

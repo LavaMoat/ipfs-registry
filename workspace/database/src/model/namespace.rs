@@ -72,7 +72,7 @@ impl NamespaceModel {
             .await?
             .ok_or_else(|| Error::UnknownNamespace(namespace.clone()))?;
 
-        if !namespace_record.can_write(publisher) {
+        if !namespace_record.has_user(publisher) {
             return Err(Error::Unauthorized(*publisher));
         }
 
@@ -85,11 +85,17 @@ impl NamespaceModel {
         namespace: &Namespace,
         caller: &Address,
         user: &Address,
+        administrator: bool,
         restrictions: Vec<&PackageName>) -> Result<i64> {
 
         let (_, namespace_record) =
             NamespaceModel::can_access_namespace(
                 pool, caller, namespace).await?;
+
+        // Only the owner can add administrators
+        if administrator && !namespace_record.is_owner(caller) {
+            return Err(Error::Unauthorized(*caller));
+        }
 
         if !namespace_record.can_administrate(caller) {
             return Err(Error::Unauthorized(*caller));
@@ -115,6 +121,7 @@ impl NamespaceModel {
             pool,
             namespace_record.namespace_id,
             user_record.publisher_id,
+            administrator,
             restrictions).await
     }
 
@@ -123,19 +130,22 @@ impl NamespaceModel {
         pool: &SqlitePool,
         namespace_id: i64,
         publisher_id: i64,
+        administrator: bool,
         restrictions: Vec<i64>,
     ) -> Result<i64> {
+        let administrator = if administrator { 1 } else { 0 };
         let mut tx = pool.begin().await?;
         let mut builder = QueryBuilder::new(
             r#"
                 INSERT INTO namespace_publishers
-                    ( namespace_id, publisher_id )
+                    ( namespace_id, publisher_id, administrator )
                 VALUES (
             "#,
         );
         let mut separated = builder.separated(", ");
         separated.push_bind(namespace_id);
         separated.push_bind(publisher_id);
+        separated.push_bind(administrator);
         builder.push(" )");
 
         let id = builder.build().execute(&mut tx).await?.last_insert_rowid();
@@ -199,6 +209,7 @@ impl NamespaceModel {
                     SELECT
                         namespace_publishers.namespace_id,
                         namespace_publishers.publisher_id,
+                        namespace_publishers.administrator,
                         publishers.address,
                         GROUP_CONCAT(publisher_restrictions.package_id) as package_ids
                     FROM namespace_publishers

@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS namespace_publishers
 (
     namespace_id          INTEGER             NOT NULL,
     publisher_id          INTEGER             NOT NULL,
+    administrator         BOOLEAN             NOT NULL
+                                                CHECK (administrator IN (0, 1))
+                                                DEFAULT 0,
 
     FOREIGN KEY (namespace_id) REFERENCES namespaces (namespace_id),
     FOREIGN KEY (publisher_id) REFERENCES publishers (publisher_id)
