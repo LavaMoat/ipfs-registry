@@ -18,8 +18,9 @@ use ipfs_registry_core::{
 };
 
 use ipfs_registry_database::{
-    default_limit, Error as DatabaseError, PackageModel, PackageRecord,
-    Pager, ResultSet, SortOrder, VersionIncludes, VersionRecord, NamespaceModel,
+    default_limit, Error as DatabaseError, NamespaceModel, PackageModel,
+    PackageRecord, Pager, ResultSet, SortOrder, VersionIncludes,
+    VersionRecord,
 };
 
 use crate::{

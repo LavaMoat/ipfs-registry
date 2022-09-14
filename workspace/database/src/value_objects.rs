@@ -132,7 +132,7 @@ impl FromRow<'_, SqliteRow> for UserRecord {
         let namespace_id: i64 = row.try_get("namespace_id")?;
         let publisher_id: i64 = row.try_get("publisher_id")?;
         let address: Vec<u8> = row.try_get("address")?;
-        let administrator: i64  = row.try_get("administrator")?;
+        let administrator: i64 = row.try_get("administrator")?;
         let administrator = administrator > 0;
 
         let restrictions =
@@ -226,8 +226,15 @@ impl NamespaceRecord {
         if &self.owner == address {
             true
         } else {
-            self.publishers.iter().any(|u| &u.address == address && u.administrator)
+            self.publishers
+                .iter()
+                .any(|u| &u.address == address && u.administrator)
         }
+    }
+
+    /// Find a user in this namespace.
+    pub fn find_user(&self, address: &Address) -> Option<&UserRecord> {
+        self.publishers.iter().find(|u| &u.address == address)
     }
 
     /// Determine if an address belongs to this namespace.

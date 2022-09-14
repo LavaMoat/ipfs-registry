@@ -7,7 +7,9 @@ use semver::Version;
 use sqlx::SqlitePool;
 
 use ipfs_registry_core::{Namespace, PackageName};
-use ipfs_registry_database::{Error, NamespaceModel, PackageModel, PublisherModel};
+use ipfs_registry_database::{
+    Error, NamespaceModel, PackageModel, PublisherModel,
+};
 
 #[tokio::test]
 #[serial]
@@ -19,19 +21,19 @@ async fn integration_access_control() -> Result<()> {
     let (_, address) = new_signing_key();
     let (_, authorized_address) = new_signing_key();
     let (_, restricted_address) = new_signing_key();
+    let (_, administrator_address) = new_signing_key();
+    let (_, delegated_address) = new_signing_key();
     let (_, unauthorized_address) = new_signing_key();
 
     // Create a publisher to own the namespace
     let publisher_id = PublisherModel::insert(&pool, &address).await?;
 
-    let user_publisher_id =
-        PublisherModel::insert(&pool, &authorized_address).await?;
-
-    let restricted_publisher_id =
-        PublisherModel::insert(&pool, &restricted_address).await?;
-
-    let _unauthorized_publisher_id =
-        PublisherModel::insert(&pool, &unauthorized_address).await?;
+    // Register the addresses
+    PublisherModel::insert(&pool, &authorized_address).await?;
+    PublisherModel::insert(&pool, &restricted_address).await?;
+    PublisherModel::insert(&pool, &administrator_address).await?;
+    PublisherModel::insert(&pool, &delegated_address).await?;
+    PublisherModel::insert(&pool, &unauthorized_address).await?;
 
     let namespace = Namespace::new_unchecked("mock-namespace");
 
@@ -52,13 +54,35 @@ async fn integration_access_control() -> Result<()> {
     )
     .await?;
 
+    // Add an administrator to the namespace
+    NamespaceModel::add_user(
+        &pool,
+        &namespace,
+        &address,
+        &administrator_address,
+        true,
+        vec![],
+    )
+    .await?;
+
+    // Administrator can add other users
+    assert!(NamespaceModel::add_user(
+        &pool,
+        &namespace,
+        &administrator_address,
+        &delegated_address,
+        false,
+        vec![],
+    )
+    .await
+    .is_ok());
+
     let mut pointer = mock_pointer(None)?;
 
     let mock_package = PackageName::new_unchecked("mock-package");
-    let mock_version = Version::new(1, 0, 0);
-
     let alt_package = PackageName::new_unchecked("alt-package");
     let private_package = PackageName::new_unchecked("private-package");
+    let mock_version = Version::new(1, 0, 0);
 
     // Verify for publishing
     let (publisher_record, namespace_record) =
@@ -143,9 +167,12 @@ async fn integration_access_control() -> Result<()> {
 
     //println!("{:#?}", ns);
 
-    assert_eq!(2, ns.publishers.len());
+    assert_eq!(4, ns.publishers.len());
     assert!(ns.has_user(&address));
     assert!(ns.has_user(&authorized_address));
+    assert!(ns.has_user(&administrator_address));
+    assert!(ns.has_user(&delegated_address));
+    assert!(ns.has_user(&restricted_address));
     assert!(ns.has_user(&unauthorized_address) == false);
 
     assert_eq!(address, ns.owner);
@@ -169,7 +196,8 @@ async fn integration_access_control() -> Result<()> {
         &mock_package,
         &Version::new(2, 0, 0),
     )
-    .await.is_ok());
+    .await
+    .is_ok());
 
     // An authorized unrestricted user can also publish
     assert!(PackageModel::can_publish_package(
@@ -179,7 +207,19 @@ async fn integration_access_control() -> Result<()> {
         &mock_package,
         &Version::new(2, 0, 0),
     )
-    .await.is_ok());
+    .await
+    .is_ok());
+
+    // Administrator can publish to the private package
+    assert!(PackageModel::can_publish_package(
+        &pool,
+        &administrator_address,
+        &ns,
+        &private_package,
+        &Version::new(2, 0, 0),
+    )
+    .await
+    .is_ok());
 
     // Restricted user can also publish as it has access to this package
     assert!(PackageModel::can_publish_package(
@@ -189,7 +229,8 @@ async fn integration_access_control() -> Result<()> {
         &mock_package,
         &Version::new(2, 0, 0),
     )
-    .await.is_ok());
+    .await
+    .is_ok());
 
     // Unauthorized address is denied
     let result = PackageModel::can_publish_package(
@@ -214,6 +255,40 @@ async fn integration_access_control() -> Result<()> {
         &ns,
         &private_package,
         &Version::new(2, 0, 0),
+    )
+    .await;
+    let is_unauthorized = if let Err(Error::Unauthorized(_)) = result {
+        true
+    } else {
+        false
+    };
+    assert!(is_unauthorized);
+
+    // Restricted user cannot add a user as it is not an administrator
+    let result = NamespaceModel::add_user(
+        &pool,
+        &namespace,
+        &restricted_address,
+        &unauthorized_address,
+        false,
+        vec![],
+    )
+    .await;
+    let is_unauthorized = if let Err(Error::Unauthorized(_)) = result {
+        true
+    } else {
+        false
+    };
+    assert!(is_unauthorized);
+
+    // Administrator cannot add other administrators
+    let result = NamespaceModel::add_user(
+        &pool,
+        &namespace,
+        &administrator_address,
+        &unauthorized_address,
+        true,
+        vec![],
     )
     .await;
     let is_unauthorized = if let Err(Error::Unauthorized(_)) = result {

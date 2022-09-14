@@ -1,12 +1,10 @@
+use crate::{value_objects::*, Error, Result};
 use sqlx::{sqlite::SqliteArguments, Arguments, QueryBuilder, SqlitePool};
 use web3_address::ethereum::Address;
-use crate::{value_objects::*, Error, Result};
 
 use ipfs_registry_core::{Namespace, PackageName};
 
-use crate::{
-    model::{PublisherModel, PackageModel},
-};
+use crate::model::{PackageModel, PublisherModel};
 
 pub struct NamespaceModel;
 
@@ -86,34 +84,44 @@ impl NamespaceModel {
         caller: &Address,
         user: &Address,
         administrator: bool,
-        restrictions: Vec<&PackageName>) -> Result<i64> {
-
+        restrictions: Vec<&PackageName>,
+    ) -> Result<i64> {
         let (_, namespace_record) =
-            NamespaceModel::can_access_namespace(
-                pool, caller, namespace).await?;
+            NamespaceModel::can_access_namespace(pool, caller, namespace)
+                .await?;
 
         // Only the owner can add administrators
         if administrator && !namespace_record.is_owner(caller) {
             return Err(Error::Unauthorized(*caller));
         }
 
+        // Only administrators can add users
         if !namespace_record.can_administrate(caller) {
             return Err(Error::Unauthorized(*caller));
         }
 
+        if namespace_record.find_user(&user).is_some() {
+            return Err(Error::UserExists(
+                *user,
+                namespace_record.name.to_string(),
+            ));
+        }
+
         // User must already be registered
-        let user_record =
-            PublisherModel::find_by_address(pool, user)
-                .await?
-                .ok_or(Error::UnknownPublisher(*user))?;
+        let user_record = PublisherModel::find_by_address(pool, user)
+            .await?
+            .ok_or(Error::UnknownPublisher(*user))?;
 
         let packages = PackageModel::find_many_by_name(
-            pool, namespace_record.namespace_id, restrictions).await?;
+            pool,
+            namespace_record.namespace_id,
+            restrictions,
+        )
+        .await?;
 
         let mut restrictions = Vec::new();
         for (name, pkg) in packages {
-            let pkg = pkg
-                .ok_or(Error::UnknownPackage(name.to_string()))?;
+            let pkg = pkg.ok_or(Error::UnknownPackage(name.to_string()))?;
             restrictions.push(pkg.package_id);
         }
 
@@ -122,7 +130,9 @@ impl NamespaceModel {
             namespace_record.namespace_id,
             user_record.publisher_id,
             administrator,
-            restrictions).await
+            restrictions,
+        )
+        .await
     }
 
     /// Add a publisher to a namespace.

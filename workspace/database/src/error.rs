@@ -14,6 +14,9 @@ pub enum Error {
     #[error("unknown publisher {0}")]
     UnknownPublisher(Address),
 
+    #[error("user {0} already exists in {1}")]
+    UserExists(Address, String),
+
     #[error("unknown namespace {0}")]
     UnknownNamespace(Namespace),
 

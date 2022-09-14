@@ -26,7 +26,7 @@ async fn integration_database() -> Result<()> {
     // Create a publisher to own the namespace
     let publisher_id = PublisherModel::insert(&pool, &address).await?;
 
-    let user_publisher_id =
+    let _user_publisher_id =
         PublisherModel::insert(&pool, &authorized_address).await?;
 
     let _unauthorized_publisher_id =

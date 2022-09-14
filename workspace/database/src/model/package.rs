@@ -204,10 +204,10 @@ impl PackageModel {
     ) -> Result<Vec<(&'a PackageName, Option<PackageRecord>)>> {
         let mut records = Vec::new();
         for name in packages {
-            records.push(
-                (name,
-                PackageModel::find_by_name(pool, namespace_id, name).await?)
-            );
+            records.push((
+                name,
+                PackageModel::find_by_name(pool, namespace_id, name).await?,
+            ));
         }
         Ok(records)
     }
