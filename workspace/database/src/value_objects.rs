@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use time::{format_description, OffsetDateTime, PrimitiveDateTime};
 use web3_address::ethereum::Address;
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::{serde_as, DisplayFromStr, base64::Base64};
 
 use cid::Cid;
 use ipfs_registry_core::{Namespace, PackageName};
@@ -150,7 +150,7 @@ pub struct NamespaceRecord {
     /// Owner of the namespace.
     pub owner: Address,
     /// Additional publishers.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub publishers: Vec<Address>,
     /// Creation date and time.
     #[serde(with = "time::serde::rfc3339")]
@@ -279,10 +279,7 @@ pub struct VersionRecord {
     /// Pointer identifier.
     pub pointer_id: String,
     /// Package archive signature.
-    #[serde(
-        serialize_with = "hex::serde::serialize",
-        deserialize_with = "hex::serde::deserialize"
-    )]
+    #[serde_as(as = "Base64")]
     pub signature: [u8; 65],
     /// Package archive checksum.
     #[serde(

@@ -199,7 +199,8 @@ The default configuration limits requests to 16MiB so if the package is too larg
       "version": "1.0.0"
     }
   },
-  "key": "/ipfs/QmSYVWjXh5GCZpxhCSHMa89X9VHnPpaxafkBAR9rjfCenb"
+  "key": "/ipfs/QmSYVWjXh5GCZpxhCSHMa89X9VHnPpaxafkBAR9rjfCenb",
+  "checksum": "4ad90a2c2e08374f8ccec2b604915a0ab7e97fcca983b12a6857d20df3fca9c0"
 }
 ```
 
@@ -286,23 +287,26 @@ List the versions of a package.
     {
       "version": "1.0.0",
       "content_id": "QmSYVWjXh5GCZpxhCSHMa89X9VHnPpaxafkBAR9rjfCenb",
-      "signature": "9a0b6450d1f42380f826a86f2d8106d6c9db041c912d90a6063e6bf8a28989301551d0458fb4a6f49b467334d7d1d9368e3b411f4c1b2ce7052167ac422c150301",
+      "pointer_id": "230e83dd43123aa0f3d8bc337b0f63440a6128ae8491ee70f42d02594c087d49",
+      "signature": "mgtkUNH0I4D4JqhvLYEG1snbBByRLZCmBj5r+KKJiTAVUdBFj7Sm9JtGczTX0dk2jjtBH0wbLOcFIWesQiwVAwE=",
       "checksum": "4ad90a2c2e08374f8ccec2b604915a0ab7e97fcca983b12a6857d20df3fca9c0",
-      "created_at": "2022-09-11T08:30:27Z"
+      "created_at": "2022-09-14T01:19:12Z"
     },
     {
       "version": "1.0.1",
       "content_id": "QmQfiqgpEL7gWavVJ5r2JK17N516q9wWoL8eHjwq8zKozZ",
-      "signature": "dad0482f1096ad9f0caef5d422e742ff4052c497fcfa0a2bead256886c713770357bf810297aed168e3e0888e7e00b73f2e50d432addcd9b46ebeff03ee3d06c00",
+      "pointer_id": "f52b51ea3b48652b6c01892695b92c76c404a5efe8270a331e981a3b1f772b47",
+      "signature": "2tBILxCWrZ8MrvXUIudC/0BSxJf8+gor6tJWiGxxN3A1e/gQKXrtFo4+CIjn4Atz8uUNQyrdzZtG6+/wPuPQbAA=",
       "checksum": "6fb6f92379c52eeb7f18d56c6fc745755588ebbccd5db0e157c9938daaf5e359",
-      "created_at": "2022-09-12T01:34:05Z"
+      "created_at": "2022-09-14T01:19:17Z"
     },
     {
       "version": "2.0.0-alpha.1",
       "content_id": "QmbptdWzd7pzNbmTkGwtYRdQWYCmXYjQ6tJV9CkWkjD2V8",
-      "signature": "92b39f8aacaa109e136194c98a47e741d058c6a1b042fe0453f24aaedeb878b5499c388162a48e55f1f88756e9735821ac26f84b7db75060e0ac2cad1dce37b300",
+      "pointer_id": "ed7cfb288b5b7dedaa4dd2e189e921d839cc832d39d13d8a2be87c6b340809fb",
+      "signature": "krOfiqyqEJ4TYZTJikfnQdBYxqGwQv4EU/JKrt64eLVJnDiBYqSOVfH4h1bpc1ghrCb4S323UGDgrCytHc43swA=",
       "checksum": "58313c4525d2253048a7b7342bb63b4a914bd5ae2ee5eab9e22f35c8897b5db5",
-      "created_at": "2022-09-12T02:22:16Z"
+      "created_at": "2022-09-14T01:19:30Z"
     }
   ],
   "count": 3
@@ -345,9 +349,10 @@ Response with `?prerelease=true` query string:
     "version": "2.0.0-alpha.1"
   },
   "content_id": "QmbptdWzd7pzNbmTkGwtYRdQWYCmXYjQ6tJV9CkWkjD2V8",
-  "signature": "92b39f8aacaa109e136194c98a47e741d058c6a1b042fe0453f24aaedeb878b5499c388162a48e55f1f88756e9735821ac26f84b7db75060e0ac2cad1dce37b300",
+  "pointer_id": "ed7cfb288b5b7dedaa4dd2e189e921d839cc832d39d13d8a2be87c6b340809fb",
+  "signature": "krOfiqyqEJ4TYZTJikfnQdBYxqGwQv4EU/JKrt64eLVJnDiBYqSOVfH4h1bpc1ghrCb4S323UGDgrCytHc43swA=",
   "checksum": "58313c4525d2253048a7b7342bb63b4a914bd5ae2ee5eab9e22f35c8897b5db5",
-  "created_at": "2022-09-12T02:22:16Z"
+  "created_at": "2022-09-14T01:19:30Z"
 }
 ```
 
