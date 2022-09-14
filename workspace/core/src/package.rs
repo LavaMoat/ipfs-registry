@@ -12,6 +12,8 @@ use sha3::{Digest, Sha3_256};
 use std::{fmt, str::FromStr};
 use web3_address::ethereum::Address;
 
+use unicode_security::GeneralSecurityProfile;
+
 use crate::{
     tarball::{decompress, read_cargo_package, read_npm_package},
     Error, Result,
@@ -25,11 +27,16 @@ const INVALID: &[char] = &[
 
 /// Validate a namespace or package name.
 pub fn validate(s: &str) -> bool {
-    for c in INVALID {
-        if s.find(*c).is_some() {
-            return false;
+    for c in s.chars() {
+        if INVALID.into_iter().any(|i| i == &c) {
+            return false
+        }
+
+        if !c.identifier_allowed() {
+            return false
         }
     }
+
     true
 }
 
