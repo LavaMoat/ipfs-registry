@@ -380,6 +380,12 @@ pub struct Receipt {
     /// Key for the IPFS package reference.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub key: Option<PackageKey>,
+    /// SHA3-256 checksum of the package file.
+    #[serde(
+        serialize_with = "hex::serde::serialize",
+        deserialize_with = "hex::serde::deserialize"
+    )]
+    pub checksum: [u8; 32],
 }
 
 /// Read a descriptor from a package.

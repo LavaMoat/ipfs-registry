@@ -150,6 +150,7 @@ pub struct NamespaceRecord {
     /// Owner of the namespace.
     pub owner: Address,
     /// Additional publishers.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub publishers: Vec<Address>,
     /// Creation date and time.
     #[serde(with = "time::serde::rfc3339")]

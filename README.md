@@ -162,7 +162,6 @@ Register a namespace; if the namespace already exists a 409 CONFLICT response is
 {
   "name": "mock-namespace",
   "owner": "0x1fc770ac21067a04f83101ebf19a670db9e3eb21",
-  "publishers": [],
   "created_at": "2022-09-11T08:29:27Z"
 }
 ```
