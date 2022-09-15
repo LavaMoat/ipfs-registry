@@ -5,6 +5,8 @@ use unicode_security::{
     GeneralSecurityProfile,
 };
 
+const MIN_LEN: usize = 3;
+
 /// Get the confusable skeleton of an identifier.
 pub fn confusable_skeleton(s: &str) -> String {
     let mut e = String::new();
@@ -16,6 +18,10 @@ pub fn confusable_skeleton(s: &str) -> String {
 
 /// Validate an identifier.
 pub fn validate_id(s: &str) -> bool {
+    if s.len() < MIN_LEN {
+        return false;
+    }
+
     for c in s.chars() {
         if !c.is_ascii_digit() {
             if c != '-' && !c.is_alphabetic() {
@@ -112,21 +118,21 @@ mod test {
         assert!(validate_id("0x1fc770ac21067a04f83101ebf19a670db9e3eb21"));
 
         // Punctuation denied
-        assert!(!validate_id("!"));
+        assert!(!validate_id("ooo!"));
 
         // Control character denied
-        assert!(!validate_id("\r"));
+        assert!(!validate_id("ooo\r"));
 
         // Invisible characters denied
         for c in INVISIBLES {
-            assert!(!validate_id(&c.to_string()));
+            assert!(!validate_id(&format!("ooo{}", &c.to_string())));
         }
 
         // Emoji is denied
-        assert!(!validate_id("❤️"));
+        assert!(!validate_id("ooo❤️"));
 
         // Unicode security
-        assert!(!validate_id("µ"));
+        assert!(!validate_id("oooµ"));
 
         // Confusable detection as it mixes scripts.
         //
@@ -134,7 +140,7 @@ mod test {
         // NOT an ascii 'p'.
         //
         // SEE: https://util.unicode.org/UnicodeJsps/confusables.jsp
-        assert!(!validate_id("oр"));
+        assert!(!validate_id("oooр"));
 
         // Mixed scripts
         // SEE: https://www.unicode.org/reports/tr39/#def-single-script

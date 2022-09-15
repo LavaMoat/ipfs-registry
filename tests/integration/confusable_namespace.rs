@@ -1,12 +1,9 @@
 use anyhow::Result;
 use serial_test::serial;
-use std::path::PathBuf;
 
 use crate::test_utils::*;
-use semver::Version;
 
-use ipfs_registry_client::RegistryClient;
-use ipfs_registry_core::{Namespace, PackageName};
+use ipfs_registry_core::Namespace;
 
 use k256::ecdsa::SigningKey;
 
@@ -19,8 +16,6 @@ async fn integration_confusable_namespace() -> Result<()> {
 
     let server_url = server();
 
-    let file = PathBuf::from("fixtures/mock-package-1.0.0.tgz");
-    let mime: mime::Mime = "application/gzip".parse()?;
     let signing_key = SigningKey::random(&mut rand::thread_rng());
 
     let namespace = Namespace::new_unchecked("mock-namespace");
