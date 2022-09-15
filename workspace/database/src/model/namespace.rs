@@ -190,9 +190,9 @@ impl NamespaceModel {
         pool: &SqlitePool,
         name: &Namespace,
     ) -> Result<Option<NamespaceRecord>> {
-        let ns = name.as_str();
+        let skeleton = confusable_skeleton(name.as_str());
         let mut args: SqliteArguments = Default::default();
-        args.add(ns);
+        args.add(skeleton);
 
         let record = sqlx::query_as_with::<_, NamespaceRecord, _>(
             r#"
@@ -205,7 +205,7 @@ impl NamespaceModel {
                 FROM namespaces
                 LEFT JOIN publishers
                 ON (namespaces.publisher_id = publishers.publisher_id)
-                WHERE name = ?
+                WHERE skeleton = ?
             "#,
             args,
         )
@@ -236,8 +236,6 @@ impl NamespaceModel {
             )
             .fetch_all(pool)
             .await?;
-
-            //(SELECT package_id FROM publisher_packages WHERE publisher_id = namespace_publishers.publisher_id) as restrictions
 
             for user in users {
                 record.publishers.push(user);

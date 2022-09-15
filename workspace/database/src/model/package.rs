@@ -219,9 +219,11 @@ impl PackageModel {
         namespace_id: i64,
         name: &PackageName,
     ) -> Result<Option<PackageRecord>> {
+
+        let skeleton = confusable_skeleton(name.as_str());
         let mut args: SqliteArguments = Default::default();
         args.add(namespace_id);
-        args.add(name.as_str());
+        args.add(&skeleton);
 
         let record = sqlx::query_as_with::<_, PackageRecord, _>(
             r#"
@@ -231,7 +233,7 @@ impl PackageModel {
                     created_at,
                     name
                 FROM packages
-                WHERE namespace_id = ? AND name = ?
+                WHERE namespace_id = ? AND skeleton = ?
             "#,
             args,
         )
