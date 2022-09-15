@@ -65,7 +65,8 @@ Currently support is provided for [npm][] packages (the default) as well as [cra
 
 To mitigate identifier based attacks all namespace and package names are subject to the [unicode security mechanisms][]; mixed script and confusable detection is thanks to the [unicode security crate][].
 
-* Identifier MUST be at least three characters in length.
+* Identifier MUST be at least three characters in length
+* Identifier MUST have an alphabetic first character
 * Identifier MUST NOT contain ASCII control characters
 * Identifier MUST NOT contain ASCII punctuation (except for the hyphen)
 * Identifier MUST NOT contain emojis

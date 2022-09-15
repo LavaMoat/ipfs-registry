@@ -22,7 +22,13 @@ pub fn validate_id(s: &str) -> bool {
         return false;
     }
 
-    for c in s.chars() {
+    for (index, c) in s.chars().enumerate() {
+
+        // First character must be alphabetic
+        if index == 0 && !c.is_alphabetic() {
+            return false;
+        }
+
         if !c.is_ascii_digit() {
             if c != '-' && !c.is_alphabetic() {
                 return false;
@@ -116,6 +122,10 @@ mod test {
 
         // Valid identifier
         assert!(validate_id("0x1fc770ac21067a04f83101ebf19a670db9e3eb21"));
+
+        // Bad first character
+        assert!(!validate_id("-oo"));
+        assert!(!validate_id("1oo"));
 
         // Punctuation denied
         assert!(!validate_id("ooo!"));
