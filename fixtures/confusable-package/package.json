@@ -1,0 +1,11 @@
+{
+  "name": "mock-pаckаge",
+  "version": "1.0.0",
+  "description": "Confusable package to test confusable detection, uses 0430 CYRILLIC SMALL LETTER A instead of 'a'",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

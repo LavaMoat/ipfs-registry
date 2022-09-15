@@ -12,7 +12,7 @@ use k256::ecdsa::SigningKey;
 
 #[tokio::test]
 #[serial]
-async fn integration_publish_conflict() -> Result<()> {
+async fn integration_confusable_namespace() -> Result<()> {
     // Spawn the server
     let (rx, _handle) = spawn(default_server_config())?;
     let _ = rx.await?;
@@ -25,33 +25,13 @@ async fn integration_publish_conflict() -> Result<()> {
 
     let namespace = Namespace::new_unchecked("mock-namespace");
 
+    // 03BF GREEK SMALL LETTER OMICRO at index 1
+    let confusable = Namespace::new_unchecked("mοck-namespace");
+
     prepare_mock_namespace(&server_url, &signing_key, &namespace).await?;
 
-    let receipt = RegistryClient::publish_file(
-        server_url.clone(),
-        namespace.clone(),
-        mime.clone(),
-        signing_key.clone(),
-        file.clone(),
-    )
-    .await?;
-
-    assert_eq!(
-        PackageName::new_unchecked("mock-package"),
-        receipt.artifact.package.name
-    );
-    assert_eq!(Version::new(1, 0, 0), receipt.artifact.package.version);
-
-    let result = RegistryClient::publish_file(
-        server_url,
-        namespace,
-        mime,
-        signing_key,
-        file,
-    )
-    .await;
-
-    assert!(result.is_err());
+    let result = prepare_mock_namespace(
+        &server_url, &signing_key, &confusable).await;
 
     let is_conflict = if let Err(ipfs_registry_client::Error::ResponseCode(
         code,

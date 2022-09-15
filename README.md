@@ -63,15 +63,18 @@ Currently support is provided for [npm][] packages (the default) as well as [cra
 
 ### Unicode Security
 
-To mitigate identifier based attacks all namespace and package names are subject to the [unicode security mechanisms][]; confusable detection is thanks to the [unicode security crate][].
+To mitigate identifier based attacks all namespace and package names are subject to the [unicode security mechanisms][]; mixed script and confusable detection is thanks to the [unicode security crate][].
 
 * Identifier MUST NOT contain ASCII control characters
 * Identifier MUST NOT contain ASCII punctuation (except for the hyphen)
 * Identifier MUST NOT contain emojis
 * Identifier MUST NOT contain invisible characters
-* Identifier MUST NOT contain confusables, see [confusables][]
 * Identifier MUST conform to the general security profile, see [general security profile][]
 * Identifier MUST be a single script, see [single script][]
+
+#### Confusables
+
+Namespaces and packages store a confusable skeleton in the database and comparison is performed on the skeleton when retrieving namespaces and packages by identifier which provides some protection for registering identifiers that are confusable, see [confusables][].
 
 ## Getting Started
 
