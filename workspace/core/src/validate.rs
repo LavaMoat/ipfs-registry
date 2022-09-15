@@ -23,7 +23,6 @@ pub fn validate_id(s: &str) -> bool {
     }
 
     for (index, c) in s.chars().enumerate() {
-
         // First character must be alphabetic
         if index == 0 && !c.is_alphabetic() {
             return false;
@@ -119,9 +118,6 @@ mod test {
         assert!(validate_id("mock-package"));
         // Valid identifier (Unicode)
         assert!(validate_id("〆切"));
-
-        // Valid identifier
-        assert!(validate_id("0x1fc770ac21067a04f83101ebf19a670db9e3eb21"));
 
         // Bad first character
         assert!(!validate_id("-oo"));

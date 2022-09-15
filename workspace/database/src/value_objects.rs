@@ -108,6 +108,27 @@ impl FromRow<'_, SqliteRow> for PublisherRecord {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AccessRestriction {
+    /// Publisher foreign key.
+    #[serde(skip)]
+    pub publisher_id: i64,
+    /// Package foreign key.
+    #[serde(skip)]
+    pub package_id: i64,
+}
+
+impl FromRow<'_, SqliteRow> for AccessRestriction {
+    fn from_row(row: &SqliteRow) -> sqlx::Result<Self> {
+        let publisher_id: i64 = row.try_get("publisher_id")?;
+        let package_id: i64 = row.try_get("package_id")?;
+        Ok(Self {
+            publisher_id,
+            package_id,
+        })
+    }
+}
+
 /// User given permission to publish to a namespace by the
 /// namespace owner.
 #[derive(Debug, Serialize, Deserialize)]

@@ -21,7 +21,13 @@ pub enum Error {
     UnknownNamespace(Namespace),
 
     #[error("unknown package {0}")]
-    UnknownPackage(String),
+    UnknownPackage(PackageName),
+
+    #[error("user {0} already has access to {1}")]
+    AccessRestrictionExists(Address, PackageName),
+
+    #[error("user {0} does not have access to {1}")]
+    AccessRestrictionMissing(Address, PackageName),
 
     #[error("version {0} is not ahead of latest {1}")]
     VersionNotAhead(Version, Version),

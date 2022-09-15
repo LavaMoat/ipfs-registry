@@ -11,6 +11,15 @@ use ipfs_registry_database::{
     Error, NamespaceModel, PackageModel, PublisherModel,
 };
 
+fn assert_unauthorized<T>(result: ipfs_registry_database::Result<T>) {
+    let is_unauthorized = if let Err(Error::Unauthorized(_)) = result {
+        true
+    } else {
+        false
+    };
+    assert!(is_unauthorized);
+}
+
 #[tokio::test]
 #[serial]
 async fn integration_access_control() -> Result<()> {
@@ -159,6 +168,7 @@ async fn integration_access_control() -> Result<()> {
     assert!(alt_record.is_some());
     let alt_record = alt_record.unwrap();
 
+    // Restrictions for assertions
     let package_restrictions =
         vec![package_record.package_id, alt_record.package_id];
 
@@ -169,7 +179,17 @@ async fn integration_access_control() -> Result<()> {
         &address,
         &restricted_address,
         false,
-        vec![&mock_package, &alt_package],
+        vec![&mock_package],
+    )
+    .await?;
+
+    // Grant access to another package
+    NamespaceModel::grant_access(
+        &pool,
+        &namespace,
+        &alt_package,
+        &address,
+        &restricted_address,
     )
     .await?;
 
@@ -245,6 +265,42 @@ async fn integration_access_control() -> Result<()> {
     .await
     .is_ok());
 
+    // Restricted user can also publish as it was granted access to this
+    // additional package
+    assert!(PackageModel::can_publish_package(
+        &pool,
+        &restricted_address,
+        &ns,
+        &alt_package,
+        &Version::new(2, 0, 0),
+    )
+    .await
+    .is_ok());
+
+    // Revoke access to a package for the restricted user
+    NamespaceModel::revoke_access(
+        &pool,
+        &namespace,
+        &alt_package,
+        &address,
+        &restricted_address,
+    )
+    .await?;
+
+    // After revoking access to the package the user is unauthorized
+    let ns = NamespaceModel::find_by_name(&pool, &namespace)
+        .await?
+        .unwrap();
+    let result = PackageModel::can_publish_package(
+        &pool,
+        &restricted_address,
+        &ns,
+        &alt_package,
+        &Version::new(2, 0, 0),
+    )
+    .await;
+    assert_unauthorized(result);
+
     // Unauthorized address is denied
     let result = PackageModel::can_publish_package(
         &pool,
@@ -254,12 +310,7 @@ async fn integration_access_control() -> Result<()> {
         &Version::new(2, 0, 0),
     )
     .await;
-    let is_unauthorized = if let Err(Error::Unauthorized(_)) = result {
-        true
-    } else {
-        false
-    };
-    assert!(is_unauthorized);
+    assert_unauthorized(result);
 
     // Restricted user has not been granted access to the private package
     let result = PackageModel::can_publish_package(
@@ -270,12 +321,7 @@ async fn integration_access_control() -> Result<()> {
         &Version::new(2, 0, 0),
     )
     .await;
-    let is_unauthorized = if let Err(Error::Unauthorized(_)) = result {
-        true
-    } else {
-        false
-    };
-    assert!(is_unauthorized);
+    assert_unauthorized(result);
 
     // Restricted user cannot add a user as it is not an administrator
     let result = NamespaceModel::add_user(
@@ -287,12 +333,7 @@ async fn integration_access_control() -> Result<()> {
         vec![],
     )
     .await;
-    let is_unauthorized = if let Err(Error::Unauthorized(_)) = result {
-        true
-    } else {
-        false
-    };
-    assert!(is_unauthorized);
+    assert_unauthorized(result);
 
     // Administrator cannot add other administrators
     let result = NamespaceModel::add_user(
@@ -304,29 +345,15 @@ async fn integration_access_control() -> Result<()> {
         vec![],
     )
     .await;
-    let is_unauthorized = if let Err(Error::Unauthorized(_)) = result {
-        true
-    } else {
-        false
-    };
-    assert!(is_unauthorized);
+    assert_unauthorized(result);
 
     // REMOVE
 
     // Cannot remove the owner
-    let result = NamespaceModel::remove_user(
-        &pool,
-        &namespace,
-        &address,
-        &address,
-    )
-    .await;
-    let is_unauthorized = if let Err(Error::Unauthorized(_)) = result {
-        true
-    } else {
-        false
-    };
-    assert!(is_unauthorized);
+    let result =
+        NamespaceModel::remove_user(&pool, &namespace, &address, &address)
+            .await;
+    assert_unauthorized(result);
 
     // Administrator cannot remove other administrators
     let result = NamespaceModel::remove_user(
@@ -336,12 +363,7 @@ async fn integration_access_control() -> Result<()> {
         &alt_administrator_address,
     )
     .await;
-    let is_unauthorized = if let Err(Error::Unauthorized(_)) = result {
-        true
-    } else {
-        false
-    };
-    assert!(is_unauthorized);
+    assert_unauthorized(result);
 
     // Must be an administrator to remove a user
     let result = NamespaceModel::remove_user(
@@ -351,12 +373,7 @@ async fn integration_access_control() -> Result<()> {
         &delegated_address,
     )
     .await;
-    let is_unauthorized = if let Err(Error::Unauthorized(_)) = result {
-        true
-    } else {
-        false
-    };
-    assert!(is_unauthorized);
+    assert_unauthorized(result);
 
     // As administrator remove the authorized user
     NamespaceModel::remove_user(
@@ -366,7 +383,9 @@ async fn integration_access_control() -> Result<()> {
         &authorized_address,
     )
     .await?;
-    let ns = NamespaceModel::find_by_name(&pool, &namespace).await?.unwrap();
+    let ns = NamespaceModel::find_by_name(&pool, &namespace)
+        .await?
+        .unwrap();
     assert_eq!(4, ns.publishers.len());
 
     // As owner remove an administrator
@@ -377,7 +396,9 @@ async fn integration_access_control() -> Result<()> {
         &alt_administrator_address,
     )
     .await?;
-    let ns = NamespaceModel::find_by_name(&pool, &namespace).await?.unwrap();
+    let ns = NamespaceModel::find_by_name(&pool, &namespace)
+        .await?
+        .unwrap();
     assert_eq!(3, ns.publishers.len());
 
     Ok(())

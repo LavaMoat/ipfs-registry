@@ -95,7 +95,7 @@ impl PackageModel {
             name,
         )
         .await?
-        .ok_or_else(|| Error::UnknownPackage(name.to_string()))?;
+        .ok_or_else(|| Error::UnknownPackage(name.to_owned()))?;
 
         let mut args: SqliteArguments = Default::default();
         args.add(package_record.package_id);
@@ -411,7 +411,7 @@ impl PackageModel {
             name,
         )
         .await?
-        .ok_or_else(|| Error::UnknownPackage(name.to_string()))?;
+        .ok_or_else(|| Error::UnknownPackage(name.to_owned()))?;
 
         let mut args: SqliteArguments = Default::default();
         args.add(package_record.package_id);
@@ -502,7 +502,7 @@ impl PackageModel {
             name,
         )
         .await?
-        .ok_or_else(|| Error::UnknownPackage(name.to_string()))?;
+        .ok_or_else(|| Error::UnknownPackage(name.to_owned()))?;
 
         PackageModel::find_latest(pool, &package_record, include_prerelease)
             .await
@@ -712,7 +712,9 @@ impl PackageModel {
     }
 
     /// Assert publishing is ok by checking a package
-    /// with the given name and version does not already exist.
+    /// with the given name and version does not already exist, the
+    /// target version is ahead of the latest published version
+    /// and verify access control permissions.
     pub async fn can_publish_package(
         pool: &SqlitePool,
         address: &Address,
