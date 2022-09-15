@@ -65,6 +65,14 @@ Currently support is provided for [npm][] packages (the default) as well as [cra
 
 To mitigate identifier based attacks all namespace and package names are subject to the [unicode security mechanisms][]; confusable detection is thanks to the [unicode security crate][].
 
+* Identifier MUST NOT contain ASCII control characters
+* Identifier MUST NOT contain ASCII punctuation (except for the hyphen)
+* Identifier MUST NOT contain emojis
+* Identifier MUST NOT contain invisible characters
+* Identifier MUST NOT contain confusables, see [confusables][]
+* Identifier MUST conform to the general security profile, see [general security profile][]
+* Identifier MUST be a single script, see [single script][]
+
 ## Getting Started
 
 Install the binary:
@@ -618,3 +626,6 @@ MIT or Apache-2.0
 [crates]: https://crates.io/
 [unicode security mechanisms]: http://www.unicode.org/reports/tr39/
 [unicode security crate]: https://docs.rs/unicode-security/
+[confusables]: https://util.unicode.org/UnicodeJsps/confusables.jsp
+[general security profile]: https://www.unicode.org/reports/tr39/#General_Security_Profile
+[single script]: https://www.unicode.org/reports/tr39/#def-single-script
