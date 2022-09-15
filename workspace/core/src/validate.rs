@@ -1,13 +1,19 @@
 //! Validation for namespace and package identifiers.
 use unicode_security::{
     GeneralSecurityProfile,
+    confusable_detection::skeleton,
     restriction_level::{RestrictionLevelDetection, RestrictionLevel},
 };
 
 /// Validate an identifier.
 pub fn validate(s: &str) -> bool {
-    for c in s.chars() {
+    let skeleton = skeleton(s);
+    for (c, s) in s.chars().zip(skeleton) {
         if !c.is_ascii_digit() {
+            if c != s {
+                return false;
+            }
+
             if c != '-' && !c.is_alphabetic() {
                 return false;
             }
@@ -24,6 +30,7 @@ pub fn validate(s: &str) -> bool {
         RestrictionLevel::SingleScript) {
         return false;
     }
+
     true
 }
 
@@ -117,8 +124,16 @@ mod test {
         // Unicode security
         assert!(!validate("µ"));
 
+        // Confusable detection
+        //
+        // This is actually \u{0440} CYRILLIC SMALL LETTER ER
+        // NOT an ascii 'p'.
+        //
+        // SEE: https://util.unicode.org/UnicodeJsps/confusables.jsp
+        assert!(!validate("р"));
+
         // Mixed scripts
-        // See: https://www.unicode.org/reports/tr39/#def-single-script
+        // SEE: https://www.unicode.org/reports/tr39/#def-single-script
         assert!(!validate("Сirсlе"));
     }
 }
