@@ -22,6 +22,7 @@ async fn integration_access_control() -> Result<()> {
     let (_, authorized_address) = new_signing_key();
     let (_, restricted_address) = new_signing_key();
     let (_, administrator_address) = new_signing_key();
+    let (_, alt_administrator_address) = new_signing_key();
     let (_, delegated_address) = new_signing_key();
     let (_, unauthorized_address) = new_signing_key();
 
@@ -32,6 +33,7 @@ async fn integration_access_control() -> Result<()> {
     PublisherModel::insert(&pool, &authorized_address).await?;
     PublisherModel::insert(&pool, &restricted_address).await?;
     PublisherModel::insert(&pool, &administrator_address).await?;
+    PublisherModel::insert(&pool, &alt_administrator_address).await?;
     PublisherModel::insert(&pool, &delegated_address).await?;
     PublisherModel::insert(&pool, &unauthorized_address).await?;
 
@@ -60,6 +62,17 @@ async fn integration_access_control() -> Result<()> {
         &namespace,
         &address,
         &administrator_address,
+        true,
+        vec![],
+    )
+    .await?;
+
+    // Add another alternative administrator to the namespace
+    NamespaceModel::add_user(
+        &pool,
+        &namespace,
+        &address,
+        &alt_administrator_address,
         true,
         vec![],
     )
@@ -161,16 +174,16 @@ async fn integration_access_control() -> Result<()> {
     .await?;
 
     let ns = NamespaceModel::find_by_name(&pool, &namespace).await?;
-
     assert!(ns.is_some());
     let ns = ns.unwrap();
 
     //println!("{:#?}", ns);
 
-    assert_eq!(4, ns.publishers.len());
+    assert_eq!(5, ns.publishers.len());
     assert!(ns.has_user(&address));
     assert!(ns.has_user(&authorized_address));
     assert!(ns.has_user(&administrator_address));
+    assert!(ns.has_user(&alt_administrator_address));
     assert!(ns.has_user(&delegated_address));
     assert!(ns.has_user(&restricted_address));
     assert!(ns.has_user(&unauthorized_address) == false);
@@ -297,6 +310,75 @@ async fn integration_access_control() -> Result<()> {
         false
     };
     assert!(is_unauthorized);
+
+    // REMOVE
+
+    // Cannot remove the owner
+    let result = NamespaceModel::remove_user(
+        &pool,
+        &namespace,
+        &address,
+        &address,
+    )
+    .await;
+    let is_unauthorized = if let Err(Error::Unauthorized(_)) = result {
+        true
+    } else {
+        false
+    };
+    assert!(is_unauthorized);
+
+    // Administrator cannot remove other administrators
+    let result = NamespaceModel::remove_user(
+        &pool,
+        &namespace,
+        &administrator_address,
+        &alt_administrator_address,
+    )
+    .await;
+    let is_unauthorized = if let Err(Error::Unauthorized(_)) = result {
+        true
+    } else {
+        false
+    };
+    assert!(is_unauthorized);
+
+    // Must be an administrator to remove a user
+    let result = NamespaceModel::remove_user(
+        &pool,
+        &namespace,
+        &restricted_address,
+        &delegated_address,
+    )
+    .await;
+    let is_unauthorized = if let Err(Error::Unauthorized(_)) = result {
+        true
+    } else {
+        false
+    };
+    assert!(is_unauthorized);
+
+    // As administrator remove the authorized user
+    NamespaceModel::remove_user(
+        &pool,
+        &namespace,
+        &administrator_address,
+        &authorized_address,
+    )
+    .await?;
+    let ns = NamespaceModel::find_by_name(&pool, &namespace).await?.unwrap();
+    assert_eq!(4, ns.publishers.len());
+
+    // As owner remove an administrator
+    NamespaceModel::remove_user(
+        &pool,
+        &namespace,
+        &address,
+        &alt_administrator_address,
+    )
+    .await?;
+    let ns = NamespaceModel::find_by_name(&pool, &namespace).await?.unwrap();
+    assert_eq!(3, ns.publishers.len());
 
     Ok(())
 }

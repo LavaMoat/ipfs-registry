@@ -92,6 +92,11 @@ impl NamespaceModel {
             NamespaceModel::can_access_namespace(pool, caller, namespace)
                 .await?;
 
+        // Cannot add the owner
+        if namespace_record.is_owner(user) {
+            return Err(Error::Unauthorized(*caller));
+        }
+
         // Only the owner can add administrators
         if administrator && !namespace_record.is_owner(caller) {
             return Err(Error::Unauthorized(*caller));
@@ -183,7 +188,73 @@ impl NamespaceModel {
         Ok(id)
     }
 
-    // TODO: allow removing a publisher from the namespace
+    /// Remove a user from this namespace.
+    pub async fn remove_user(
+        pool: &SqlitePool,
+        namespace: &Namespace,
+        caller: &Address,
+        user: &Address,
+    ) -> Result<()> {
+        let (_, namespace_record) =
+            NamespaceModel::can_access_namespace(pool, caller, namespace)
+                .await?;
+
+        // Cannot remove the owner
+        if namespace_record.is_owner(user) {
+            return Err(Error::Unauthorized(*caller));
+        }
+
+        if let Some(user_record) = namespace_record.find_user(&user) {
+            // Only the owner can remove administrators
+            if user_record.administrator
+                && !namespace_record.is_owner(caller) {
+                return Err(Error::Unauthorized(*caller));
+            }
+
+            // Only administrators can remove users
+            if !namespace_record.can_administrate(caller) {
+                return Err(Error::Unauthorized(*caller));
+            }
+
+            NamespaceModel::remove_publisher(
+                pool,
+                namespace_record.namespace_id,
+                user_record.publisher_id,
+            )
+            .await
+
+        } else {
+            Err(Error::UnknownPublisher(
+                *user,
+            ))
+        }
+    }
+
+    /// Remove a publisher from a namespace.
+    async fn remove_publisher(
+        pool: &SqlitePool,
+        namespace_id: i64,
+        publisher_id: i64,
+    ) -> Result<()> {
+        let mut tx = pool.begin().await?;
+        let mut builder = QueryBuilder::new(
+            r#"DELETE FROM namespace_publishers WHERE namespace_id = "#,
+        );
+        builder.push_bind(namespace_id);
+        builder.push(" AND publisher_id = ");
+        builder.push_bind(publisher_id);
+        builder.build().execute(&mut tx).await?;
+
+        let mut builder = QueryBuilder::new(
+            r#"DELETE FROM publisher_restrictions WHERE publisher_id = "#,
+        );
+        builder.push_bind(publisher_id);
+        builder.build().execute(&mut tx).await?;
+
+        tx.commit().await?;
+
+        Ok(())
+    }
 
     /// Find a namespace by name.
     pub async fn find_by_name(
