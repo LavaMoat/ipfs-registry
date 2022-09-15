@@ -12,33 +12,13 @@ use sha3::{Digest, Sha3_256};
 use std::{fmt, str::FromStr};
 use web3_address::ethereum::Address;
 
-use unicode_security::GeneralSecurityProfile;
-
 use crate::{
     tarball::{decompress, read_cargo_package, read_npm_package},
+    validate::validate,
     Error, Result,
 };
 
 const IPFS_DELIMITER: &str = "/ipfs/";
-
-const INVALID: &[char] = &[
-    '/', '\\', ' ', '\t', '\n', '@', ':', '?', '#', '_', '&', '!', ';',
-];
-
-/// Validate a namespace or package name.
-pub fn validate(s: &str) -> bool {
-    for c in s.chars() {
-        if INVALID.into_iter().any(|i| i == &c) {
-            return false
-        }
-
-        if !c.identifier_allowed() {
-            return false
-        }
-    }
-
-    true
-}
 
 /// Kinds or supported registries.
 #[derive(Default, Clone, Copy, Debug, Serialize, Deserialize)]
@@ -458,10 +438,10 @@ mod tests {
 
     #[test]
     fn parse_package_key_path() -> Result<()> {
-        let key = "example.com/mock-package/1.0.0";
+        let key = "mock-namespace/mock-package/1.0.0";
         let package_key: PackageKey = key.parse()?;
         if let PackageKey::Pointer(org, name, version) = package_key {
-            assert_eq!(Namespace::new_unchecked("example.com"), org);
+            assert_eq!(Namespace::new_unchecked("mock-namespace"), org);
             assert_eq!(PackageName::new_unchecked("mock-package"), name);
             assert_eq!(Version::new(1, 0, 0), version);
             Ok(())
@@ -512,7 +492,7 @@ mod tests {
 
     #[test]
     fn serde_package_key_path() -> Result<()> {
-        let key = "example.com/mock-package/1.0.0";
+        let key = "mock-namespace/mock-package/1.0.0";
         let package_key: PackageKey = key.parse()?;
         let serialized = serde_json::to_string(&package_key)?;
         let deserialized: PackageKey = serde_json::from_str(&serialized)?;

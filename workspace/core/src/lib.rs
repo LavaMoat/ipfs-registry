@@ -1,6 +1,7 @@
 mod error;
 mod package;
 mod tarball;
+mod validate;
 
 pub use error::Error;
 pub use package::{
