@@ -219,7 +219,6 @@ impl PackageModel {
         namespace_id: i64,
         name: &PackageName,
     ) -> Result<Option<PackageRecord>> {
-
         let skeleton = confusable_skeleton(name.as_str());
         let mut args: SqliteArguments = Default::default();
         args.add(namespace_id);

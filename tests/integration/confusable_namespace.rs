@@ -30,8 +30,8 @@ async fn integration_confusable_namespace() -> Result<()> {
 
     prepare_mock_namespace(&server_url, &signing_key, &namespace).await?;
 
-    let result = prepare_mock_namespace(
-        &server_url, &signing_key, &confusable).await;
+    let result =
+        prepare_mock_namespace(&server_url, &signing_key, &confusable).await;
 
     let is_conflict = if let Err(ipfs_registry_client::Error::ResponseCode(
         code,

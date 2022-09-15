@@ -14,8 +14,7 @@ use web3_address::ethereum::Address;
 
 use crate::{
     tarball::{decompress, read_cargo_package, read_npm_package},
-    validate::validate,
-    Error, Result,
+    validate_id, Error, Result,
 };
 
 const IPFS_DELIMITER: &str = "/ipfs/";
@@ -73,7 +72,7 @@ impl fmt::Display for Namespace {
 impl FromStr for Namespace {
     type Err = Error;
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        if validate(s) {
+        if validate_id(s) {
             Ok(Namespace(s.to_owned()))
         } else {
             Err(Error::InvalidNamespace(s.to_owned()))
@@ -110,7 +109,7 @@ impl fmt::Display for PackageName {
 impl FromStr for PackageName {
     type Err = Error;
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        if validate(s) {
+        if validate_id(s) {
             Ok(PackageName(s.to_owned()))
         } else {
             Err(Error::InvalidPackageName(s.to_owned()))

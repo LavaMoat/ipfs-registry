@@ -15,16 +15,9 @@ pub fn confusable_skeleton(s: &str) -> String {
 }
 
 /// Validate an identifier.
-pub fn validate(s: &str) -> bool {
+pub fn validate_id(s: &str) -> bool {
     for c in s.chars() {
         if !c.is_ascii_digit() {
-            /*
-            if c != s {
-                println!("confusable! {} {}", c, s);
-                return false;
-            }
-            */
-
             if c != '-' && !c.is_alphabetic() {
                 return false;
             }
@@ -46,7 +39,7 @@ pub fn validate(s: &str) -> bool {
 
 #[cfg(test)]
 mod test {
-    use super::{confusable_skeleton, validate};
+    use super::{confusable_skeleton, validate_id};
 
     /// Invisible characters.
     const INVISIBLES: &[char] = &[
@@ -109,31 +102,31 @@ mod test {
     #[test]
     fn validate_identifier() {
         // Valid identifier (ASCII)
-        assert!(validate("foo-bar-qux"));
-        assert!(validate("mock-namespace"));
-        assert!(validate("mock-package"));
+        assert!(validate_id("foo-bar-qux"));
+        assert!(validate_id("mock-namespace"));
+        assert!(validate_id("mock-package"));
         // Valid identifier (Unicode)
-        assert!(validate("〆切"));
+        assert!(validate_id("〆切"));
 
         // Valid identifier
-        assert!(validate("0x1fc770ac21067a04f83101ebf19a670db9e3eb21"));
+        assert!(validate_id("0x1fc770ac21067a04f83101ebf19a670db9e3eb21"));
 
         // Punctuation denied
-        assert!(!validate("!"));
+        assert!(!validate_id("!"));
 
         // Control character denied
-        assert!(!validate("\r"));
+        assert!(!validate_id("\r"));
 
         // Invisible characters denied
         for c in INVISIBLES {
-            assert!(!validate(&c.to_string()));
+            assert!(!validate_id(&c.to_string()));
         }
 
         // Emoji is denied
-        assert!(!validate("❤️"));
+        assert!(!validate_id("❤️"));
 
         // Unicode security
-        assert!(!validate("µ"));
+        assert!(!validate_id("µ"));
 
         // Confusable detection as it mixes scripts.
         //
@@ -141,11 +134,11 @@ mod test {
         // NOT an ascii 'p'.
         //
         // SEE: https://util.unicode.org/UnicodeJsps/confusables.jsp
-        assert!(!validate("oр"));
+        assert!(!validate_id("oр"));
 
         // Mixed scripts
         // SEE: https://www.unicode.org/reports/tr39/#def-single-script
-        assert!(!validate("Сirсlе"));
+        assert!(!validate_id("Сirсlе"));
     }
 
     #[test]
