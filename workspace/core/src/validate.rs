@@ -1,18 +1,29 @@
 //! Validation for namespace and package identifiers.
 use unicode_security::{
-    GeneralSecurityProfile,
     confusable_detection::skeleton,
-    restriction_level::{RestrictionLevelDetection, RestrictionLevel},
+    restriction_level::{RestrictionLevel, RestrictionLevelDetection},
+    GeneralSecurityProfile,
 };
+
+/// Get the confusable skeleton of an identifier.
+pub fn confusable_skeleton(s: &str) -> String {
+    let mut e = String::new();
+    for c in skeleton(s) {
+        e.push(c);
+    }
+    e
+}
 
 /// Validate an identifier.
 pub fn validate(s: &str) -> bool {
-    let skeleton = skeleton(s);
-    for (c, s) in s.chars().zip(skeleton) {
+    for c in s.chars() {
         if !c.is_ascii_digit() {
+            /*
             if c != s {
+                println!("confusable! {} {}", c, s);
                 return false;
             }
+            */
 
             if c != '-' && !c.is_alphabetic() {
                 return false;
@@ -26,8 +37,7 @@ pub fn validate(s: &str) -> bool {
     }
 
     // Single script
-    if !s.check_restriction_level(
-        RestrictionLevel::SingleScript) {
+    if !s.check_restriction_level(RestrictionLevel::SingleScript) {
         return false;
     }
 
@@ -36,7 +46,7 @@ pub fn validate(s: &str) -> bool {
 
 #[cfg(test)]
 mod test {
-    use super::validate;
+    use super::{confusable_skeleton, validate};
 
     /// Invisible characters.
     const INVISIBLES: &[char] = &[
@@ -100,7 +110,8 @@ mod test {
     fn validate_identifier() {
         // Valid identifier (ASCII)
         assert!(validate("foo-bar-qux"));
-
+        assert!(validate("mock-namespace"));
+        assert!(validate("mock-package"));
         // Valid identifier (Unicode)
         assert!(validate("〆切"));
 
@@ -124,16 +135,39 @@ mod test {
         // Unicode security
         assert!(!validate("µ"));
 
-        // Confusable detection
+        // Confusable detection as it mixes scripts.
         //
         // This is actually \u{0440} CYRILLIC SMALL LETTER ER
         // NOT an ascii 'p'.
         //
         // SEE: https://util.unicode.org/UnicodeJsps/confusables.jsp
-        assert!(!validate("р"));
+        assert!(!validate("oр"));
 
         // Mixed scripts
         // SEE: https://www.unicode.org/reports/tr39/#def-single-script
         assert!(!validate("Сirсlе"));
+    }
+
+    #[test]
+    fn validate_confusables() {
+        let package_names = vec!["foo", "bar", "qux"];
+
+        let package_skeletons = package_names
+            .into_iter()
+            .map(|name| confusable_skeleton(name))
+            .collect::<Vec<_>>();
+
+        let attacks = vec![
+            "fοo",   // 03BF GREEK SMALL LETTER OMICRO at index 1
+            "bаr",   // 0430 CYRILLIC SMALL LETTER A at index 1
+            "q𝚞x", // 1D69E MATHEMATICAL MONOSPACE SMALL U as index 1
+        ];
+
+        for (skeleton, attack) in
+            package_skeletons.into_iter().zip(attacks.into_iter())
+        {
+            let attack_skeleton = confusable_skeleton(attack);
+            assert_eq!(skeleton, attack_skeleton);
+        }
     }
 }

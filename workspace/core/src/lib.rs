@@ -9,6 +9,7 @@ pub use package::{
     PackageName, PackageReader, PackageSignature, Pointer, Receipt,
     RegistryKind,
 };
+pub use validate::confusable_skeleton;
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 

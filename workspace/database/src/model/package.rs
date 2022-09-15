@@ -6,7 +6,8 @@ use sqlx::{
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
-    Namespace, ObjectKey, PackageKey, PackageName, Pointer,
+    confusable_skeleton, Namespace, ObjectKey, PackageKey, PackageName,
+    Pointer,
 };
 
 use crate::{
@@ -626,13 +627,16 @@ impl PackageModel {
         } else {
             let mut builder = QueryBuilder::new(
                 r#"
-                    INSERT INTO packages ( namespace_id, name, created_at )
+                    INSERT INTO packages ( namespace_id, name, skeleton, created_at )
                     VALUES (
                 "#,
             );
+
+            let skeleton = confusable_skeleton(name.as_str());
             let mut separated = builder.separated(", ");
             separated.push_bind(namespace_id);
             separated.push_bind(name.as_str());
+            separated.push_bind(&skeleton);
             builder.push(", datetime('now') )");
 
             let id = builder.build().execute(pool).await?.last_insert_rowid();

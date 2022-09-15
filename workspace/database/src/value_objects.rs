@@ -121,6 +121,7 @@ pub struct UserRecord {
     /// Address of the publisher.
     pub address: Address,
     /// User is allowed to administrate the namespace.
+    #[serde(skip)]
     pub administrator: bool,
     /// Packages that this user is restricted to.
     #[serde(skip)]

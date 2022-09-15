@@ -2,7 +2,7 @@ use crate::{value_objects::*, Error, Result};
 use sqlx::{sqlite::SqliteArguments, Arguments, QueryBuilder, SqlitePool};
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{Namespace, PackageName};
+use ipfs_registry_core::{confusable_skeleton, Namespace, PackageName};
 
 use crate::model::{PackageModel, PublisherModel};
 
@@ -19,12 +19,14 @@ impl NamespaceModel {
 
         let mut builder = QueryBuilder::new(
             r#"
-                INSERT INTO namespaces ( name, publisher_id, created_at )
+                INSERT INTO namespaces ( name, skeleton, publisher_id, created_at )
                 VALUES (
             "#,
         );
+        let skeleton = confusable_skeleton(name.as_str());
         let mut separated = builder.separated(", ");
         separated.push_bind(name.as_str());
+        separated.push_bind(&skeleton);
         separated.push_bind(publisher_id);
         builder.push(", datetime('now') )");
 

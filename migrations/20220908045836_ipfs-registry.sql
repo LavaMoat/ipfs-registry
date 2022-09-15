@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS namespaces
     publisher_id          INTEGER             NOT NULL,
     created_at            TEXT                NOT NULL,
     name                  TEXT                NOT NULL UNIQUE,
+    skeleton              TEXT                NOT NULL UNIQUE,
 
     FOREIGN KEY (publisher_id) REFERENCES publishers (publisher_id)
 );
@@ -44,6 +45,7 @@ CREATE TABLE IF NOT EXISTS packages
     namespace_id          INTEGER             NOT NULL,
     created_at            TEXT                NOT NULL,
     name                  TEXT                NOT NULL,
+    skeleton              TEXT                NOT NULL,
 
     FOREIGN KEY (namespace_id) REFERENCES namespaces (namespace_id)
 );
