@@ -102,7 +102,7 @@ Package registry operators may wish to augment the core functionality with addit
 * Maintain an index of packages for a search engine
 * Compile usage statistics
 
-To support these use cases the server implements webhooks allowing registry operators to extend the server functionality for their needs. See the [webhooks][] configuration section for more information.
+To support these use cases the server implements webhooks allowing registry operators to extend the server functionality for their needs. See the [webhooks](#webhooks) configuration section for more information.
 
 ## Getting Started
 
