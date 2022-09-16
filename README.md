@@ -43,7 +43,7 @@ Clients could in the future support Multi-Party Computation (MPC) for package pu
 
 ### Discoverability
 
-A key feature of any package registry is the ability to discover packages; meta data about the published packages is stored in a database and exposed via a public API.
+A key feature of any package registry is the ability to discover packages; meta data about the published packages is stored in a database and exposed via a public Application Programming Interface (API).
 
 ### Redundancy
 
@@ -54,6 +54,8 @@ The package registry supports multiple storage layers so it can be configured to
 Namespaces are useful as a means to establish trust for a collection of packages and to allow publishers to name their packages without collisions.
 
 They don't prevent name-squatting as that problem just moves from the package name level to the namespace level; but they do help to make it easier to identify the author(s) of a package so we designed the registry with namespaces baked in.
+
+Namespaces take precedence over a scope in [npm][] package definitions; scopes are ignored.
 
 ### Generic Archives
 
