@@ -5,9 +5,10 @@ use mime::Mime;
 use serde_json::json;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use url::Url;
+use web3_address::ethereum::Address;
 
 use ipfs_registry::Result;
-use ipfs_registry_core::{Namespace, PackageKey};
+use ipfs_registry_core::{Namespace, PackageKey, PackageName};
 
 /// Signed package registry server.
 #[derive(Parser, Debug)]
@@ -83,6 +84,11 @@ enum Command {
         #[clap(parse(from_os_str))]
         file: PathBuf,
     },
+    /// Manage namespace users.
+    User {
+        #[clap(subcommand)]
+        cmd: User,
+    },
     /// Yank a package.
     Yank {
         /// Server URL.
@@ -117,6 +123,45 @@ enum Command {
         /// Config file to load.
         #[clap(short, long, parse(from_os_str))]
         config: PathBuf,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum User {
+    /// Add user access to a namespace.
+    Add {
+        /// Make the user an administrator.
+        #[clap(short, long)]
+        admin: bool,
+
+        /// Restrict the user to target package.
+        #[clap(short, long)]
+        package: Option<PackageName>,
+
+        /// Keystore for the signing key.
+        #[clap(short, long, parse(from_os_str))]
+        key: PathBuf,
+
+        /// Namespace to add the user to.
+        #[clap(short, long)]
+        namespace: Namespace,
+
+        /// Address of the user to add.
+        user: Address,
+    },
+
+    /// Remove user access from a namespace.
+    Remove {
+        /// Keystore for the signing key.
+        #[clap(short, long, parse(from_os_str))]
+        key: PathBuf,
+
+        /// Namespace to remove the user from.
+        #[clap(short, long)]
+        namespace: Namespace,
+
+        /// Address of the user to remove.
+        user: Address,
     },
 }
 
@@ -158,6 +203,18 @@ async fn run() -> Result<()> {
             let file = ipfs_registry_client::fetch(server, id, file).await?;
             let size = file.metadata()?.len();
             tracing::info!(file = ?file, size = ?size);
+        }
+        Command::User {
+            cmd
+        } => {
+            match cmd {
+                User::Add { .. } => {
+
+                }
+                User::Remove { .. } => {
+
+                }
+            }
         }
         Command::Yank {
             server,
