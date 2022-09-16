@@ -95,7 +95,7 @@ Users with no access restrictions can publish to all packages; if package access
 Package registry operators may wish to augment the core functionality with additional features, here are some ideas:
 
 * Static website to browse the packages
-* Archive browser such as [nmpfs][]
+* Archive browser such as [npmfs][]
 * Generate API documentation like [docs.rs][]
 * Static analysis for attack detection
 * Produce a Software Bill of Materials (SBOM)
