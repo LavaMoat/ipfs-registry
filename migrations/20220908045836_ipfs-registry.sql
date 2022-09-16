@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS packages
     created_at            TEXT                NOT NULL,
     name                  TEXT                NOT NULL,
     skeleton              TEXT                NOT NULL,
+    deprecated            TEXT,
 
     FOREIGN KEY (namespace_id) REFERENCES namespaces (namespace_id)
 );

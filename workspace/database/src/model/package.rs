@@ -43,7 +43,8 @@ impl PackageModel {
                 namespace_id,
                 package_id,
                 created_at,
-                name
+                name,
+                deprecated
             FROM packages
             WHERE namespace_id = ?
             --GROUP BY package_id
@@ -230,7 +231,8 @@ impl PackageModel {
                     namespace_id,
                     package_id,
                     created_at,
-                    name
+                    name,
+                    deprecated
                 FROM packages
                 WHERE namespace_id = ? AND skeleton = ?
             "#,
