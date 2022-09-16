@@ -110,7 +110,14 @@ pub async fn add_user(
 ) -> Result<()> {
     let signing_key = helpers::read_keystore_file(key)?;
     RegistryClient::add_user(
-        server, signing_key, namespace, user, admin, package).await
+        server,
+        signing_key,
+        namespace,
+        user,
+        admin,
+        package,
+    )
+    .await
 }
 
 /// Remove a user.
@@ -121,8 +128,7 @@ pub async fn remove_user(
     user: Address,
 ) -> Result<()> {
     let signing_key = helpers::read_keystore_file(key)?;
-    RegistryClient::remove_user(
-        server, signing_key, namespace, user).await
+    RegistryClient::remove_user(server, signing_key, namespace, user).await
 }
 
 /// Grant or revoke package access.
@@ -136,5 +142,12 @@ pub async fn access_control(
 ) -> Result<()> {
     let signing_key = helpers::read_keystore_file(key)?;
     RegistryClient::access_control(
-        server, signing_key, namespace, package, user, grant).await
+        server,
+        signing_key,
+        namespace,
+        package,
+        user,
+        grant,
+    )
+    .await
 }

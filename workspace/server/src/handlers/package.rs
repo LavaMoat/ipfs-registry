@@ -24,7 +24,14 @@ use ipfs_registry_database::{
 };
 
 use crate::{
-    handlers::{verify_signature, webhooks::{execute_webhooks, WebHookEvent, WebHookBody, WebHookPacket}}, headers::Signature, server::ServerState,
+    handlers::{
+        verify_signature,
+        webhooks::{
+            execute_webhooks, WebHookBody, WebHookEvent, WebHookPacket,
+        },
+    },
+    headers::Signature,
+    server::ServerState,
 };
 
 #[derive(Debug, Deserialize)]
@@ -442,9 +449,7 @@ impl PackageHandler {
                         };
 
                         if let Some(hooks) = state.config.webhooks.clone() {
-                            let body = WebHookBody {
-                                inner: ()
-                            };
+                            let body = WebHookBody { inner: () };
                             let packet = WebHookPacket {
                                 event: WebHookEvent::Publish,
                                 body,

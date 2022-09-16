@@ -1,4 +1,5 @@
 use indexmap::set::IndexSet;
+use k256::ecdsa::SigningKey;
 use serde::Deserialize;
 use std::{
     collections::HashSet,
@@ -6,7 +7,6 @@ use std::{
 };
 use url::Url;
 use web3_address::ethereum::Address;
-use k256::ecdsa::SigningKey;
 use web3_keystore::{decrypt, KeyStore};
 
 use crate::{Error, Result};
@@ -94,7 +94,8 @@ impl ServerConfig {
             let buffer = std::fs::read(&hooks.key)?;
             let keystore: KeyStore = serde_json::from_slice(&buffer)?;
 
-            let password = std::env::var(KEYSTORE_PASSWORD_ENV).ok()
+            let password = std::env::var(KEYSTORE_PASSWORD_ENV)
+                .ok()
                 .ok_or(Error::WebHookKeystorePassword)?;
 
             let key = decrypt(&keystore, &password)?;
@@ -214,12 +215,25 @@ impl Default for RegistryConfig {
     }
 }
 
+fn retry_limit() -> u64 {
+    5
+}
+
+fn backoff_seconds() -> u64 {
+    30
+}
+
 #[derive(Debug, Default, Clone, Deserialize)]
 pub struct WebHookConfig {
     /// Path to the signing key for webhooks.
     pub key: PathBuf,
     /// Endpoints to call for each webhook event.
     pub endpoints: Vec<Url>,
+    /// Number of times to retry a webhook.
+    #[serde(default = "retry_limit")]
+    pub retry_limit: u64,
+    #[serde(default = "backoff_seconds")]
+    pub backoff_seconds: u64,
     /// Signing key decrypted from the keystore.
     #[serde(skip)]
     pub(crate) signing_key: Option<SigningKey>,

@@ -12,10 +12,7 @@ use ipfs_registry_core::{Namespace, PackageKey, PackageName};
 
 /// Print an ok response to stdout.
 fn ok_response() -> Result<()> {
-    serde_json::to_writer_pretty(
-        std::io::stdout(),
-        &json!({"ok": true}),
-    )?;
+    serde_json::to_writer_pretty(std::io::stdout(), &json!({"ok": true}))?;
     Ok(())
 }
 
@@ -346,7 +343,7 @@ async fn run() -> Result<()> {
                 user,
             } => {
                 ipfs_registry_client::access_control(
-                    server, key, namespace, package, user, true
+                    server, key, namespace, package, user, true,
                 )
                 .await?;
                 ok_response()?;
@@ -359,7 +356,7 @@ async fn run() -> Result<()> {
                 user,
             } => {
                 ipfs_registry_client::access_control(
-                    server, key, namespace, package, user, false
+                    server, key, namespace, package, user, false,
                 )
                 .await?;
                 ok_response()?;
