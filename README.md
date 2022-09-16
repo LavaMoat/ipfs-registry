@@ -90,6 +90,20 @@ Administrators can publish to all packages as well as add and remove other non-a
 
 Users with no access restrictions can publish to all packages; if package access restrictions have been applied then publishing is restricted to the allowed list of packages.
 
+### Extensibility
+
+Package registry operators may wish to augment the core functionality with additional features, here are some ideas:
+
+* Static website to browse the packages
+* Archive browser such as [npmfs][]
+* Generate API documentation like [docs.rs][]
+* Static analysis for attack detection
+* Produce a Software Bill of Materials (SBOM)
+* Maintain an index of packages for a search engine
+* Compile usage statistics
+
+To support these use cases the server implements webhooks allowing registry operators to extend the server functionality for their needs. See the [webhooks](#webhooks) configuration section for more information.
+
 ## Getting Started
 
 Install the binary:
@@ -596,6 +610,37 @@ deny = [
 ]
 ```
 
+### Webhooks
+
+To configure services to receive webhook events list the endpoints and configure a signing key.
+
+```toml
+[webhooks]
+endpoints = [
+  "http://localhost:5555"
+]
+key = "./0x1fc770ac21067a04f83101ebf19a670db9e3eb21.json"
+retry-limit = 5
+backoff-seconds = 30
+```
+
+When webhooks are configured the server MUST be started with an `IPKG_WEBHOOK_KEYSTORE_PASSWORD` environment variable which provides the password for the webhook signing keystore. If this variable is not set or is incorrect the server will fail to start.
+
+Each configured endpoint is sent a POST request with a JSON document as the body:
+
+```json
+{ "event": "publish", "body": {} }
+```
+
+The content of the `body` will depend upon the webhook event, supported events are:
+
+* `publish`: When a package is published.
+* `fetch`: When a package is downloaded.
+
+All webhook requests are signed using the provided key and the signature is sent in the `x-signature` header; services receiving webhook events SHOULD check the signature against the expected address to verify the request origin.
+
+Backoff logic for webhook events is exponential. Registry operators should take care to ensure downstream webhook services have high availability otherwise it may put too much pressure on the server under high load.
+
 ### CORS
 
 The default CORS configuration is very permissive, if you wish to restrict to certain origins:
@@ -698,3 +743,5 @@ MIT or Apache-2.0
 [confusables]: https://util.unicode.org/UnicodeJsps/confusables.jsp
 [general security profile]: https://www.unicode.org/reports/tr39/#General_Security_Profile
 [single script]: https://www.unicode.org/reports/tr39/#def-single-script
+[npmfs]: https://npmfs.com/
+[docs.rs]: https://docs.rs/

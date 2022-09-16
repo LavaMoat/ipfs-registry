@@ -1,4 +1,5 @@
 use indexmap::set::IndexSet;
+use k256::ecdsa::SigningKey;
 use serde::Deserialize;
 use std::{
     collections::HashSet,
@@ -6,9 +7,12 @@ use std::{
 };
 use url::Url;
 use web3_address::ethereum::Address;
+use web3_keystore::{decrypt, KeyStore};
 
 use crate::{Error, Result};
 use ipfs_registry_core::RegistryKind;
+
+const KEYSTORE_PASSWORD_ENV: &str = "IPKG_WEBHOOK_KEYSTORE_PASSWORD";
 
 #[derive(Deserialize)]
 pub struct ServerConfig {
@@ -23,6 +27,9 @@ pub struct ServerConfig {
     /// Package registry configuration.
     #[serde(default)]
     pub registry: RegistryConfig,
+
+    /// Configuration for webhooks.
+    pub webhooks: Option<WebHookConfig>,
 
     /// Configuration for TLS encryption.
     pub tls: Option<TlsConfig>,
@@ -40,9 +47,10 @@ impl ServerConfig {
     /// Create a new server config.
     pub fn new(storage: StorageConfig) -> Self {
         Self {
-            database: Default::default(),
             storage,
+            database: Default::default(),
             registry: Default::default(),
+            webhooks: Default::default(),
             tls: None,
             cors: None,
             file: None,
@@ -75,6 +83,24 @@ impl ServerConfig {
 
             tls.cert = tls.cert.canonicalize()?;
             tls.key = tls.key.canonicalize()?;
+        }
+
+        if let Some(hooks) = config.webhooks.as_mut() {
+            if hooks.key.is_relative() {
+                hooks.key = dir.join(&hooks.key);
+            }
+            hooks.key = hooks.key.canonicalize()?;
+
+            let buffer = std::fs::read(&hooks.key)?;
+            let keystore: KeyStore = serde_json::from_slice(&buffer)?;
+
+            let password = std::env::var(KEYSTORE_PASSWORD_ENV)
+                .ok()
+                .ok_or(Error::WebHookKeystorePassword)?;
+
+            let key = decrypt(&keystore, &password)?;
+            let signing_key = SigningKey::from_bytes(&key)?;
+            hooks.signing_key = Some(signing_key);
         }
 
         let mut layers = IndexSet::new();
@@ -161,7 +187,7 @@ fn default_mime() -> String {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(default)]
+#[serde(default, rename_all = "kebab-case")]
 pub struct RegistryConfig {
     /// Maximum size of body requests.
     #[serde(default = "default_body_limit")]
@@ -187,6 +213,31 @@ impl Default for RegistryConfig {
             deny: None,
         }
     }
+}
+
+fn retry_limit() -> u64 {
+    5
+}
+
+fn backoff_seconds() -> u64 {
+    30
+}
+
+#[derive(Debug, Default, Clone, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct WebHookConfig {
+    /// Path to the signing key for webhooks.
+    pub key: PathBuf,
+    /// Endpoints to call for each webhook event.
+    pub endpoints: Vec<Url>,
+    /// Number of times to retry a webhook.
+    #[serde(default = "retry_limit")]
+    pub retry_limit: u64,
+    #[serde(default = "backoff_seconds")]
+    pub backoff_seconds: u64,
+    /// Signing key decrypted from the keystore.
+    #[serde(skip)]
+    pub(crate) signing_key: Option<SigningKey>,
 }
 
 #[derive(Debug, Default, Clone, Deserialize)]

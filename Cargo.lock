@@ -1504,6 +1504,7 @@ dependencies = [
  "axum-macros",
  "axum-server",
  "base64",
+ "bytes",
  "cid",
  "clap",
  "futures",
@@ -1516,6 +1517,7 @@ dependencies = [
  "k256",
  "mime",
  "once_cell",
+ "reqwest",
  "rusoto_core",
  "rusoto_s3",
  "rusoto_signature",
@@ -1534,6 +1536,7 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "web3-address",
+ "web3-keystore",
 ]
 
 [[package]]
