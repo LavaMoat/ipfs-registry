@@ -1,6 +1,6 @@
 # IPFS Registry
 
-Signed package registry backed by IPFS for storage.
+Signed package registry backed by the Inter-Planetary File System for storage.
 
 ## Prerequisites
 
@@ -77,6 +77,16 @@ To mitigate identifier based attacks all namespace and package names are subject
 #### Confusables
 
 Namespaces and packages store a confusable skeleton in the database and comparison is performed on the skeleton when retrieving namespaces and packages by identifier which provides some protection for registering identifiers that are confusable, see [confusables][].
+
+### Access Control
+
+Organizations need to manage multiple signing keys and possibly restrict access to certain packages as well as support publishing in Continuous Integration / Continuous Deployment (CI/CD) pipelines.
+
+The owner of a namespace has complete control and can create administrators and users.
+
+Administrators can publish to all packages as well as add and remove other non-administrator users.
+
+Users with no access restrictions can publish to all packages; if package access restrictions have been applied then publishing is restricted to the allowed list of packages.
 
 ## Getting Started
 
@@ -193,6 +203,8 @@ Add a user to a namespace.
 
 If the user already has access to the namespace a 409 CONFLICT response is returned.
 
+If the address of the signer has been denied then a 401 UNAUTHORIZED response is returned.
+
 #### Query
 
 * `admin`: Boolean indicating the user is an administrator (default: `false`).
@@ -214,6 +226,8 @@ DELETE /api/namespace/:namespace/user/:address
 
 Remove a user from a namespace.
 
+If the address of the signer has been denied then a 401 UNAUTHORIZED response is returned.
+
 #### Headers
 
 * `x-signature`: Signature of the bytes for `:address`.
@@ -230,7 +244,7 @@ POST /api/package/:namespace
 
 If the package already exists or is not ahead of the latest version a 409 CONFLICT response is returned.
 
-If the address of the publisher has been denied then a 401 UNAUTHORIZED response is returned.
+If the address of the signer has been denied then a 401 UNAUTHORIZED response is returned.
 
 The default configuration limits requests to 16MiB so if the package is too large a 413 PAYLOAD TOO LARGE response is returned.
 
