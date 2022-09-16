@@ -279,9 +279,6 @@ impl PackageHandler {
             Ok((_, _, record)) => {
                 let record = record.ok_or(StatusCode::NOT_FOUND)?;
 
-                //let content_id = record.parse_cid()
-                //.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
                 let body = state
                     .layers
                     .fetch(&record.pointer_id, record.content_id.as_ref())
@@ -299,6 +296,16 @@ impl PackageHandler {
 
                 let mut headers = HeaderMap::new();
                 headers.insert("content-type", mime_type.parse().unwrap());
+
+                if let Some(hooks) = state.config.webhooks.clone() {
+                    let body = WebHookBody { inner: record };
+                    let packet = WebHookPacket {
+                        event: WebHookEvent::Fetch,
+                        body,
+                    };
+                    tokio::spawn(execute_webhooks(hooks, packet));
+                }
+
                 Ok((headers, Bytes::from(body)))
             }
             Err(e) => Err(match e {
@@ -449,7 +456,7 @@ impl PackageHandler {
                         };
 
                         if let Some(hooks) = state.config.webhooks.clone() {
-                            let body = WebHookBody { inner: () };
+                            let body = WebHookBody { inner: doc };
                             let packet = WebHookPacket {
                                 event: WebHookEvent::Publish,
                                 body,

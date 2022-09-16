@@ -75,7 +75,7 @@ async fn request_with_retry(
     signature: recoverable::Signature,
 ) -> Result<bool> {
     let mut backoff_millis = backoff_seconds * 1000;
-    for index in 0..retry_limit {
+    for _ in 0..retry_limit {
         match request(url.clone(), body.clone(), signature).await {
             Ok(success) => {
                 if success {
