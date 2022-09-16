@@ -5,9 +5,19 @@ use mime::Mime;
 use serde_json::json;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use url::Url;
+use web3_address::ethereum::Address;
 
 use ipfs_registry::Result;
-use ipfs_registry_core::{Namespace, PackageKey};
+use ipfs_registry_core::{Namespace, PackageKey, PackageName};
+
+/// Print an ok response to stdout.
+fn ok_response() -> Result<()> {
+    serde_json::to_writer_pretty(
+        std::io::stdout(),
+        &json!({"ok": true}),
+    )?;
+    Ok(())
+}
 
 /// Signed package registry server.
 #[derive(Parser, Debug)]
@@ -32,7 +42,13 @@ enum Command {
         server: Url,
 
         /// Keystore for the signing key.
-        #[clap(short, long, parse(from_os_str))]
+        #[clap(
+            short,
+            long,
+            parse(from_os_str),
+            env = "IPKG_KEYSTORE",
+            hide_env = true
+        )]
         key: PathBuf,
     },
     /// Register a namespace.
@@ -42,7 +58,13 @@ enum Command {
         server: Url,
 
         /// Keystore for the signing key.
-        #[clap(short, long, parse(from_os_str))]
+        #[clap(
+            short,
+            long,
+            parse(from_os_str),
+            env = "IPKG_KEYSTORE",
+            hide_env = true
+        )]
         key: PathBuf,
 
         /// Namespace to register.
@@ -63,7 +85,13 @@ enum Command {
         mime: Mime,
 
         /// Keystore for the signing key.
-        #[clap(short, long, parse(from_os_str))]
+        #[clap(
+            short,
+            long,
+            parse(from_os_str),
+            env = "IPKG_KEYSTORE",
+            hide_env = true
+        )]
         key: PathBuf,
 
         /// File to publish.
@@ -83,6 +111,11 @@ enum Command {
         #[clap(parse(from_os_str))]
         file: PathBuf,
     },
+    /// Manage namespace users.
+    User {
+        #[clap(subcommand)]
+        cmd: User,
+    },
     /// Yank a package.
     Yank {
         /// Server URL.
@@ -90,7 +123,13 @@ enum Command {
         server: Url,
 
         /// Keystore for the signing key.
-        #[clap(short, long, parse(from_os_str))]
+        #[clap(
+            short,
+            long,
+            parse(from_os_str),
+            env = "IPKG_KEYSTORE",
+            hide_env = true
+        )]
         key: PathBuf,
 
         /// Package identifier.
@@ -117,6 +156,119 @@ enum Command {
         /// Config file to load.
         #[clap(short, long, parse(from_os_str))]
         config: PathBuf,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum User {
+    /// Add user access to a namespace.
+    Add {
+        /// Server URL.
+        #[clap(short, long, default_value = "http://127.0.0.1:9060")]
+        server: Url,
+
+        /// Make the user an administrator.
+        #[clap(short, long)]
+        admin: bool,
+
+        /// Restrict the user to target package.
+        #[clap(short, long)]
+        package: Option<PackageName>,
+
+        /// Keystore for the signing key.
+        #[clap(
+            short,
+            long,
+            parse(from_os_str),
+            env = "IPKG_KEYSTORE",
+            hide_env = true
+        )]
+        key: PathBuf,
+
+        /// Target namespace.
+        #[clap(short, long)]
+        namespace: Namespace,
+
+        /// Address of the user.
+        user: Address,
+    },
+
+    /// Remove user access from a namespace.
+    Remove {
+        /// Server URL.
+        #[clap(short, long, default_value = "http://127.0.0.1:9060")]
+        server: Url,
+
+        /// Keystore for the signing key.
+        #[clap(
+            short,
+            long,
+            parse(from_os_str),
+            env = "IPKG_KEYSTORE",
+            hide_env = true
+        )]
+        key: PathBuf,
+
+        /// Target namespace.
+        #[clap(short, long)]
+        namespace: Namespace,
+
+        /// Address of the user.
+        user: Address,
+    },
+
+    /// Grant user access to a package.
+    Grant {
+        /// Server URL.
+        #[clap(short, long, default_value = "http://127.0.0.1:9060")]
+        server: Url,
+
+        /// Keystore for the signing key.
+        #[clap(
+            short,
+            long,
+            parse(from_os_str),
+            env = "IPKG_KEYSTORE",
+            hide_env = true
+        )]
+        key: PathBuf,
+
+        /// Target namespace.
+        #[clap(short, long)]
+        namespace: Namespace,
+
+        /// Address of the user.
+        user: Address,
+
+        /// Grant access to target package.
+        package: PackageName,
+    },
+
+    /// Revoke user access to a package.
+    Revoke {
+        /// Server URL.
+        #[clap(short, long, default_value = "http://127.0.0.1:9060")]
+        server: Url,
+
+        /// Keystore for the signing key.
+        #[clap(
+            short,
+            long,
+            parse(from_os_str),
+            env = "IPKG_KEYSTORE",
+            hide_env = true
+        )]
+        key: PathBuf,
+
+        /// Target namespace.
+        #[clap(short, long)]
+        namespace: Namespace,
+
+        /// Address of the user.
+        user: Address,
+
+        /// Revoke access to target package.
+        package: PackageName,
     },
 }
 
@@ -159,6 +311,60 @@ async fn run() -> Result<()> {
             let size = file.metadata()?.len();
             tracing::info!(file = ?file, size = ?size);
         }
+        Command::User { cmd } => match cmd {
+            User::Add {
+                server,
+                key,
+                namespace,
+                user,
+                admin,
+                package,
+            } => {
+                ipfs_registry_client::add_user(
+                    server, key, namespace, user, admin, package,
+                )
+                .await?;
+                ok_response()?;
+            }
+            User::Remove {
+                server,
+                key,
+                namespace,
+                user,
+            } => {
+                ipfs_registry_client::remove_user(
+                    server, key, namespace, user,
+                )
+                .await?;
+                ok_response()?;
+            }
+            User::Grant {
+                server,
+                key,
+                namespace,
+                package,
+                user,
+            } => {
+                ipfs_registry_client::access_control(
+                    server, key, namespace, package, user, true
+                )
+                .await?;
+                ok_response()?;
+            }
+            User::Revoke {
+                server,
+                key,
+                namespace,
+                package,
+                user,
+            } => {
+                ipfs_registry_client::access_control(
+                    server, key, namespace, package, user, false
+                )
+                .await?;
+                ok_response()?;
+            }
+        },
         Command::Yank {
             server,
             key,
@@ -167,10 +373,7 @@ async fn run() -> Result<()> {
         } => {
             let message = message.unwrap_or(String::new());
             ipfs_registry_client::yank(server, key, id, message).await?;
-            serde_json::to_writer_pretty(
-                std::io::stdout(),
-                &json!({"ok": true}),
-            )?;
+            ok_response()?;
         }
         Command::Get { server, id } => {
             let doc = ipfs_registry_client::get(server, id).await?;

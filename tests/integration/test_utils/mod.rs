@@ -136,7 +136,7 @@ pub async fn prepare_mock_namespace(
     server: &Url,
     key: &SigningKey,
     namespace: &Namespace,
-) -> Result<(PublisherRecord, NamespaceRecord)> {
+) -> ipfs_registry_client::Result<(PublisherRecord, NamespaceRecord)> {
     let publisher_record =
         RegistryClient::signup(server.clone(), key.clone()).await?;
 

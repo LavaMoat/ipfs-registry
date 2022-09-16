@@ -14,24 +14,10 @@ use web3_address::ethereum::Address;
 
 use crate::{
     tarball::{decompress, read_cargo_package, read_npm_package},
-    Error, Result,
+    validate_id, Error, Result,
 };
 
 const IPFS_DELIMITER: &str = "/ipfs/";
-
-const INVALID: &[char] = &[
-    '/', '\\', ' ', '\t', '\n', '@', ':', '?', '#', '_', '&', '!', ';',
-];
-
-/// Validate a namespace or package name.
-pub fn validate(s: &str) -> bool {
-    for c in INVALID {
-        if s.find(*c).is_some() {
-            return false;
-        }
-    }
-    true
-}
 
 /// Kinds or supported registries.
 #[derive(Default, Clone, Copy, Debug, Serialize, Deserialize)]
@@ -86,7 +72,7 @@ impl fmt::Display for Namespace {
 impl FromStr for Namespace {
     type Err = Error;
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        if validate(s) {
+        if validate_id(s) {
             Ok(Namespace(s.to_owned()))
         } else {
             Err(Error::InvalidNamespace(s.to_owned()))
@@ -123,7 +109,7 @@ impl fmt::Display for PackageName {
 impl FromStr for PackageName {
     type Err = Error;
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        if validate(s) {
+        if validate_id(s) {
             Ok(PackageName(s.to_owned()))
         } else {
             Err(Error::InvalidPackageName(s.to_owned()))
@@ -451,10 +437,10 @@ mod tests {
 
     #[test]
     fn parse_package_key_path() -> Result<()> {
-        let key = "example.com/mock-package/1.0.0";
+        let key = "mock-namespace/mock-package/1.0.0";
         let package_key: PackageKey = key.parse()?;
         if let PackageKey::Pointer(org, name, version) = package_key {
-            assert_eq!(Namespace::new_unchecked("example.com"), org);
+            assert_eq!(Namespace::new_unchecked("mock-namespace"), org);
             assert_eq!(PackageName::new_unchecked("mock-package"), name);
             assert_eq!(Version::new(1, 0, 0), version);
             Ok(())
@@ -505,7 +491,7 @@ mod tests {
 
     #[test]
     fn serde_package_key_path() -> Result<()> {
-        let key = "example.com/mock-package/1.0.0";
+        let key = "mock-namespace/mock-package/1.0.0";
         let package_key: PackageKey = key.parse()?;
         let serialized = serde_json::to_string(&package_key)?;
         let deserialized: PackageKey = serde_json::from_str(&serialized)?;

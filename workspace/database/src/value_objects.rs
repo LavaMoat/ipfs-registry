@@ -109,6 +109,29 @@ impl FromRow<'_, SqliteRow> for PublisherRecord {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct AccessRestriction {
+    /// Publisher foreign key.
+    #[serde(skip)]
+    pub publisher_id: i64,
+    /// Package foreign key.
+    #[serde(skip)]
+    pub package_id: i64,
+}
+
+impl FromRow<'_, SqliteRow> for AccessRestriction {
+    fn from_row(row: &SqliteRow) -> sqlx::Result<Self> {
+        let publisher_id: i64 = row.try_get("publisher_id")?;
+        let package_id: i64 = row.try_get("package_id")?;
+        Ok(Self {
+            publisher_id,
+            package_id,
+        })
+    }
+}
+
+/// User given permission to publish to a namespace by the
+/// namespace owner.
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UserRecord {
     /// Namespace foreign key.
     #[serde(skip)]
@@ -118,6 +141,12 @@ pub struct UserRecord {
     pub publisher_id: i64,
     /// Address of the publisher.
     pub address: Address,
+    /// User is allowed to administrate the namespace.
+    #[serde(skip)]
+    pub administrator: bool,
+    /// Packages that this user is restricted to.
+    #[serde(skip)]
+    pub restrictions: Vec<i64>,
 }
 
 impl FromRow<'_, SqliteRow> for UserRecord {
@@ -125,6 +154,24 @@ impl FromRow<'_, SqliteRow> for UserRecord {
         let namespace_id: i64 = row.try_get("namespace_id")?;
         let publisher_id: i64 = row.try_get("publisher_id")?;
         let address: Vec<u8> = row.try_get("address")?;
+        let administrator: i64 = row.try_get("administrator")?;
+        let administrator = administrator > 0;
+
+        let restrictions =
+            if let Ok(ids) = row.try_get::<String, _>("package_ids") {
+                let mut restrictions: Vec<i64> = Vec::new();
+                if !ids.is_empty() {
+                    for id in ids.split(",") {
+                        let id = id
+                            .parse::<i64>()
+                            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+                        restrictions.push(id);
+                    }
+                }
+                restrictions
+            } else {
+                Default::default()
+            };
 
         let address: [u8; 20] = address
             .as_slice()
@@ -136,6 +183,8 @@ impl FromRow<'_, SqliteRow> for UserRecord {
             namespace_id,
             publisher_id,
             address,
+            administrator,
+            restrictions,
         })
     }
 }
@@ -151,7 +200,7 @@ pub struct NamespaceRecord {
     pub owner: Address,
     /// Additional publishers.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub publishers: Vec<Address>,
+    pub publishers: Vec<UserRecord>,
     /// Creation date and time.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -179,8 +228,7 @@ impl FromRow<'_, SqliteRow> for NamespaceRecord {
 
         Ok(Self {
             namespace_id,
-            //publisher_id,
-            publishers: vec![],
+            publishers: Default::default(),
             name,
             owner: address,
             created_at,
@@ -189,13 +237,34 @@ impl FromRow<'_, SqliteRow> for NamespaceRecord {
 }
 
 impl NamespaceRecord {
-    /// Determine if an address is allowed to publish to
-    /// this namespace.
-    pub fn can_publish(&self, address: &Address) -> bool {
+    /// Determine if this address if the namespace owner.
+    pub fn is_owner(&self, address: &Address) -> bool {
+        &self.owner == address
+    }
+
+    /// Determine if an address can make administrative changes
+    /// to the namespace.
+    pub fn can_administrate(&self, address: &Address) -> bool {
         if &self.owner == address {
             true
         } else {
-            self.publishers.iter().any(|a| a == address)
+            self.publishers
+                .iter()
+                .any(|u| &u.address == address && u.administrator)
+        }
+    }
+
+    /// Find a user in this namespace.
+    pub fn find_user(&self, address: &Address) -> Option<&UserRecord> {
+        self.publishers.iter().find(|u| &u.address == address)
+    }
+
+    /// Determine if an address belongs to this namespace.
+    pub fn has_user(&self, address: &Address) -> bool {
+        if &self.owner == address {
+            true
+        } else {
+            self.publishers.iter().any(|u| &u.address == address)
         }
     }
 }

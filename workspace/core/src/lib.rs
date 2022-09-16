@@ -1,6 +1,7 @@
 mod error;
 mod package;
 mod tarball;
+mod validate;
 
 pub use error::Error;
 pub use package::{
@@ -8,6 +9,7 @@ pub use package::{
     PackageName, PackageReader, PackageSignature, Pointer, Receipt,
     RegistryKind,
 };
+pub use validate::{confusable_skeleton, validate_id};
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 

@@ -7,7 +7,7 @@ use url::Url;
 use web3_address::ethereum::Address;
 use web3_keystore::encrypt;
 
-use ipfs_registry_core::{Namespace, PackageKey, Receipt};
+use ipfs_registry_core::{Namespace, PackageKey, PackageName, Receipt};
 use ipfs_registry_database::{
     NamespaceRecord, PublisherRecord, VersionRecord,
 };
@@ -97,4 +97,44 @@ pub async fn yank(
 /// Get a package.
 pub async fn get(server: Url, id: PackageKey) -> Result<VersionRecord> {
     RegistryClient::exact_version(server, id).await
+}
+
+/// Add a user.
+pub async fn add_user(
+    server: Url,
+    key: PathBuf,
+    namespace: Namespace,
+    user: Address,
+    admin: bool,
+    package: Option<PackageName>,
+) -> Result<()> {
+    let signing_key = helpers::read_keystore_file(key)?;
+    RegistryClient::add_user(
+        server, signing_key, namespace, user, admin, package).await
+}
+
+/// Remove a user.
+pub async fn remove_user(
+    server: Url,
+    key: PathBuf,
+    namespace: Namespace,
+    user: Address,
+) -> Result<()> {
+    let signing_key = helpers::read_keystore_file(key)?;
+    RegistryClient::remove_user(
+        server, signing_key, namespace, user).await
+}
+
+/// Grant or revoke package access.
+pub async fn access_control(
+    server: Url,
+    key: PathBuf,
+    namespace: Namespace,
+    package: PackageName,
+    user: Address,
+    grant: bool,
+) -> Result<()> {
+    let signing_key = helpers::read_keystore_file(key)?;
+    RegistryClient::access_control(
+        server, signing_key, namespace, package, user, grant).await
 }

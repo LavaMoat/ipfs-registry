@@ -1,5 +1,8 @@
 mod test_utils;
 
+mod access_control;
+mod confusable_namespace;
+mod confusable_package;
 mod database;
 mod fetch;
 mod fetch_not_found;

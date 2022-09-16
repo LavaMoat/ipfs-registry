@@ -6,11 +6,12 @@ use sqlx::{
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
-    Namespace, ObjectKey, PackageKey, PackageName, Pointer,
+    confusable_skeleton, Namespace, ObjectKey, PackageKey, PackageName,
+    Pointer,
 };
 
 use crate::{
-    model::{NamespaceModel, Pager, PublisherModel, VersionIncludes},
+    model::{NamespaceModel, Pager, VersionIncludes},
     value_objects::*,
     Error, Result,
 };
@@ -94,7 +95,7 @@ impl PackageModel {
             name,
         )
         .await?
-        .ok_or_else(|| Error::UnknownPackage(name.to_string()))?;
+        .ok_or_else(|| Error::UnknownPackage(name.to_owned()))?;
 
         let mut args: SqliteArguments = Default::default();
         args.add(package_record.package_id);
@@ -196,15 +197,32 @@ impl PackageModel {
         }
     }
 
+    /// Find multiple packages by name.
+    pub async fn find_many_by_name<'a>(
+        pool: &SqlitePool,
+        namespace_id: i64,
+        packages: Vec<&'a PackageName>,
+    ) -> Result<Vec<(&'a PackageName, Option<PackageRecord>)>> {
+        let mut records = Vec::new();
+        for name in packages {
+            records.push((
+                name,
+                PackageModel::find_by_name(pool, namespace_id, name).await?,
+            ));
+        }
+        Ok(records)
+    }
+
     /// Find a package by name.
     pub async fn find_by_name(
         pool: &SqlitePool,
         namespace_id: i64,
         name: &PackageName,
     ) -> Result<Option<PackageRecord>> {
+        let skeleton = confusable_skeleton(name.as_str());
         let mut args: SqliteArguments = Default::default();
         args.add(namespace_id);
-        args.add(name.as_str());
+        args.add(&skeleton);
 
         let record = sqlx::query_as_with::<_, PackageRecord, _>(
             r#"
@@ -214,7 +232,7 @@ impl PackageModel {
                     created_at,
                     name
                 FROM packages
-                WHERE namespace_id = ? AND name = ?
+                WHERE namespace_id = ? AND skeleton = ?
             "#,
             args,
         )
@@ -393,7 +411,7 @@ impl PackageModel {
             name,
         )
         .await?
-        .ok_or_else(|| Error::UnknownPackage(name.to_string()))?;
+        .ok_or_else(|| Error::UnknownPackage(name.to_owned()))?;
 
         let mut args: SqliteArguments = Default::default();
         args.add(package_record.package_id);
@@ -484,7 +502,7 @@ impl PackageModel {
             name,
         )
         .await?
-        .ok_or_else(|| Error::UnknownPackage(name.to_string()))?;
+        .ok_or_else(|| Error::UnknownPackage(name.to_owned()))?;
 
         PackageModel::find_latest(pool, &package_record, include_prerelease)
             .await
@@ -610,13 +628,16 @@ impl PackageModel {
         } else {
             let mut builder = QueryBuilder::new(
                 r#"
-                    INSERT INTO packages ( namespace_id, name, created_at )
+                    INSERT INTO packages ( namespace_id, name, skeleton, created_at )
                     VALUES (
                 "#,
             );
+
+            let skeleton = confusable_skeleton(name.as_str());
             let mut separated = builder.separated(", ");
             separated.push_bind(namespace_id);
             separated.push_bind(name.as_str());
+            separated.push_bind(&skeleton);
             builder.push(", datetime('now') )");
 
             let id = builder.build().execute(pool).await?.last_insert_rowid();
@@ -691,13 +712,33 @@ impl PackageModel {
     }
 
     /// Assert publishing is ok by checking a package
-    /// with the given name and version does not already exist.
-    pub async fn assert_publish_safe(
+    /// with the given name and version does not already exist, the
+    /// target version is ahead of the latest published version
+    /// and verify access control permissions.
+    pub async fn can_publish_package(
         pool: &SqlitePool,
+        address: &Address,
         namespace_record: &NamespaceRecord,
         name: &PackageName,
         version: &Version,
-    ) -> Result<()> {
+    ) -> Result<Option<PackageRecord>> {
+        let not_owner = address != &namespace_record.owner;
+        let user = namespace_record
+            .publishers
+            .iter()
+            .find(|u| &u.address == address);
+        let is_restricted = if let (Some(user), true) = (user, not_owner) {
+            !user.restrictions.is_empty()
+        } else {
+            false
+        };
+
+        // Not the owner and no user found for the namespace
+        // so access is denied
+        if not_owner && user.is_none() {
+            return Err(Error::Unauthorized(*address));
+        }
+
         // Check the package / version does not already exist
         let (package_record, version_record) =
             PackageModel::find_by_name_version(
@@ -715,7 +756,19 @@ impl PackageModel {
             ));
         }
 
-        if package_record.is_some() {
+        if let Some(package_record) = &package_record {
+            // Package already exists and the user is restricted
+            // so verify the user can publish to the target package
+            if let (Some(user), true) = (user, is_restricted) {
+                let can_publish =
+                    user.restrictions.iter().any(|package_id| {
+                        package_id == &package_record.package_id
+                    });
+                if !can_publish {
+                    return Err(Error::Unauthorized(*address));
+                }
+            }
+
             // Verify the version to publish is ahead of the latest version
             if let Some(latest) = PackageModel::find_latest_by_name(
                 pool,
@@ -732,33 +785,16 @@ impl PackageModel {
                     ));
                 }
             }
+        } else {
+            // No existing package record so this is the first
+            // publish for the package, restricted users should
+            // be denied access
+            if let (Some(_), true) = (user, is_restricted) {
+                return Err(Error::Unauthorized(*address));
+            }
         }
 
-        Ok(())
-    }
-
-    /// Verify the publisher and namespace before publishing.
-    pub async fn can_write_namespace(
-        pool: &SqlitePool,
-        publisher: &Address,
-        namespace: &Namespace,
-    ) -> Result<(PublisherRecord, NamespaceRecord)> {
-        // Check the publisher exists
-        let publisher_record =
-            PublisherModel::find_by_address(pool, publisher)
-                .await?
-                .ok_or(Error::UnknownPublisher(*publisher))?;
-
-        // Check the namespace exists
-        let namespace_record = NamespaceModel::find_by_name(pool, namespace)
-            .await?
-            .ok_or_else(|| Error::UnknownNamespace(namespace.clone()))?;
-
-        if !namespace_record.can_publish(publisher) {
-            return Err(Error::Unauthorized(*publisher));
-        }
-
-        Ok((publisher_record, namespace_record))
+        Ok(package_record)
     }
 
     /// Yank a specific package version.

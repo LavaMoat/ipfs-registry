@@ -25,9 +25,7 @@ async fn integration_fetch_not_found() -> Result<()> {
     std::fs::remove_file(&output)?;
 
     let key = PackageKey::Pointer(
-        Namespace::new_unchecked(
-            "0x0000000000000000000000000000000000000000",
-        ),
+        Namespace::new_unchecked("mock-namespace"),
         PackageName::new_unchecked("foo-name"),
         Version::new(1, 0, 0),
     );

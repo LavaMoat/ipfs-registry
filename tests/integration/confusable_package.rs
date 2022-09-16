@@ -3,16 +3,15 @@ use serial_test::serial;
 use std::path::PathBuf;
 
 use crate::test_utils::*;
-use semver::Version;
 
 use ipfs_registry_client::RegistryClient;
-use ipfs_registry_core::{Namespace, PackageName};
+use ipfs_registry_core::Namespace;
 
 use k256::ecdsa::SigningKey;
 
 #[tokio::test]
 #[serial]
-async fn integration_publish_conflict() -> Result<()> {
+async fn integration_confusable_package() -> Result<()> {
     // Spawn the server
     let (rx, _handle) = spawn(default_server_config())?;
     let _ = rx.await?;
@@ -20,6 +19,7 @@ async fn integration_publish_conflict() -> Result<()> {
     let server_url = server();
 
     let file = PathBuf::from("fixtures/mock-package-1.0.0.tgz");
+
     let mime: mime::Mime = "application/gzip".parse()?;
     let signing_key = SigningKey::random(&mut rand::thread_rng());
 
@@ -27,21 +27,23 @@ async fn integration_publish_conflict() -> Result<()> {
 
     prepare_mock_namespace(&server_url, &signing_key, &namespace).await?;
 
-    let receipt = RegistryClient::publish_file(
+    // Publish the legitimate package
+    RegistryClient::publish_file(
         server_url.clone(),
         namespace.clone(),
         mime.clone(),
         signing_key.clone(),
-        file.clone(),
+        file,
     )
     .await?;
 
-    assert_eq!(
-        PackageName::new_unchecked("mock-package"),
-        receipt.artifact.package.name
-    );
-    assert_eq!(Version::new(1, 0, 0), receipt.artifact.package.version);
+    // Uses 0430 CYRILLIC SMALL LETTER A for the "a" characters
+    //
+    // Inside the tarball the actual attack name is "mock-pаckаge" the
+    // tarball has a different name so we don't get confused!
+    let file = PathBuf::from("fixtures/confusable-pаckаge-1.0.0.tgz");
 
+    // Try to publis the confusable package
     let result = RegistryClient::publish_file(
         server_url,
         namespace,
@@ -50,8 +52,6 @@ async fn integration_publish_conflict() -> Result<()> {
         file,
     )
     .await;
-
-    assert!(result.is_err());
 
     let is_conflict = if let Err(ipfs_registry_client::Error::ResponseCode(
         code,

@@ -6,9 +6,11 @@ use reqwest::Client;
 
 use tokio::io::AsyncWriteExt;
 use url::Url;
+use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
-    Namespace, PackageKey, Receipt, WELL_KNOWN_MESSAGE, X_SIGNATURE,
+    Namespace, PackageKey, PackageName, Receipt, WELL_KNOWN_MESSAGE,
+    X_SIGNATURE,
 };
 
 use ipfs_registry_database::{
@@ -146,6 +148,116 @@ impl RegistryClient {
 
         let doc: Receipt = response.json().await?;
         Ok(doc)
+    }
+
+    /// Add a user to a namespace.
+    pub async fn add_user(
+        server: Url,
+        signing_key: SigningKey,
+        namespace: Namespace,
+        user: Address,
+        admin: bool,
+        package: Option<PackageName>,
+    ) -> Result<()> {
+        let signature: recoverable::Signature =
+            signing_key.sign(user.as_ref());
+        let sign_bytes = &signature;
+
+        let client = Client::new();
+        let url = server
+            .join(&format!("api/namespace/{}/user/{}", namespace, user))?;
+
+        let mut query = Vec::new();
+        if admin {
+            query.push(("admin", admin.to_string()));
+        }
+        if let Some(package) = package {
+            query.push(("package", package.to_string()));
+        }
+
+        let response = client
+            .post(url)
+            .query(&query)
+            .header(X_SIGNATURE, base64::encode(sign_bytes))
+            .send()
+            .await?;
+
+        response
+            .status()
+            .is_success()
+            .then_some(())
+            .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
+
+        Ok(())
+    }
+
+    /// Remove a user from a namespace.
+    pub async fn remove_user(
+        server: Url,
+        signing_key: SigningKey,
+        namespace: Namespace,
+        user: Address,
+    ) -> Result<()> {
+        let signature: recoverable::Signature =
+            signing_key.sign(user.as_ref());
+        let sign_bytes = &signature;
+
+        let client = Client::new();
+        let url = server
+            .join(&format!("api/namespace/{}/user/{}", namespace, user))?;
+
+        let response = client
+            .delete(url)
+            .header(X_SIGNATURE, base64::encode(sign_bytes))
+            .send()
+            .await?;
+
+        response
+            .status()
+            .is_success()
+            .then_some(())
+            .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
+
+        Ok(())
+    }
+
+    /// Grant or revoke user access to a package.
+    pub async fn access_control(
+        server: Url,
+        signing_key: SigningKey,
+        namespace: Namespace,
+        package: PackageName,
+        user: Address,
+        grant: bool,
+    ) -> Result<()> {
+        let signature: recoverable::Signature =
+            signing_key.sign(user.as_ref());
+        let sign_bytes = &signature;
+
+        let client = Client::new();
+        let url = server.join(&format!(
+            "api/namespace/{}/user/{}/access/{}",
+            namespace, user, package
+        ))?;
+
+        let builder = if grant {
+            client.post(url)
+        } else {
+            client.delete(url)
+        };
+
+        let response = builder
+            .header(X_SIGNATURE, base64::encode(sign_bytes))
+            .send()
+            .await?;
+
+        response
+            .status()
+            .is_success()
+            .then_some(())
+            .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
+
+        Ok(())
     }
 
     /// Yank a version.

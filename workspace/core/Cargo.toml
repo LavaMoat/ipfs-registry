@@ -17,6 +17,7 @@ hex = { version = "0.4", features = ["serde"] }
 cid = { version = "0.8", features = ["serde-codec"] }
 toml = "0.5"
 sha3 = "0.10"
+unicode-security = "0"
 
 [dev-dependencies]
 anyhow = "1"
