@@ -183,6 +183,45 @@ Register a namespace; if the namespace already exists a 409 CONFLICT response is
 }
 ```
 
+### Add a user
+
+```
+POST /api/namespace/:namespace/user/:address
+```
+
+Add a user to a namespace.
+
+If the user already has access to the namespace a 409 CONFLICT response is returned.
+
+#### Query
+
+* `admin`: Boolean indicating the user is an administrator (default: `false`).
+* `package`: Optional name of a package restriction for the new user.
+
+#### Headers
+
+* `x-signature`: Signature of the bytes for `:address`.
+
+#### Response
+
+200 if successful.
+
+### Remove a user
+
+```
+DELETE /api/namespace/:namespace/user/:address
+```
+
+Remove a user from a namespace.
+
+#### Headers
+
+* `x-signature`: Signature of the bytes for `:address`.
+
+#### Response
+
+200 if successful.
+
 ### Upload a package
 
 ```
