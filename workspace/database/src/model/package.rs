@@ -810,29 +810,50 @@ impl PackageModel {
         Ok(package_record)
     }
 
-    /*
     /// Mark a package as deprecated.
     pub async fn deprecate(
         pool: &SqlitePool,
-        package_id: i64,
+        address: &Address,
+        namespace: &Namespace,
+        package: &PackageName,
         message: &str,
     ) -> Result<()> {
+        let (_, namespace_record) = NamespaceModel::can_access_namespace(
+            pool,
+            &address,
+            &namespace,
+        )
+        .await?;
+
+        let package_record =
+            PackageModel::find_by_name(pool, namespace_record.namespace_id, package).await?;
+        let package_record =
+            package_record.ok_or(Error::UnknownPackage(package.clone()))?;
+
+        PackageModel::can_publish_package(
+            pool,
+            address,
+            &namespace_record,
+            &package_record.name,
+            None,
+        )
+        .await?;
+
         let mut builder =
             QueryBuilder::<Sqlite>::new("UPDATE packages SET deprecated = ");
         builder.push_bind(message);
         builder.push("WHERE package_id = ");
-        builder.push_bind(version_id);
+        builder.push_bind(package_record.package_id);
 
         let mut args: SqliteArguments = Default::default();
         args.add(message);
-        args.add(package_id);
+        args.add(package_record.package_id);
 
         let sql = builder.into_sql();
         sqlx::query_with::<_, _>(&sql, args).execute(pool).await?;
 
         Ok(())
     }
-    */
 
     /// Yank a package.
     pub async fn yank(
@@ -884,29 +905,4 @@ impl PackageModel {
 
         Ok(())
     }
-
-    /*
-    /// Yank a specific package version.
-    async fn yank_version(
-        pool: &SqlitePool,
-        version_id: i64,
-        message: &str,
-    ) -> Result<()> {
-        let mut builder =
-            QueryBuilder::<Sqlite>::new("UPDATE versions SET yanked = ");
-        builder.push_bind(message);
-        builder.push("WHERE version_id = ");
-        builder.push_bind(version_id);
-
-        let mut args: SqliteArguments = Default::default();
-        args.add(message);
-        args.add(version_id);
-
-        let sql = builder.into_sql();
-
-        sqlx::query_with::<_, _>(&sql, args).execute(pool).await?;
-
-        Ok(())
-    }
-    */
 }
