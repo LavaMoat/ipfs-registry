@@ -184,6 +184,11 @@ impl Server {
                 "/api/namespace/:namespace",
                 post(NamespaceHandler::register),
             )
+            .route(
+                "/api/namespace/:namespace/user/:address",
+                post(NamespaceHandler::add_user)
+                    .delete(NamespaceHandler::remove_user),
+            )
             .route("/api/package", get(PackageHandler::fetch))
             .route(
                 "/api/package/:namespace",

@@ -130,7 +130,7 @@ Download the package to a file:
 ipkg fetch mock-namespace/mock-package/1.0.0 sandbox/package.tgz
 ```
 
-Get the package version record:
+Get information about the package version:
 
 ```
 ipkg get mock-namespace/mock-package/1.0.0
