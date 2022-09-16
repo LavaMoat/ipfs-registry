@@ -1,15 +1,15 @@
-use std::time::Duration;
 use bytes::Bytes;
 use k256::ecdsa::{recoverable, signature::Signer};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use url::Url;
 
 use ipfs_registry_core::X_SIGNATURE;
 
 use crate::{config::WebHookConfig, Result};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged, rename_all = "lowercase")]
 pub enum WebHookEvent {
     /// Event triggered when a package is fetched.
@@ -18,13 +18,13 @@ pub enum WebHookEvent {
     Publish,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct WebHookBody<T> {
     #[serde(flatten)]
     pub(crate) inner: T,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct WebHookPacket<T> {
     pub event: WebHookEvent,
     pub body: WebHookBody<T>,
@@ -49,10 +49,20 @@ async fn execute<T: Serialize>(
     let body = Bytes::from(serde_json::to_vec(&packet)?);
     let signature: recoverable::Signature = signing_key.sign(&body);
     for url in hooks.endpoints {
+        tracing::debug!(
+            url = %url,
+            event = ?packet.event,
+            retry_limit = %hooks.retry_limit,
+            backoff_seconds = %hooks.backoff_seconds,
+            "exec webhook");
+
         tokio::spawn(request_with_retry(
             hooks.retry_limit,
             hooks.backoff_seconds,
-            url, body.clone(), signature.clone()));
+            url,
+            body.clone(),
+            signature.clone(),
+        ));
     }
     Ok(())
 }
@@ -63,17 +73,23 @@ async fn request_with_retry(
     url: Url,
     body: Bytes,
     signature: recoverable::Signature,
-    ) -> Result<bool> {
-
-    let backoff_millis = backoff_seconds * 1000;
+) -> Result<bool> {
+    let mut backoff_millis = backoff_seconds * 1000;
     for index in 0..retry_limit {
-        let success = request(url.clone(), body.clone(), signature).await?;
-        if success {
-            return Ok(true)
+        match request(url.clone(), body.clone(), signature).await {
+            Ok(success) => {
+                if success {
+                    return Ok(true);
+                }
+            }
+            Err(e) => {
+                tracing::warn!("webhook request failure: {}", e);
+            }
         }
-        tokio::time::sleep(
-            Duration::from_millis(backoff_millis * (index + 1))).await;
+        tokio::time::sleep(Duration::from_millis(backoff_millis)).await;
+        backoff_millis = backoff_millis * 2;
     }
+    tracing::error!(url = %url, "webhook failed");
     Ok(false)
 }
 

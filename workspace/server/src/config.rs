@@ -187,7 +187,7 @@ fn default_mime() -> String {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(default)]
+#[serde(default, rename_all = "kebab-case")]
 pub struct RegistryConfig {
     /// Maximum size of body requests.
     #[serde(default = "default_body_limit")]
@@ -224,6 +224,7 @@ fn backoff_seconds() -> u64 {
 }
 
 #[derive(Debug, Default, Clone, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct WebHookConfig {
     /// Path to the signing key for webhooks.
     pub key: PathBuf,
