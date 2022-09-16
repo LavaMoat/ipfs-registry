@@ -614,7 +614,7 @@ deny = [
 
 To configure services to receive webhook events list the endpoints and configure a signing key.
 
-```
+```toml
 [webhooks]
 endpoints = [
   "http://localhost:5555"
@@ -629,7 +629,7 @@ When webhooks are configured the server MUST be started with an `IPKG_WEBHOOK_KE
 Each configured endpoint is sent a POST request with a JSON document as the body:
 
 ```json
-{ event: "publish", body: {} }
+{ "event": "publish", "body": {} }
 ```
 
 The content of the `body` will depend upon the webhook event, supported events are:
