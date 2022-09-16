@@ -476,8 +476,6 @@ impl PackageModel {
 
         let sql = builder.into_sql();
 
-        //println!("{}", sql);
-
         let records = sqlx::query_as_with::<_, VersionRecord, _>(&sql, args)
             .fetch_all(pool)
             .await?;
@@ -722,7 +720,7 @@ impl PackageModel {
         address: &Address,
         namespace_record: &NamespaceRecord,
         name: &PackageName,
-        version: &Version,
+        version: Option<&Version>,
     ) -> Result<Option<PackageRecord>> {
         let not_owner = address != &namespace_record.owner;
         let user = namespace_record
@@ -741,22 +739,33 @@ impl PackageModel {
             return Err(Error::Unauthorized(*address));
         }
 
-        // Check the package / version does not already exist
-        let (package_record, version_record) =
-            PackageModel::find_by_name_version(
+        let package_record = if let Some(version) = version {
+            // Check the package / version does not already exist
+            let (package_record, version_record) =
+                PackageModel::find_by_name_version(
+                    pool,
+                    namespace_record.namespace_id,
+                    name,
+                    version,
+                )
+                .await?;
+            if version_record.is_some() {
+                return Err(Error::PackageExists(
+                    namespace_record.name.clone(),
+                    name.clone(),
+                    version.clone(),
+                ));
+            }
+
+            package_record
+        } else {
+            PackageModel::find_by_name(
                 pool,
                 namespace_record.namespace_id,
                 name,
-                version,
             )
-            .await?;
-        if version_record.is_some() {
-            return Err(Error::PackageExists(
-                namespace_record.name.clone(),
-                name.clone(),
-                version.clone(),
-            ));
-        }
+            .await?
+        };
 
         if let Some(package_record) = &package_record {
             // Package already exists and the user is restricted
@@ -771,20 +780,22 @@ impl PackageModel {
                 }
             }
 
-            // Verify the version to publish is ahead of the latest version
-            if let Some(latest) = PackageModel::find_latest_by_name(
-                pool,
-                &namespace_record.name,
-                name,
-                true,
-            )
-            .await?
-            {
-                if version <= &latest.version {
-                    return Err(Error::VersionNotAhead(
-                        version.clone(),
-                        latest.version,
-                    ));
+            if let Some(version) = version {
+                // Verify the version to publish is ahead of the latest version
+                if let Some(latest) = PackageModel::find_latest_by_name(
+                    pool,
+                    &namespace_record.name,
+                    name,
+                    true,
+                )
+                .await?
+                {
+                    if version <= &latest.version {
+                        return Err(Error::VersionNotAhead(
+                            version.clone(),
+                            latest.version,
+                        ));
+                    }
                 }
             }
         } else {
@@ -799,8 +810,84 @@ impl PackageModel {
         Ok(package_record)
     }
 
-    /// Yank a specific package version.
+    /*
+    /// Mark a package as deprecated.
+    pub async fn deprecate(
+        pool: &SqlitePool,
+        package_id: i64,
+        message: &str,
+    ) -> Result<()> {
+        let mut builder =
+            QueryBuilder::<Sqlite>::new("UPDATE packages SET deprecated = ");
+        builder.push_bind(message);
+        builder.push("WHERE package_id = ");
+        builder.push_bind(version_id);
+
+        let mut args: SqliteArguments = Default::default();
+        args.add(message);
+        args.add(package_id);
+
+        let sql = builder.into_sql();
+        sqlx::query_with::<_, _>(&sql, args).execute(pool).await?;
+
+        Ok(())
+    }
+    */
+
+    /// Yank a package.
     pub async fn yank(
+        pool: &SqlitePool,
+        address: &Address,
+        id: &PackageKey,
+        message: &str,
+    ) -> Result<()> {
+        let (namespace_record, package_record, version_record) =
+            PackageModel::find_by_key(pool, id).await?;
+
+        let package_record =
+            package_record.ok_or(Error::UnknownPackageKey(id.clone()))?;
+        let version_record =
+            version_record.ok_or(Error::UnknownPackageKey(id.clone()))?;
+
+        // Should have namespace if we have version record
+        let namespace_record = namespace_record.unwrap();
+
+        NamespaceModel::can_access_namespace(
+            pool,
+            &address,
+            &namespace_record.name,
+        )
+        .await?;
+
+        PackageModel::can_publish_package(
+            pool,
+            address,
+            &namespace_record,
+            &package_record.name,
+            None,
+        )
+        .await?;
+
+        let mut builder =
+            QueryBuilder::<Sqlite>::new("UPDATE versions SET yanked = ");
+        builder.push_bind(message);
+        builder.push("WHERE version_id = ");
+        builder.push_bind(version_record.version_id);
+
+        let mut args: SqliteArguments = Default::default();
+        args.add(message);
+        args.add(version_record.version_id);
+
+        let sql = builder.into_sql();
+
+        sqlx::query_with::<_, _>(&sql, args).execute(pool).await?;
+
+        Ok(())
+    }
+
+    /*
+    /// Yank a specific package version.
+    async fn yank_version(
         pool: &SqlitePool,
         version_id: i64,
         message: &str,
@@ -821,4 +908,5 @@ impl PackageModel {
 
         Ok(())
     }
+    */
 }

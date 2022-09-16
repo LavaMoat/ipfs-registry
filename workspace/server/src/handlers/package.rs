@@ -219,6 +219,22 @@ impl PackageHandler {
         let message = std::str::from_utf8(&body)
             .map_err(|_| StatusCode::BAD_REQUEST)?;
 
+        match PackageModel::yank(&state.pool, &address, &query.id, &message)
+            .await
+        {
+            Ok(_) => Ok(StatusCode::OK),
+            Err(e) => Err(match e {
+                DatabaseError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+                DatabaseError::UnknownNamespace(_)
+                | DatabaseError::UnknownPackage(_)
+                | DatabaseError::UnknownPackageKey(_) => {
+                    StatusCode::NOT_FOUND
+                }
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            }),
+        }
+
+        /*
         match PackageModel::find_by_key(&state.pool, &query.id).await {
             Ok((ns, _pkg, record)) => {
                 let record = record.ok_or_else(|| StatusCode::NOT_FOUND)?;
@@ -265,6 +281,7 @@ impl PackageHandler {
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }),
         }
+        */
     }
 
     /// Download a package.
@@ -379,7 +396,7 @@ impl PackageHandler {
                     &address,
                     &namespace_record,
                     &package.name,
-                    &package.version,
+                    Some(&package.version),
                 )
                 .await
                 {

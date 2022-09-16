@@ -1,4 +1,4 @@
-use ipfs_registry_core::{Namespace, PackageName};
+use ipfs_registry_core::{Namespace, PackageKey, PackageName};
 use semver::Version;
 use thiserror::Error;
 use web3_address::ethereum::Address;
@@ -22,6 +22,9 @@ pub enum Error {
 
     #[error("unknown package {0}")]
     UnknownPackage(PackageName),
+
+    #[error("unknown package {0}")]
+    UnknownPackageKey(PackageKey),
 
     #[error("user {0} already has access to {1}")]
     AccessRestrictionExists(Address, PackageName),

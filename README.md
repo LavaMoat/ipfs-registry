@@ -477,8 +477,6 @@ Mark a specific version of a package as yanked.
 
 The body should be a UTF-8 encoded string of the reason why the version was yanked; it may be the empty string.
 
-If the version is already yanked a 409 CONFLICT response is returned.
-
 #### Query
 
 * `id`: Package identifier.
