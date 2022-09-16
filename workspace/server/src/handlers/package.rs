@@ -206,6 +206,36 @@ impl PackageHandler {
         }
     }
 
+    /// Deprecate a package.
+    pub(crate) async fn deprecate(
+        Extension(state): Extension<ServerState>,
+        TypedHeader(signature): TypedHeader<Signature>,
+        Path((namespace, package)): Path<(Namespace, PackageName)>,
+        body: Bytes,
+    ) -> std::result::Result<StatusCode, StatusCode> {
+        let address = verify_signature(signature.into(), &body)
+            .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+        let message = std::str::from_utf8(&body)
+            .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+        match PackageModel::deprecate(
+            &state.pool, &address, &namespace, &package, &message)
+            .await
+        {
+            Ok(_) => Ok(StatusCode::OK),
+            Err(e) => Err(match e {
+                DatabaseError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+                DatabaseError::UnknownNamespace(_)
+                | DatabaseError::UnknownPackage(_)
+                | DatabaseError::UnknownPackageKey(_) => {
+                    StatusCode::NOT_FOUND
+                }
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            }),
+        }
+    }
+
     /// Yank a version of a package.
     pub(crate) async fn yank(
         Extension(state): Extension<ServerState>,
@@ -233,55 +263,6 @@ impl PackageHandler {
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }),
         }
-
-        /*
-        match PackageModel::find_by_key(&state.pool, &query.id).await {
-            Ok((ns, _pkg, record)) => {
-                let record = record.ok_or_else(|| StatusCode::NOT_FOUND)?;
-                if record.yanked.is_some() {
-                    return Err(StatusCode::CONFLICT);
-                }
-
-                // Should have namespace if we have version record
-                let ns = ns.unwrap();
-
-                match NamespaceModel::can_access_namespace(
-                    &state.pool,
-                    &address,
-                    &ns.name,
-                )
-                .await
-                {
-                    Ok(_) => {
-                        PackageModel::yank(
-                            &state.pool,
-                            record.version_id,
-                            &message,
-                        )
-                        .await
-                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-                        Ok(StatusCode::OK)
-                    }
-                    Err(e) => Err(match e {
-                        DatabaseError::Unauthorized(_) => {
-                            StatusCode::UNAUTHORIZED
-                        }
-                        DatabaseError::UnknownPublisher(_)
-                        | DatabaseError::UnknownNamespace(_) => {
-                            StatusCode::NOT_FOUND
-                        }
-                        _ => StatusCode::INTERNAL_SERVER_ERROR,
-                    }),
-                }
-            }
-            Err(e) => Err(match e {
-                DatabaseError::UnknownNamespace(_)
-                | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
-                _ => StatusCode::INTERNAL_SERVER_ERROR,
-            }),
-        }
-        */
     }
 
     /// Download a package.

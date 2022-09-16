@@ -208,6 +208,10 @@ impl Server {
                 "/api/package/:namespace/:package/latest",
                 get(PackageHandler::latest_version),
             )
+            .route(
+                "/api/package/:namespace/:package/deprecate",
+                post(PackageHandler::deprecate),
+            )
             .route("/api/package/version", get(PackageHandler::exact_version))
             .route("/api/package/yank", post(PackageHandler::yank))
             .layer(RequestBodyLimitLayer::new(limit))
