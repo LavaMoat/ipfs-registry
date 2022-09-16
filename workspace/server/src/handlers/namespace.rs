@@ -134,4 +134,76 @@ impl NamespaceHandler {
             }),
         }
     }
+
+    /// Grant a user access to a package.
+    pub(crate) async fn grant_access(
+        Extension(state): Extension<ServerState>,
+        TypedHeader(signature): TypedHeader<Signature>,
+        Path((namespace, user, package)): Path<(
+            Namespace,
+            Address,
+            PackageName,
+        )>,
+    ) -> std::result::Result<StatusCode, StatusCode> {
+        let caller = verify_signature(signature.into(), user.as_ref())
+            .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+        match NamespaceModel::grant_access(
+            &state.pool,
+            &namespace,
+            &package,
+            &caller,
+            &user,
+        )
+        .await
+        {
+            Ok(_) => Ok(StatusCode::OK),
+            Err(e) => Err(match e {
+                DatabaseError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+                DatabaseError::UnknownPublisher(_)
+                | DatabaseError::UnknownNamespace(_)
+                | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
+                DatabaseError::AccessRestrictionExists(_, _) => {
+                    StatusCode::CONFLICT
+                }
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            }),
+        }
+    }
+
+    /// Revoke user access to a package.
+    pub(crate) async fn revoke_access(
+        Extension(state): Extension<ServerState>,
+        TypedHeader(signature): TypedHeader<Signature>,
+        Path((namespace, user, package)): Path<(
+            Namespace,
+            Address,
+            PackageName,
+        )>,
+    ) -> std::result::Result<StatusCode, StatusCode> {
+        let caller = verify_signature(signature.into(), user.as_ref())
+            .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+        match NamespaceModel::revoke_access(
+            &state.pool,
+            &namespace,
+            &package,
+            &caller,
+            &user,
+        )
+        .await
+        {
+            Ok(_) => Ok(StatusCode::OK),
+            Err(e) => Err(match e {
+                DatabaseError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+                DatabaseError::UnknownPublisher(_)
+                | DatabaseError::UnknownNamespace(_)
+                | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
+                DatabaseError::AccessRestrictionMissing(_, _) => {
+                    StatusCode::CONFLICT
+                }
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            }),
+        }
+    }
 }

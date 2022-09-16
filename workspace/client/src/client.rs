@@ -221,6 +221,45 @@ impl RegistryClient {
         Ok(())
     }
 
+    /// Grant or revoke user access to a package.
+    pub async fn access_control(
+        server: Url,
+        signing_key: SigningKey,
+        namespace: Namespace,
+        package: PackageName,
+        user: Address,
+        grant: bool,
+    ) -> Result<()> {
+        let signature: recoverable::Signature =
+            signing_key.sign(user.as_ref());
+        let sign_bytes = &signature;
+
+        let client = Client::new();
+        let url = server.join(&format!(
+            "api/namespace/{}/user/{}/access/{}",
+            namespace, user, package
+        ))?;
+
+        let builder = if grant {
+            client.post(url)
+        } else {
+            client.delete(url)
+        };
+
+        let response = builder
+            .header(X_SIGNATURE, base64::encode(sign_bytes))
+            .send()
+            .await?;
+
+        response
+            .status()
+            .is_success()
+            .then_some(())
+            .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
+
+        Ok(())
+    }
+
     /// Yank a version.
     pub async fn yank(
         server: Url,
