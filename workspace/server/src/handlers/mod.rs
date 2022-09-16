@@ -1,6 +1,7 @@
 mod namespace;
 mod package;
 mod publisher;
+mod webhooks;
 
 pub(crate) use namespace::NamespaceHandler;
 pub(crate) use package::PackageHandler;
