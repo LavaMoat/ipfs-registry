@@ -146,6 +146,15 @@ Get information about the package version:
 ipkg get mock-namespace/mock-package/1.0.0
 ```
 
+## Environment
+
+Some environment variables modify the behavior of the CLI. Use `IPKG_KEYSTORE` as a shortcut for the `--key` option.
+
+So that publishing is possible from CI/CD pipelines the `IPKG_KEYSTORE_PASSWORD` variable will use the specified password instead of prompting for a password interactively. ***Do not use outside of CI/CD environments***.
+
+* `IPKG_KEYSTORE`: Path to a signing keystore.
+* `IPKG_KEYSTORE_PASSWORD`: Password for a signing keystore.
+
 ## API
 
 For API calls that require authentication the `x-signature` header MUST be a base64 encoded string of a 65-byte Ethereum-style ECDSA recoverable signature.

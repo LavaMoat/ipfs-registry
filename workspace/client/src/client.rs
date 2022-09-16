@@ -9,7 +9,8 @@ use url::Url;
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
-    Namespace, PackageKey, PackageName, Receipt, WELL_KNOWN_MESSAGE, X_SIGNATURE,
+    Namespace, PackageKey, PackageName, Receipt, WELL_KNOWN_MESSAGE,
+    X_SIGNATURE,
 };
 
 use ipfs_registry_database::{
@@ -156,15 +157,15 @@ impl RegistryClient {
         namespace: Namespace,
         user: Address,
         admin: bool,
-        package: Option<PackageName>
+        package: Option<PackageName>,
     ) -> Result<()> {
         let signature: recoverable::Signature =
             signing_key.sign(user.as_ref());
         let sign_bytes = &signature;
 
         let client = Client::new();
-        let url = server.join(
-            &format!("api/namespace/{}/user/{}", namespace, user))?;
+        let url = server
+            .join(&format!("api/namespace/{}/user/{}", namespace, user))?;
 
         let mut query = Vec::new();
         if admin {
@@ -202,8 +203,8 @@ impl RegistryClient {
         let sign_bytes = &signature;
 
         let client = Client::new();
-        let url = server.join(
-            &format!("api/namespace/{}/user/{}", namespace, user))?;
+        let url = server
+            .join(&format!("api/namespace/{}/user/{}", namespace, user))?;
 
         let response = client
             .delete(url)

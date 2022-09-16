@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Extension, Query, Path, TypedHeader},
+    extract::{Extension, Path, Query, TypedHeader},
     http::StatusCode,
     Json,
 };
@@ -8,7 +8,7 @@ use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{Namespace, PackageName};
 use ipfs_registry_database::{
-    NamespaceModel, NamespaceRecord, PublisherModel, Error as DatabaseError,
+    Error as DatabaseError, NamespaceModel, NamespaceRecord, PublisherModel,
 };
 
 use crate::{
@@ -90,16 +90,17 @@ impl NamespaceHandler {
             &caller,
             &user,
             admin,
-            restrictions).await {
+            restrictions,
+        )
+        .await
+        {
             Ok(_) => Ok(StatusCode::OK),
             Err(e) => Err(match e {
                 DatabaseError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
                 DatabaseError::UnknownPublisher(_)
                 | DatabaseError::UnknownNamespace(_)
                 | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
-                DatabaseError::UserExists(_, _) => {
-                    StatusCode::CONFLICT
-                }
+                DatabaseError::UserExists(_, _) => StatusCode::CONFLICT,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }),
         }
@@ -118,16 +119,17 @@ impl NamespaceHandler {
             &state.pool,
             &namespace,
             &caller,
-            &user).await {
+            &user,
+        )
+        .await
+        {
             Ok(_) => Ok(StatusCode::OK),
             Err(e) => Err(match e {
                 DatabaseError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
                 DatabaseError::UnknownPublisher(_)
                 | DatabaseError::UnknownNamespace(_)
                 | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
-                DatabaseError::UserExists(_, _) => {
-                    StatusCode::CONFLICT
-                }
+                DatabaseError::UserExists(_, _) => StatusCode::CONFLICT,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }),
         }

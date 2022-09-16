@@ -33,7 +33,13 @@ enum Command {
         server: Url,
 
         /// Keystore for the signing key.
-        #[clap(short, long, parse(from_os_str))]
+        #[clap(
+            short,
+            long,
+            parse(from_os_str),
+            env = "IPKG_KEYSTORE",
+            hide_env = true
+        )]
         key: PathBuf,
     },
     /// Register a namespace.
@@ -43,7 +49,13 @@ enum Command {
         server: Url,
 
         /// Keystore for the signing key.
-        #[clap(short, long, parse(from_os_str))]
+        #[clap(
+            short,
+            long,
+            parse(from_os_str),
+            env = "IPKG_KEYSTORE",
+            hide_env = true
+        )]
         key: PathBuf,
 
         /// Namespace to register.
@@ -64,7 +76,13 @@ enum Command {
         mime: Mime,
 
         /// Keystore for the signing key.
-        #[clap(short, long, parse(from_os_str))]
+        #[clap(
+            short,
+            long,
+            parse(from_os_str),
+            env = "IPKG_KEYSTORE",
+            hide_env = true
+        )]
         key: PathBuf,
 
         /// File to publish.
@@ -96,7 +114,13 @@ enum Command {
         server: Url,
 
         /// Keystore for the signing key.
-        #[clap(short, long, parse(from_os_str))]
+        #[clap(
+            short,
+            long,
+            parse(from_os_str),
+            env = "IPKG_KEYSTORE",
+            hide_env = true
+        )]
         key: PathBuf,
 
         /// Package identifier.
@@ -139,7 +163,13 @@ enum User {
         package: Option<PackageName>,
 
         /// Keystore for the signing key.
-        #[clap(short, long, parse(from_os_str))]
+        #[clap(
+            short,
+            long,
+            parse(from_os_str),
+            env = "IPKG_KEYSTORE",
+            hide_env = true
+        )]
         key: PathBuf,
 
         /// Namespace to add the user to.
@@ -153,7 +183,13 @@ enum User {
     /// Remove user access from a namespace.
     Remove {
         /// Keystore for the signing key.
-        #[clap(short, long, parse(from_os_str))]
+        #[clap(
+            short,
+            long,
+            parse(from_os_str),
+            env = "IPKG_KEYSTORE",
+            hide_env = true
+        )]
         key: PathBuf,
 
         /// Namespace to remove the user from.
@@ -204,18 +240,10 @@ async fn run() -> Result<()> {
             let size = file.metadata()?.len();
             tracing::info!(file = ?file, size = ?size);
         }
-        Command::User {
-            cmd
-        } => {
-            match cmd {
-                User::Add { .. } => {
-
-                }
-                User::Remove { .. } => {
-
-                }
-            }
-        }
+        Command::User { cmd } => match cmd {
+            User::Add { .. } => {}
+            User::Remove { .. } => {}
+        },
         Command::Yank {
             server,
             key,
