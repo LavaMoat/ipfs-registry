@@ -35,7 +35,7 @@ In the future support can be added to mitigate this by storing object references
 
 ### Identity
 
-Using ECDSA recoverable signatures to identify publishers avoids storing any Personally Identifiable Information (PII) and allows us to add Self-Sovereign Identity (SSI) support enabling publishers to verify their identity using Distributed Identifiers (DID) and Verifiable Credentials (VC).
+Using Elliptic Curve Digital Signature Algorithm (ECDSA) recoverable signatures to identify publishers avoids storing any Personally Identifiable Information (PII) and allows us to add Self-Sovereign Identity (SSI) support enabling publishers to verify their identity using Distributed Identifiers (DID) and Verifiable Credentials (VC).
 
 All packages must be signed so we establish irrefutable proof of which identity published a package.
 
