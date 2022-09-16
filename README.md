@@ -639,7 +639,7 @@ The content of the `body` will depend upon the webhook event, supported events a
 
 All webhook requests are signed using the provided key and the signature is sent in the `x-signature` header; services receiving webhook events SHOULD check the signature against the expected address to verify the request origin.
 
-Backoff logic for webhook events is exponential.
+Backoff logic for webhook events is exponential. Registry operators should take care to ensure downstream webhook services have high availability otherwise it may put too much pressure on the server under high load.
 
 ### CORS
 
