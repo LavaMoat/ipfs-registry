@@ -44,9 +44,9 @@ impl fmt::Display for RegistryKind {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct Namespace(String);
+pub struct Identifier(String);
 
-impl Namespace {
+impl Identifier {
     /// Create a new namespace without checking the source is valid.
     pub fn new_unchecked(s: &str) -> Self {
         Self(s.to_owned())
@@ -63,59 +63,28 @@ impl Namespace {
     }
 }
 
-impl fmt::Display for Namespace {
+impl fmt::Display for Identifier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-impl FromStr for Namespace {
+impl FromStr for Identifier {
     type Err = Error;
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         if validate_id(s) {
-            Ok(Namespace(s.to_owned()))
+            Ok(Identifier(s.to_owned()))
         } else {
-            Err(Error::InvalidNamespace(s.to_owned()))
+            Err(Error::InvalidIdentifier(s.to_owned()))
         }
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct PackageName(String);
+/// Namespace identifier.
+pub type Namespace = Identifier;
 
-impl PackageName {
-    /// Create a new package name without checking the source is valid.
-    pub fn new_unchecked(s: &str) -> Self {
-        Self(s.to_owned())
-    }
-
-    /// Get a reference to the underlying string.
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-
-    /// Get a reference to the underlying bytes.
-    pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_bytes()
-    }
-}
-
-impl fmt::Display for PackageName {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl FromStr for PackageName {
-    type Err = Error;
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        if validate_id(s) {
-            Ok(PackageName(s.to_owned()))
-        } else {
-            Err(Error::InvalidPackageName(s.to_owned()))
-        }
-    }
-}
+/// Package name identifier.
+pub type PackageName = Identifier;
 
 /// Reference to a package artifact.
 #[derive(Clone, Debug, Eq, PartialEq)]
