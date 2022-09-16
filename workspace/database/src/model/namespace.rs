@@ -1,10 +1,14 @@
-use crate::{value_objects::*, Error, Result};
 use sqlx::{sqlite::SqliteArguments, Arguments, QueryBuilder, SqlitePool};
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{confusable_skeleton, Namespace, PackageName};
 
-use crate::model::{PackageModel, PublisherModel};
+use crate::{
+    error::NotFound,
+    model::{PackageModel, PublisherModel},
+    value_objects::*,
+    Error, Result,
+};
 
 pub struct NamespaceModel;
 
@@ -59,12 +63,14 @@ impl NamespaceModel {
         let publisher_record =
             PublisherModel::find_by_address(pool, publisher)
                 .await?
-                .ok_or(Error::UnknownPublisher(*publisher))?;
+                .ok_or(Error::NotFound(NotFound::User(*publisher)))?;
 
         // Check the namespace exists
         let namespace_record = NamespaceModel::find_by_name(pool, namespace)
             .await?
-            .ok_or_else(|| Error::UnknownNamespace(namespace.clone()))?;
+            .ok_or_else(|| {
+                Error::NotFound(NotFound::Namespace(namespace.clone()))
+            })?;
 
         if !namespace_record.has_user(publisher) {
             return Err(Error::Unauthorized(*publisher));
@@ -111,7 +117,7 @@ impl NamespaceModel {
         // User must already be registered
         let user_record = PublisherModel::find_by_address(pool, user)
             .await?
-            .ok_or(Error::UnknownPublisher(*user))?;
+            .ok_or(Error::NotFound(NotFound::User(*user)))?;
 
         let packages = PackageModel::find_many_by_name(
             pool,
@@ -122,7 +128,9 @@ impl NamespaceModel {
 
         let mut restrictions = Vec::new();
         for (name, pkg) in packages {
-            let pkg = pkg.ok_or(Error::UnknownPackage(name.to_owned()))?;
+            let pkg = pkg.ok_or(Error::NotFound(NotFound::PackageName(
+                name.to_owned(),
+            )))?;
             restrictions.push(pkg.package_id);
         }
 
@@ -217,7 +225,7 @@ impl NamespaceModel {
             )
             .await
         } else {
-            Err(Error::UnknownPublisher(*user))
+            Err(Error::NotFound(NotFound::User(*user)))
         }
     }
 
@@ -282,7 +290,7 @@ impl NamespaceModel {
             package,
         )
         .await?
-        .ok_or(Error::UnknownPackage(package.to_owned()))?;
+        .ok_or(Error::NotFound(NotFound::PackageName(package.to_owned())))?;
 
         // Check the restriction does not exist
         let restriction = NamespaceModel::find_access_restriction(
@@ -350,7 +358,7 @@ impl NamespaceModel {
             package,
         )
         .await?
-        .ok_or(Error::UnknownPackage(package.to_owned()))?;
+        .ok_or(Error::NotFound(NotFound::PackageName(package.to_owned())))?;
 
         // Check the restriction exists
         let restriction = NamespaceModel::find_access_restriction(

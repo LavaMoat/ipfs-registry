@@ -11,6 +11,7 @@ use ipfs_registry_core::{
 };
 
 use crate::{
+    error::NotFound,
     model::{NamespaceModel, Pager, VersionIncludes},
     value_objects::*,
     Error, Result,
@@ -29,7 +30,9 @@ impl PackageModel {
         // Check the namespace exists
         let namespace_record = NamespaceModel::find_by_name(pool, namespace)
             .await?
-            .ok_or_else(|| Error::UnknownNamespace(namespace.clone()))?;
+            .ok_or_else(|| {
+                Error::NotFound(NotFound::Namespace(namespace.clone()))
+            })?;
 
         let mut args: SqliteArguments = Default::default();
         args.add(namespace_record.namespace_id);
@@ -87,7 +90,9 @@ impl PackageModel {
         // Find the namespace
         let namespace_record = NamespaceModel::find_by_name(pool, namespace)
             .await?
-            .ok_or_else(|| Error::UnknownNamespace(namespace.clone()))?;
+            .ok_or_else(|| {
+                Error::NotFound(NotFound::Namespace(namespace.clone()))
+            })?;
 
         // Find the package
         let package_record = PackageModel::find_by_name(
@@ -96,7 +101,9 @@ impl PackageModel {
             name,
         )
         .await?
-        .ok_or_else(|| Error::UnknownPackage(name.to_owned()))?;
+        .ok_or_else(|| {
+            Error::NotFound(NotFound::PackageName(name.to_owned()))
+        })?;
 
         let mut args: SqliteArguments = Default::default();
         args.add(package_record.package_id);
@@ -152,7 +159,9 @@ impl PackageModel {
                     NamespaceModel::find_by_name(pool, namespace)
                         .await?
                         .ok_or_else(|| {
-                            Error::UnknownNamespace(namespace.clone())
+                            Error::NotFound(NotFound::Namespace(
+                                namespace.clone(),
+                            ))
                         })?;
                 let (package_record, version_record) =
                     PackageModel::find_by_name_version(
@@ -404,7 +413,9 @@ impl PackageModel {
         // Find the namespace
         let namespace_record = NamespaceModel::find_by_name(pool, namespace)
             .await?
-            .ok_or_else(|| Error::UnknownNamespace(namespace.clone()))?;
+            .ok_or_else(|| {
+                Error::NotFound(NotFound::Namespace(namespace.clone()))
+            })?;
 
         // Find the package
         let package_record = PackageModel::find_by_name(
@@ -413,7 +424,9 @@ impl PackageModel {
             name,
         )
         .await?
-        .ok_or_else(|| Error::UnknownPackage(name.to_owned()))?;
+        .ok_or_else(|| {
+            Error::NotFound(NotFound::PackageName(name.to_owned()))
+        })?;
 
         let mut args: SqliteArguments = Default::default();
         args.add(package_record.package_id);
@@ -493,7 +506,9 @@ impl PackageModel {
         // Find the namespace
         let namespace_record = NamespaceModel::find_by_name(pool, namespace)
             .await?
-            .ok_or_else(|| Error::UnknownNamespace(namespace.clone()))?;
+            .ok_or_else(|| {
+                Error::NotFound(NotFound::Namespace(namespace.clone()))
+            })?;
 
         // Find the package
         let package_record = PackageModel::find_by_name(
@@ -502,7 +517,9 @@ impl PackageModel {
             name,
         )
         .await?
-        .ok_or_else(|| Error::UnknownPackage(name.to_owned()))?;
+        .ok_or_else(|| {
+            Error::NotFound(NotFound::PackageName(name.to_owned()))
+        })?;
 
         PackageModel::find_latest(pool, &package_record, include_prerelease)
             .await
@@ -818,17 +835,18 @@ impl PackageModel {
         package: &PackageName,
         message: &str,
     ) -> Result<()> {
-        let (_, namespace_record) = NamespaceModel::can_access_namespace(
+        let (_, namespace_record) =
+            NamespaceModel::can_access_namespace(pool, &address, &namespace)
+                .await?;
+
+        let package_record = PackageModel::find_by_name(
             pool,
-            &address,
-            &namespace,
+            namespace_record.namespace_id,
+            package,
         )
         .await?;
-
-        let package_record =
-            PackageModel::find_by_name(pool, namespace_record.namespace_id, package).await?;
-        let package_record =
-            package_record.ok_or(Error::UnknownPackage(package.clone()))?;
+        let package_record = package_record
+            .ok_or(Error::NotFound(NotFound::PackageName(package.clone())))?;
 
         PackageModel::can_publish_package(
             pool,
@@ -865,10 +883,10 @@ impl PackageModel {
         let (namespace_record, package_record, version_record) =
             PackageModel::find_by_key(pool, id).await?;
 
-        let package_record =
-            package_record.ok_or(Error::UnknownPackageKey(id.clone()))?;
-        let version_record =
-            version_record.ok_or(Error::UnknownPackageKey(id.clone()))?;
+        let package_record = package_record
+            .ok_or(Error::NotFound(NotFound::PackageKey(id.clone())))?;
+        let version_record = version_record
+            .ok_or(Error::NotFound(NotFound::PackageKey(id.clone())))?;
 
         // Should have namespace if we have version record
         let namespace_record = namespace_record.unwrap();

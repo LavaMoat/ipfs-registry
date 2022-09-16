@@ -97,9 +97,7 @@ impl NamespaceHandler {
             Ok(_) => Ok(StatusCode::OK),
             Err(e) => Err(match e {
                 DatabaseError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
-                DatabaseError::UnknownPublisher(_)
-                | DatabaseError::UnknownNamespace(_)
-                | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
+                DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
                 DatabaseError::UserExists(_, _) => StatusCode::CONFLICT,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }),
@@ -126,9 +124,7 @@ impl NamespaceHandler {
             Ok(_) => Ok(StatusCode::OK),
             Err(e) => Err(match e {
                 DatabaseError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
-                DatabaseError::UnknownPublisher(_)
-                | DatabaseError::UnknownNamespace(_)
-                | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
+                DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
                 DatabaseError::UserExists(_, _) => StatusCode::CONFLICT,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }),
@@ -160,9 +156,7 @@ impl NamespaceHandler {
             Ok(_) => Ok(StatusCode::OK),
             Err(e) => Err(match e {
                 DatabaseError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
-                DatabaseError::UnknownPublisher(_)
-                | DatabaseError::UnknownNamespace(_)
-                | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
+                DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
                 DatabaseError::AccessRestrictionExists(_, _) => {
                     StatusCode::CONFLICT
                 }
@@ -196,9 +190,7 @@ impl NamespaceHandler {
             Ok(_) => Ok(StatusCode::OK),
             Err(e) => Err(match e {
                 DatabaseError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
-                DatabaseError::UnknownPublisher(_)
-                | DatabaseError::UnknownNamespace(_)
-                | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
+                DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
                 DatabaseError::AccessRestrictionMissing(_, _) => {
                     StatusCode::CONFLICT
                 }

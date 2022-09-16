@@ -1,7 +1,39 @@
 use ipfs_registry_core::{Namespace, PackageKey, PackageName};
 use semver::Version;
+use std::fmt;
 use thiserror::Error;
 use web3_address::ethereum::Address;
+
+/// Enumeration of the identifiers that can trigger
+/// a not found error.
+#[derive(Debug)]
+pub enum NotFound {
+    /// User not found.
+    User(Address),
+    /// Namespace not found.
+    Namespace(Namespace),
+    /// Package not found by name.
+    PackageName(PackageName),
+    /// Package not found by key.
+    PackageKey(PackageKey),
+}
+
+impl fmt::Display for NotFound {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::User(value) => write!(f, "user {} not found", value),
+            Self::Namespace(value) => {
+                write!(f, "namespace {} not found", value)
+            }
+            Self::PackageName(value) => {
+                write!(f, "package {} not found", value)
+            }
+            Self::PackageKey(value) => {
+                write!(f, "package key {} not found", value)
+            }
+        }
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -11,20 +43,11 @@ pub enum Error {
     #[error("publisher {0} is not authorized")]
     Unauthorized(Address),
 
-    #[error("unknown publisher {0}")]
-    UnknownPublisher(Address),
-
     #[error("user {0} already exists in {1}")]
     UserExists(Address, String),
 
-    #[error("unknown namespace {0}")]
-    UnknownNamespace(Namespace),
-
-    #[error("unknown package {0}")]
-    UnknownPackage(PackageName),
-
-    #[error("unknown package {0}")]
-    UnknownPackageKey(PackageKey),
+    #[error("{0}")]
+    NotFound(NotFound),
 
     #[error("user {0} already has access to {1}")]
     AccessRestrictionExists(Address, PackageName),

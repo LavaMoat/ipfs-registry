@@ -108,7 +108,7 @@ impl PackageHandler {
         {
             Ok(records) => Ok(Json(records)),
             Err(e) => Err(match e {
-                DatabaseError::UnknownNamespace(_) => StatusCode::NOT_FOUND,
+                DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }),
         }
@@ -134,10 +134,7 @@ impl PackageHandler {
             {
                 Ok(records) => Ok(Json(records)),
                 Err(e) => Err(match e {
-                    DatabaseError::UnknownNamespace(_)
-                    | DatabaseError::UnknownPackage(_) => {
-                        StatusCode::NOT_FOUND
-                    }
+                    DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 }),
             }
@@ -152,10 +149,7 @@ impl PackageHandler {
             {
                 Ok(records) => Ok(Json(records)),
                 Err(e) => Err(match e {
-                    DatabaseError::UnknownNamespace(_)
-                    | DatabaseError::UnknownPackage(_) => {
-                        StatusCode::NOT_FOUND
-                    }
+                    DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 }),
             }
@@ -181,8 +175,7 @@ impl PackageHandler {
                 Ok(Json(record))
             }
             Err(e) => Err(match e {
-                DatabaseError::UnknownNamespace(_)
-                | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
+                DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }),
         }
@@ -199,8 +192,7 @@ impl PackageHandler {
                 Ok(Json(record))
             }
             Err(e) => Err(match e {
-                DatabaseError::UnknownNamespace(_)
-                | DatabaseError::UnknownPackage(_) => StatusCode::NOT_FOUND,
+                DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }),
         }
@@ -220,17 +212,18 @@ impl PackageHandler {
             .map_err(|_| StatusCode::BAD_REQUEST)?;
 
         match PackageModel::deprecate(
-            &state.pool, &address, &namespace, &package, &message)
-            .await
+            &state.pool,
+            &address,
+            &namespace,
+            &package,
+            &message,
+        )
+        .await
         {
             Ok(_) => Ok(StatusCode::OK),
             Err(e) => Err(match e {
                 DatabaseError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
-                DatabaseError::UnknownNamespace(_)
-                | DatabaseError::UnknownPackage(_)
-                | DatabaseError::UnknownPackageKey(_) => {
-                    StatusCode::NOT_FOUND
-                }
+                DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }),
         }
@@ -255,11 +248,7 @@ impl PackageHandler {
             Ok(_) => Ok(StatusCode::OK),
             Err(e) => Err(match e {
                 DatabaseError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
-                DatabaseError::UnknownNamespace(_)
-                | DatabaseError::UnknownPackage(_)
-                | DatabaseError::UnknownPackageKey(_) => {
-                    StatusCode::NOT_FOUND
-                }
+                DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }),
         }
@@ -307,7 +296,7 @@ impl PackageHandler {
                 Ok((headers, Bytes::from(body)))
             }
             Err(e) => Err(match e {
-                DatabaseError::UnknownNamespace(_) => StatusCode::NOT_FOUND,
+                DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }),
         }
@@ -475,8 +464,7 @@ impl PackageHandler {
             }
             Err(e) => Err(match e {
                 DatabaseError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
-                DatabaseError::UnknownPublisher(_)
-                | DatabaseError::UnknownNamespace(_) => StatusCode::NOT_FOUND,
+                DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }),
         }
