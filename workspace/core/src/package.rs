@@ -40,7 +40,7 @@ fn parse_ipfs_cid(s: &str) -> Option<Cid> {
     }
 }
 
-/// Loose reference to a namespace, package or version that
+/// Reference to a namespace, package or version that
 /// also allows CID references.
 #[derive(Debug)]
 pub enum AnyRef {

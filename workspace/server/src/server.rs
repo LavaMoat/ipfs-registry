@@ -167,7 +167,7 @@ impl Server {
     ) -> Result<Router> {
         let cors = if let Some(origins) = origins {
             CorsLayer::new()
-                .allow_methods(vec![Method::GET, Method::POST])
+                .allow_methods(vec![Method::GET, Method::POST, Method::DELETE])
                 .allow_headers(vec![
                     AUTHORIZATION,
                     CONTENT_TYPE,
