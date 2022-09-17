@@ -1,20 +1,27 @@
 use std::path::PathBuf;
 use thiserror::Error;
 
+/// Errors thrown by the core library.
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("tarball does not contain {0}")]
+    /// Error generated when an archive does not contain
+    /// the target file.
+    #[error("archive does not contain {0}")]
     NoPackage(PathBuf),
 
+    /// Error generated when a package path is invalid.
     #[error("package path {0} is invalid")]
     InvalidPath(String),
 
+    /// Error generated when an identifier is invalid.
     #[error("identifier {0} is invalid")]
     InvalidIdentifier(String),
 
+    /// Error generated when an `AnyRef` is given and a package is expected.
     #[error("pointer is missing a package component")]
     PackageComponent,
 
+    /// Error generated when an `AnyRef` is given and a version is expected.
     #[error("pointer is missing a version component")]
     VersionComponent,
 

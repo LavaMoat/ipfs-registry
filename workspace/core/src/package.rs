@@ -50,26 +50,6 @@ pub enum AnyRef {
     Path(PathRef),
 }
 
-/*
-impl TryFrom<AnyRef> for PackageKey {
-    type Error = Error;
-    fn try_from(value: AnyRef) -> Result<Self> {
-        match value {
-            AnyRef::Key(key) => Ok(key),
-            AnyRef::Path(mut path) => {
-                if let (Some(package), Some(version)) =
-                    (path.1.take(), path.2.take())
-                {
-                    Ok(PackageKey::Pointer(path.0, package, version))
-                } else {
-                    Err(Error::VersionComponent)
-                }
-            }
-        }
-    }
-}
-*/
-
 impl FromStr for AnyRef {
     type Err = Error;
 
@@ -168,7 +148,7 @@ impl FromStr for PathRef {
     }
 }
 
-/// Kinds or supported registries.
+/// Kinds of supported registries.
 #[derive(Default, Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RegistryKind {
@@ -325,7 +305,7 @@ impl<'de> Deserialize<'de> for PackageKey {
     }
 }
 
-/// Type that represents a reference to a file object.
+/// Reference to a package archive file.
 #[derive(Clone, Debug)]
 pub enum ObjectKey {
     /// Reference to an IPFS content identifier.
@@ -396,7 +376,7 @@ impl<'de> Deserialize<'de> for ObjectKey {
     }
 }
 
-/// Meta data extracted from a package definition file.
+/// Meta data extracted from an archive.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PackageMeta {
     /// Name of the package.
@@ -405,7 +385,7 @@ pub struct PackageMeta {
     pub version: Version,
 }
 
-/// Package descriptor in the context of a namespace.
+/// Package meta data with namespace context.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Artifact {
     /// The kind of registry.
@@ -430,7 +410,7 @@ impl Artifact {
     }
 }
 
-/// Definition of a package.
+/// Definition of a package archive with signature and checksum.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Definition {
     /// The object keys for the artifacts.
@@ -453,13 +433,12 @@ pub struct Definition {
 pub struct PackageSignature {
     /// Address of the signer.
     pub signer: Address,
-    /// Signature of the package file.
+    /// Signature of the archive file bytes.
     #[serde_as(as = "Base64")]
     pub value: [u8; 65],
 }
 
-/// Type that points to a package archive and wraps the meta
-/// data extracted from the archive.
+/// Package definition with raw meta data extracted from the archive file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Pointer {
     /// The package definition.

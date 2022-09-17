@@ -1,3 +1,6 @@
+//! Common types and functions for the client and server.
+#![deny(missing_docs)]
+
 mod error;
 mod package;
 mod tarball;
@@ -11,6 +14,7 @@ pub use package::{
 };
 pub use validate::validate_id;
 
+/// Result type for the core library.
 pub type Result<T> = std::result::Result<T, error::Error>;
 
 /// Name of the header used for signatures.
