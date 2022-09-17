@@ -227,7 +227,7 @@ async fn integration_access_control() -> Result<()> {
         &address,
         &ns,
         &mock_package,
-        &Version::new(2, 0, 0),
+        Some(&Version::new(2, 0, 0)),
     )
     .await
     .is_ok());
@@ -238,7 +238,7 @@ async fn integration_access_control() -> Result<()> {
         &authorized_address,
         &ns,
         &mock_package,
-        &Version::new(2, 0, 0),
+        Some(&Version::new(2, 0, 0)),
     )
     .await
     .is_ok());
@@ -249,7 +249,7 @@ async fn integration_access_control() -> Result<()> {
         &administrator_address,
         &ns,
         &private_package,
-        &Version::new(2, 0, 0),
+        Some(&Version::new(2, 0, 0)),
     )
     .await
     .is_ok());
@@ -260,7 +260,7 @@ async fn integration_access_control() -> Result<()> {
         &restricted_address,
         &ns,
         &mock_package,
-        &Version::new(2, 0, 0),
+        Some(&Version::new(2, 0, 0)),
     )
     .await
     .is_ok());
@@ -272,7 +272,7 @@ async fn integration_access_control() -> Result<()> {
         &restricted_address,
         &ns,
         &alt_package,
-        &Version::new(2, 0, 0),
+        Some(&Version::new(2, 0, 0)),
     )
     .await
     .is_ok());
@@ -296,7 +296,7 @@ async fn integration_access_control() -> Result<()> {
         &restricted_address,
         &ns,
         &alt_package,
-        &Version::new(2, 0, 0),
+        Some(&Version::new(2, 0, 0)),
     )
     .await;
     assert_unauthorized(result);
@@ -307,7 +307,7 @@ async fn integration_access_control() -> Result<()> {
         &unauthorized_address,
         &ns,
         &mock_package,
-        &Version::new(2, 0, 0),
+        Some(&Version::new(2, 0, 0)),
     )
     .await;
     assert_unauthorized(result);
@@ -318,7 +318,7 @@ async fn integration_access_control() -> Result<()> {
         &restricted_address,
         &ns,
         &private_package,
-        &Version::new(2, 0, 0),
+        Some(&Version::new(2, 0, 0)),
     )
     .await;
     assert_unauthorized(result);

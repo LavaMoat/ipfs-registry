@@ -477,8 +477,6 @@ Mark a specific version of a package as yanked.
 
 The body should be a UTF-8 encoded string of the reason why the version was yanked; it may be the empty string.
 
-If the version is already yanked a 409 CONFLICT response is returned.
-
 #### Query
 
 * `id`: Package identifier.
@@ -490,6 +488,30 @@ If the version is already yanked a 409 CONFLICT response is returned.
 #### Response
 
 200 if successful.
+
+### Deprecate package
+
+```
+POST /api/package/:namespace/:package/deprecate
+```
+
+Mark a package as deprecated.
+
+The body should be a UTF-8 encoded string of a deprecation notice; it may be the empty string.
+
+#### Parameters
+
+* `:namespace`: The package namespace.
+* `:package`: The package name.
+
+#### Headers
+
+* `x-signature`: Signature of the bytes for the request body.
+
+#### Response
+
+200 if successful.
+
 
 ## Configuration
 

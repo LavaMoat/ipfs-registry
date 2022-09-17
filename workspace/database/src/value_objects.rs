@@ -279,6 +279,9 @@ pub struct PackageRecord {
     pub package_id: i64,
     /// Name of the package.
     pub name: PackageName,
+    /// Message if the package is deprecated.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deprecated: Option<String>,
     /// Creation date and time.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -295,6 +298,7 @@ impl FromRow<'_, SqliteRow> for PackageRecord {
         let namespace_id: i64 = row.try_get("namespace_id")?;
         let package_id: i64 = row.try_get("package_id")?;
         let name: String = row.try_get("name")?;
+        let deprecated: Option<String> = row.try_get("deprecated")?;
         let created_at: String = row.try_get("created_at")?;
 
         let name: PackageName =
@@ -313,6 +317,7 @@ impl FromRow<'_, SqliteRow> for PackageRecord {
             namespace_id,
             package_id,
             name,
+            deprecated,
             created_at,
             versions: ResultSet::<VersionRecord> {
                 records: vec![],

@@ -260,6 +260,40 @@ impl RegistryClient {
         Ok(())
     }
 
+    /// Deprecate a package.
+    pub async fn deprecate(
+        server: Url,
+        signing_key: SigningKey,
+        namespace: Namespace,
+        package: PackageName,
+        body: String,
+    ) -> Result<()> {
+        let signature: recoverable::Signature =
+            signing_key.sign(body.as_bytes());
+        let sign_bytes = &signature;
+
+        let client = Client::new();
+        let url = server.join(&format!(
+            "api/package/{}/{}/deprecate",
+            namespace, package
+        ))?;
+
+        let response = client
+            .post(url)
+            .header(X_SIGNATURE, base64::encode(sign_bytes))
+            .body(body)
+            .send()
+            .await?;
+
+        response
+            .status()
+            .is_success()
+            .then_some(())
+            .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
+
+        Ok(())
+    }
+
     /// Yank a version.
     pub async fn yank(
         server: Url,

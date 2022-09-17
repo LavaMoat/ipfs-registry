@@ -8,7 +8,7 @@ use url::Url;
 use web3_address::ethereum::Address;
 
 use ipfs_registry::Result;
-use ipfs_registry_core::{Namespace, PackageKey, PackageName};
+use ipfs_registry_core::{Namespace, PackageKey, PackageName, PathRef};
 
 /// Print an ok response to stdout.
 fn ok_response() -> Result<()> {
@@ -113,7 +113,7 @@ enum Command {
         #[clap(subcommand)]
         cmd: User,
     },
-    /// Yank a package.
+    /// Yank a package version.
     Yank {
         /// Server URL.
         #[clap(short, long, default_value = "http://127.0.0.1:9060")]
@@ -131,6 +131,28 @@ enum Command {
 
         /// Package identifier.
         id: PackageKey,
+
+        /// Reason for yanking the version.
+        message: Option<String>,
+    },
+    /// Deprecate a package.
+    Deprecate {
+        /// Server URL.
+        #[clap(short, long, default_value = "http://127.0.0.1:9060")]
+        server: Url,
+
+        /// Keystore for the signing key.
+        #[clap(
+            short,
+            long,
+            parse(from_os_str),
+            env = "IPKG_KEYSTORE",
+            hide_env = true
+        )]
+        key: PathBuf,
+
+        /// Package path.
+        path: PathRef,
 
         /// Reason for yanking the version.
         message: Option<String>,
@@ -370,6 +392,19 @@ async fn run() -> Result<()> {
         } => {
             let message = message.unwrap_or(String::new());
             ipfs_registry_client::yank(server, key, id, message).await?;
+            ok_response()?;
+        }
+        Command::Deprecate {
+            server,
+            key,
+            path,
+            message,
+        } => {
+            let (namespace, package): (Namespace, PackageName)
+                = path.try_into()?;
+            let message = message.unwrap_or(String::new());
+            ipfs_registry_client::deprecate(
+                server, key, namespace, package, message).await?;
             ok_response()?;
         }
         Command::Get { server, id } => {

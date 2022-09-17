@@ -104,7 +104,7 @@ async fn integration_database() -> Result<()> {
         &address,
         &namespace_record,
         &mock_package,
-        &Version::new(0, 1, 0),
+        Some(&Version::new(0, 1, 0)),
     )
     .await;
     assert!(result.is_err());
@@ -122,7 +122,7 @@ async fn integration_database() -> Result<()> {
         &address,
         &namespace_record,
         &mock_package,
-        &mock_version,
+        Some(&mock_version),
     )
     .await;
     assert!(result.is_err());
@@ -144,8 +144,7 @@ async fn integration_database() -> Result<()> {
     .await;
     assert!(result.is_err());
 
-    let is_unknown_publisher = if let Err(Error::UnknownPublisher(_)) = result
-    {
+    let is_unknown_publisher = if let Err(Error::NotFound(_)) = result {
         true
     } else {
         false
@@ -177,8 +176,7 @@ async fn integration_database() -> Result<()> {
     .await;
     assert!(result.is_err());
 
-    let is_unknown_namespace = if let Err(Error::UnknownNamespace(_)) = result
-    {
+    let is_unknown_namespace = if let Err(Error::NotFound(_)) = result {
         true
     } else {
         false

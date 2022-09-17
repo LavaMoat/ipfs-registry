@@ -19,6 +19,91 @@ use crate::{
 
 const IPFS_DELIMITER: &str = "/ipfs/";
 
+/// Reference to a namespace, package or package version.
+#[derive(Debug)]
+pub struct PathRef(Namespace, Option<PackageName>, Option<Version>);
+
+impl PathRef {
+    /// Get the namespace component.
+    pub fn namespace(&self) -> &Namespace {
+        &self.0
+    }
+
+    /// Get the package component.
+    pub fn package(&self) -> Option<&PackageName> {
+        self.1.as_ref()
+    }
+
+    /// Get the version component.
+    pub fn version(&self) -> Option<&Version> {
+        self.2.as_ref()
+    }
+}
+
+impl fmt::Display for PathRef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let (Some(package), Some(version)) = (&self.1, &self.2) {
+            write!(f, "{}/{}/{}", self.0, package, version)
+        } else if let Some(package) = &self.1 {
+            write!(f, "{}/{}", self.0, package)
+        } else {
+            write!(f, "{}", self.0)
+        }
+    }
+}
+
+impl TryFrom<PathRef> for (Namespace, PackageName) {
+    type Error = Error;
+    fn try_from(value: PathRef) -> Result<Self> {
+        if let Some(package) = value.1 {
+            Ok((value.0, package))
+        } else {
+            Err(Error::PackageComponent)
+        }
+    }
+}
+
+impl TryFrom<PathRef> for (Namespace, PackageName, Version) {
+    type Error = Error;
+    fn try_from(value: PathRef) -> Result<Self> {
+        if let Some(package) = value.1 {
+            if let Some(version) = value.2 {
+                Ok((value.0, package, version))
+            } else {
+                Err(Error::VersionComponent)
+            }
+        } else {
+            Err(Error::PackageComponent)
+        }
+    }
+}
+
+impl FromStr for PathRef {
+    type Err = Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let mut parts = s.split('/');
+        if let Some(ns) = parts.next() {
+            let namespace: Namespace = ns.parse()?;
+            let package = if let Some(pkg) = parts.next() {
+                let package: PackageName = pkg.parse()?;
+                Some(package)
+            } else {
+                None
+            };
+            let version = if let Some(ver) = parts.next() {
+                let version: Version = ver.parse()?;
+                Some(version)
+            } else {
+                None
+            };
+            Ok(Self(namespace, package, version))
+        } else {
+            Err(Error::InvalidPath(s.to_owned()))
+        }
+    }
+}
+
 /// Kinds or supported registries.
 #[derive(Default, Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -44,9 +129,9 @@ impl fmt::Display for RegistryKind {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct Namespace(String);
+pub struct Identifier(String);
 
-impl Namespace {
+impl Identifier {
     /// Create a new namespace without checking the source is valid.
     pub fn new_unchecked(s: &str) -> Self {
         Self(s.to_owned())
@@ -63,59 +148,28 @@ impl Namespace {
     }
 }
 
-impl fmt::Display for Namespace {
+impl fmt::Display for Identifier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-impl FromStr for Namespace {
+impl FromStr for Identifier {
     type Err = Error;
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         if validate_id(s) {
-            Ok(Namespace(s.to_owned()))
+            Ok(Identifier(s.to_owned()))
         } else {
-            Err(Error::InvalidNamespace(s.to_owned()))
+            Err(Error::InvalidIdentifier(s.to_owned()))
         }
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct PackageName(String);
+/// Namespace identifier.
+pub type Namespace = Identifier;
 
-impl PackageName {
-    /// Create a new package name without checking the source is valid.
-    pub fn new_unchecked(s: &str) -> Self {
-        Self(s.to_owned())
-    }
-
-    /// Get a reference to the underlying string.
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-
-    /// Get a reference to the underlying bytes.
-    pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_bytes()
-    }
-}
-
-impl fmt::Display for PackageName {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl FromStr for PackageName {
-    type Err = Error;
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        if validate_id(s) {
-            Ok(PackageName(s.to_owned()))
-        } else {
-            Err(Error::InvalidPackageName(s.to_owned()))
-        }
-    }
-}
+/// Package name identifier.
+pub type PackageName = Identifier;
 
 /// Reference to a package artifact.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -419,6 +473,62 @@ mod tests {
         let buffer =
             include_bytes!("../../../fixtures/mock-crate-1.0.0.crate");
         assert!(PackageReader::read(RegistryKind::Cargo, buffer).is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn parse_any_ref() -> Result<()> {
+        let any_ns: PathRef = "mock-namespace".parse()?;
+        assert_eq!(
+            &Namespace::new_unchecked("mock-namespace"),
+            any_ns.namespace()
+        );
+
+        let any_ns_pkg: PathRef = "mock-namespace/mock-package".parse()?;
+        assert_eq!(
+            &Namespace::new_unchecked("mock-namespace"),
+            any_ns_pkg.namespace()
+        );
+        assert_eq!(
+            Some(&PackageName::new_unchecked("mock-package")),
+            any_ns_pkg.package()
+        );
+
+        let (ns, pkg): (Namespace, PackageName) = any_ns_pkg.try_into()?;
+        assert_eq!(
+            Namespace::new_unchecked("mock-namespace"),
+           ns
+        );
+        assert_eq!(
+            PackageName::new_unchecked("mock-package"),
+            pkg
+        );
+
+        let any: PathRef = "mock-namespace/mock-package/1.0.0".parse()?;
+        assert_eq!(
+            &Namespace::new_unchecked("mock-namespace"),
+            any.namespace()
+        );
+        assert_eq!(
+            Some(&PackageName::new_unchecked("mock-package")),
+            any.package()
+        );
+        assert_eq!(Some(&Version::new(1, 0, 0)), any.version());
+
+        let (ns, pkg, ver): (Namespace, PackageName, Version) = any.try_into()?;
+        assert_eq!(
+            Namespace::new_unchecked("mock-namespace"),
+           ns
+        );
+        assert_eq!(
+            PackageName::new_unchecked("mock-package"),
+            pkg
+        );
+        assert_eq!(
+            Version::new(1, 0, 0),
+            ver
+        );
+
         Ok(())
     }
 

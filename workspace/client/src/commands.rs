@@ -94,6 +94,25 @@ pub async fn yank(
     RegistryClient::yank(server, signing_key, id, message).await
 }
 
+/// Deprecate a package.
+pub async fn deprecate(
+    server: Url,
+    key: PathBuf,
+    namespace: Namespace,
+    package: PackageName,
+    message: String,
+) -> Result<()> {
+    let signing_key = helpers::read_keystore_file(key)?;
+    RegistryClient::deprecate(
+        server,
+        signing_key,
+        namespace,
+        package,
+        message,
+    )
+    .await
+}
+
 /// Get a package.
 pub async fn get(server: Url, id: PackageKey) -> Result<VersionRecord> {
     RegistryClient::exact_version(server, id).await

@@ -7,7 +7,7 @@ pub use error::Error;
 pub use package::{
     Artifact, Definition, Namespace, ObjectKey, PackageKey, PackageMeta,
     PackageName, PackageReader, PackageSignature, Pointer, Receipt,
-    RegistryKind,
+    RegistryKind, PathRef,
 };
 pub use validate::{confusable_skeleton, validate_id};
 
