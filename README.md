@@ -176,6 +176,8 @@ List packages and versions:
 ```
 ipkg ls mock-namespace
 ipkg ls mock-namespace/mock-package
+ipkg ls mock-namespace --latest
+ipkg ls mock-namespace/mock-package --range '=1.0.0'
 ```
 
 ## Environment

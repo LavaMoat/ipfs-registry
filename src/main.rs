@@ -6,6 +6,7 @@ use serde_json::json;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use url::Url;
 use web3_address::ethereum::Address;
+use semver::VersionReq;
 
 use ipfs_registry::Result;
 use ipfs_registry_core::{
@@ -191,6 +192,10 @@ enum Command {
         /// For each package fetch the latest version.
         #[clap(long)]
         latest: bool,
+
+        /// Range to match when fetching versions.
+        #[clap(short, long)]
+        range: Option<VersionReq>,
 
         /// Path to a namespace or package.
         path: PathRef,
@@ -449,14 +454,25 @@ async fn run() -> Result<()> {
             limit,
             sort,
             latest,
+            range,
         } => {
+            if latest && path.package().is_some() {
+                tracing::warn!(
+                    "argument --latest is ignored when listing versions");
+            }
+
+            if range.is_some() && path.package().is_none() {
+                tracing::warn!(
+                    "argument --range is ignored when listing packages");
+            }
+
             let pager = Pager {
                 offset: offset.unwrap_or_default(),
                 limit: limit.unwrap_or_else(default_limit),
                 sort: sort.unwrap_or_default(),
             };
             let include = latest.then_some(VersionIncludes::Latest);
-            let doc = ipfs_registry_client::list(server, path, pager, include).await?;
+            let doc = ipfs_registry_client::list(server, path, pager, include, range).await?;
             serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
         }
         Command::Server { bind, config } => {

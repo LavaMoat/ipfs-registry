@@ -1,5 +1,6 @@
 use std::{borrow::BorrowMut, path::PathBuf};
 use serde::de::DeserializeOwned;
+use semver::VersionReq;
 
 use k256::ecdsa::{recoverable, signature::Signer, SigningKey};
 use mime::Mime;
@@ -397,9 +398,10 @@ impl RegistryClient {
         package: Option<PackageName>,
         pager: Pager,
         include: Option<VersionIncludes>,
+        range: Option<VersionReq>,
     ) -> Result<T> {
         let client = Client::new();
-        let url = if let Some(package) = package {
+        let url = if let Some(package) = &package {
             server.join(&format!("api/package/{}/{}/versions",
                 namespace, package))?
         } else {
@@ -412,10 +414,13 @@ impl RegistryClient {
             ("sort", pager.sort.to_string()),
         ];
 
-        if let Some(include) = include {
+        if let (Some(include), true) = (include, package.is_none()) {
             query.push(("include", include.to_string()));
         }
 
+        if let (Some(range), true) = (range, package.is_some()) {
+            query.push(("range", range.to_string()));
+        }
 
         let response = client
             .get(url)

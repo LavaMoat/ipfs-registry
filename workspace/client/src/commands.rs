@@ -1,6 +1,7 @@
 use k256::ecdsa::SigningKey;
 use mime::Mime;
 use serde::{Deserialize, Serialize};
+use semver::VersionReq;
 
 use secrecy::ExposeSecret;
 use std::path::PathBuf;
@@ -173,17 +174,18 @@ pub async fn list(
     path: PathRef,
     pager: Pager,
     include: Option<VersionIncludes>,
+    range: Option<VersionReq>,
 ) -> Result<ListRecord> {
 
     let namespace = path.namespace().clone();
     let package = path.package().map(|v| v.clone());
 
     if package.is_some() {
-        RegistryClient::list::<ResultSet<VersionRecord>>(server, namespace, package, pager, include)
+        RegistryClient::list::<ResultSet<VersionRecord>>(server, namespace, package, pager, include, range)
             .await
             .map(ListRecord::Versions)
     } else {
-        RegistryClient::list::<ResultSet<PackageRecord>>(server, namespace, package, pager, include)
+        RegistryClient::list::<ResultSet<PackageRecord>>(server, namespace, package, pager, include, range)
             .await
             .map(ListRecord::Packages)
     }
