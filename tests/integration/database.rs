@@ -144,8 +144,7 @@ async fn integration_database() -> Result<()> {
     .await;
     assert!(result.is_err());
 
-    let is_unknown_publisher = if let Err(Error::NotFound(_)) = result
-    {
+    let is_unknown_publisher = if let Err(Error::NotFound(_)) = result {
         true
     } else {
         false
@@ -177,8 +176,7 @@ async fn integration_database() -> Result<()> {
     .await;
     assert!(result.is_err());
 
-    let is_unknown_namespace = if let Err(Error::NotFound(_)) = result
-    {
+    let is_unknown_namespace = if let Err(Error::NotFound(_)) = result {
         true
     } else {
         false
