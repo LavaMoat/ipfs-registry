@@ -489,6 +489,30 @@ The body should be a UTF-8 encoded string of the reason why the version was yank
 
 200 if successful.
 
+### Deprecate package
+
+```
+POST /api/package/:namespace/:package/deprecate
+```
+
+Mark a package as deprecated.
+
+The body should be a UTF-8 encoded string of a deprecation notice; it may be the empty string.
+
+#### Parameters
+
+* `:namespace`: The package namespace.
+* `:package`: The package name.
+
+#### Headers
+
+* `x-signature`: Signature of the bytes for the request body.
+
+#### Response
+
+200 if successful.
+
+
 ## Configuration
 
 This section describes the server configuration; after making changes to the configuration you must restart the server for changes to take effect.
