@@ -11,6 +11,7 @@ use ipfs_registry::Result;
 use ipfs_registry_core::{
     AnyRef, Namespace, PackageKey, PackageName, PathRef,
 };
+use ipfs_registry_database::{Pager, SortOrder, default_limit};
 
 /// Print an ok response to stdout.
 fn ok_response() -> Result<()> {
@@ -167,6 +168,25 @@ enum Command {
 
         /// Identifier for a namespace, package or version.
         target: AnyRef,
+    },
+    /// List packages and versions.
+    #[clap(alias = "ls")]
+    List {
+        /// Server URL.
+        #[clap(short, long, default_value = "http://127.0.0.1:9060")]
+        server: Url,
+
+        #[clap(short, long)]
+        offset: Option<i64>,
+
+        #[clap(short, long)]
+        limit: Option<i64>,
+
+        #[clap(short = 'S', long)]
+        sort: Option<SortOrder>,
+
+        /// Path to a namespace or package.
+        path: PathRef,
     },
     /// Start a server.
     Server {
@@ -413,6 +433,21 @@ async fn run() -> Result<()> {
         }
         Command::Get { server, target } => {
             let doc = ipfs_registry_client::get(server, target).await?;
+            serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
+        }
+        Command::List {
+            server,
+            path,
+            offset,
+            limit,
+            sort,
+        } => {
+            let pager = Pager {
+                offset: offset.unwrap_or_default(),
+                limit: limit.unwrap_or_else(default_limit),
+                sort: sort.unwrap_or_default(),
+            };
+            let doc = ipfs_registry_client::list(server, path, pager).await?;
             serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
         }
         Command::Server { bind, config } => {

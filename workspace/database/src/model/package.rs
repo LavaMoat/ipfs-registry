@@ -178,29 +178,35 @@ impl PackageModel {
                 let mut args: SqliteArguments = Default::default();
                 args.add(cid.to_string());
 
-                let version_record = sqlx::query_as_with::<_, VersionRecord, _>(
-                    r#"SELECT * FROM versions WHERE content_id = ?"#,
-                    args,
-                )
-                .fetch_optional(pool)
-                .await?;
-
-                let package_record = if let Some(version_record) = &version_record {
-                    PackageModel::find_package_by_id(pool, version_record.package_id)
-                        .await?
-                } else {
-                    None
-                };
-
-                let namespace_record = if let Some(package_record) = &package_record {
-                    NamespaceModel::find_namespace_by_id(
-                        pool,
-                        package_record.namespace_id,
+                let version_record =
+                    sqlx::query_as_with::<_, VersionRecord, _>(
+                        r#"SELECT * FROM versions WHERE content_id = ?"#,
+                        args,
                     )
-                    .await?
-                } else {
-                    None
-                };
+                    .fetch_optional(pool)
+                    .await?;
+
+                let package_record =
+                    if let Some(version_record) = &version_record {
+                        PackageModel::find_package_by_id(
+                            pool,
+                            version_record.package_id,
+                        )
+                        .await?
+                    } else {
+                        None
+                    };
+
+                let namespace_record =
+                    if let Some(package_record) = &package_record {
+                        NamespaceModel::find_namespace_by_id(
+                            pool,
+                            package_record.namespace_id,
+                        )
+                        .await?
+                    } else {
+                        None
+                    };
 
                 Ok((namespace_record, package_record, version_record))
             }

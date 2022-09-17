@@ -9,10 +9,10 @@ use web3_address::ethereum::Address;
 use web3_keystore::encrypt;
 
 use ipfs_registry_core::{
-    AnyRef, Namespace, PackageKey, PackageName, Receipt,
+    AnyRef, Namespace, PackageKey, PackageName, PathRef, Receipt,
 };
 use ipfs_registry_database::{
-    NamespaceRecord, PackageRecord, PublisherRecord, VersionRecord,
+    NamespaceRecord, PackageRecord, Pager, PublisherRecord, VersionRecord, ResultSet,
 };
 
 use crate::{helpers, input, Error, RegistryClient, Result};
@@ -23,6 +23,15 @@ pub enum GetRecord {
     Namespace(NamespaceRecord),
     Package(PackageRecord),
     Version(VersionRecord),
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ListRecord {
+    /// Collection of packages.
+    Packages(ResultSet<PackageRecord>),
+    /// Collection of versions.
+    Versions(ResultSet<VersionRecord>),
 }
 
 /// Publish a package.
@@ -124,7 +133,7 @@ pub async fn deprecate(
     .await
 }
 
-/// Get a package.
+/// Get a namespace, package or version.
 pub async fn get(server: Url, target: AnyRef) -> Result<GetRecord> {
     if target.is_exact_version() {
         let id: PackageKey = target.try_into()?;
@@ -136,18 +145,46 @@ pub async fn get(server: Url, target: AnyRef) -> Result<GetRecord> {
             AnyRef::Path(path) => {
                 if let Some(package) = path.package() {
                     RegistryClient::get_package(
-                        server, path.namespace().clone(), package.clone())
-                        .await.map(GetRecord::Package)
+                        server,
+                        path.namespace().clone(),
+                        package.clone(),
+                    )
+                    .await
+                    .map(GetRecord::Package)
                 } else {
                     RegistryClient::get_namespace(
-                        server, path.namespace().clone())
-                        .await.map(GetRecord::Namespace)
+                        server,
+                        path.namespace().clone(),
+                    )
+                    .await
+                    .map(GetRecord::Namespace)
                 }
             }
             AnyRef::Key(id) => RegistryClient::exact_version(server, id)
                 .await
                 .map(GetRecord::Version),
         }
+    }
+}
+
+/// List packages or versions.
+pub async fn list(
+    server: Url,
+    path: PathRef,
+    pager: Pager,
+) -> Result<ListRecord> {
+
+    let namespace = path.namespace().clone();
+    let package = path.package().map(|v| v.clone());
+
+    if package.is_some() {
+        RegistryClient::list::<ResultSet<VersionRecord>>(server, namespace, package, pager)
+            .await
+            .map(ListRecord::Versions)
+    } else {
+        RegistryClient::list::<ResultSet<PackageRecord>>(server, namespace, package, pager)
+            .await
+            .map(ListRecord::Packages)
     }
 }
 

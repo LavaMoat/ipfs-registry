@@ -150,7 +150,13 @@ Publish a package:
 ipkg publish -k ./sandbox/<addr>.json -n mock-namespace fixtures/mock-package-1.0.0.tgz
 ```
 
-Download the package to a file:
+Download the package to a file using a content ID:
+
+```
+ipkg fetch /ipfs/QmSYVWjXh5GCZpxhCSHMa89X9VHnPpaxafkBAR9rjfCenb sandbox/package.tgz
+```
+
+Or alternatively using a pointer:
 
 ```
 ipkg fetch mock-namespace/mock-package/1.0.0 sandbox/package.tgz
@@ -163,6 +169,13 @@ ipkg get mock-namespace
 ipkg get mock-namespace/mock-package
 ipkg get mock-namespace/mock-package/1.0.0
 ipkg get /ipfs/QmSYVWjXh5GCZpxhCSHMa89X9VHnPpaxafkBAR9rjfCenb
+```
+
+List packages and versions:
+
+```
+ipkg ls mock-namespace
+ipkg ls mock-namespace/mock-package
 ```
 
 ## Environment

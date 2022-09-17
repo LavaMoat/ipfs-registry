@@ -72,10 +72,11 @@ impl NamespaceHandler {
         Extension(state): Extension<ServerState>,
         Path(namespace): Path<Namespace>,
     ) -> std::result::Result<Json<NamespaceRecord>, StatusCode> {
-        let namespace_record = NamespaceModel::find_by_name(&state.pool, &namespace)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-            .ok_or(StatusCode::NOT_FOUND)?;
+        let namespace_record =
+            NamespaceModel::find_by_name(&state.pool, &namespace)
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                .ok_or(StatusCode::NOT_FOUND)?;
         Ok(Json(namespace_record))
     }
 

@@ -95,16 +95,20 @@ impl PackageHandler {
         Extension(state): Extension<ServerState>,
         Path((namespace, package)): Path<(Namespace, PackageName)>,
     ) -> std::result::Result<Json<PackageRecord>, StatusCode> {
-        let namespace_record = NamespaceModel::find_by_name(&state.pool, &namespace)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-            .ok_or(StatusCode::NOT_FOUND)?;
+        let namespace_record =
+            NamespaceModel::find_by_name(&state.pool, &namespace)
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                .ok_or(StatusCode::NOT_FOUND)?;
 
         let package_record = PackageModel::find_by_name(
-            &state.pool, namespace_record.namespace_id, &package)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-            .ok_or(StatusCode::NOT_FOUND)?;
+            &state.pool,
+            namespace_record.namespace_id,
+            &package,
+        )
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::NOT_FOUND)?;
 
         Ok(Json(package_record))
     }

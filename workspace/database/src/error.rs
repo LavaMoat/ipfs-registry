@@ -61,6 +61,9 @@ pub enum Error {
     #[error("failed to fetch record {0} after insert")]
     InsertFetch(i64),
 
+    #[error("invalid sort order {0}")]
+    InvalidSortOrder(String),
+
     #[error("could not find a version for a package")]
     NoPackageVersion,
 

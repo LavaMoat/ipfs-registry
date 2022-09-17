@@ -1,4 +1,5 @@
 use std::{borrow::BorrowMut, path::PathBuf};
+use serde::de::DeserializeOwned;
 
 use k256::ecdsa::{recoverable, signature::Signer, SigningKey};
 use mime::Mime;
@@ -14,7 +15,8 @@ use ipfs_registry_core::{
 };
 
 use ipfs_registry_database::{
-    NamespaceRecord, PublisherRecord, VersionRecord, PackageRecord,
+    NamespaceRecord, PackageRecord, Pager, PublisherRecord,
+    VersionRecord,
 };
 
 use crate::{Error, Result};
@@ -325,7 +327,7 @@ impl RegistryClient {
         Ok(())
     }
 
-    /// Get a namepsace record.
+    /// Get a namespace record.
     pub async fn get_namespace(
         server: Url,
         namespace: Namespace,
@@ -333,10 +335,7 @@ impl RegistryClient {
         let client = Client::new();
         let url = server.join(&format!("api/package/{}", namespace))?;
 
-        let response = client
-            .get(url)
-            .send()
-            .await?;
+        let response = client.get(url).send().await?;
 
         response
             .status()
@@ -354,12 +353,10 @@ impl RegistryClient {
         package: PackageName,
     ) -> Result<PackageRecord> {
         let client = Client::new();
-        let url = server.join(&format!("api/package/{}/{}", namespace, package))?;
+        let url =
+            server.join(&format!("api/package/{}/{}", namespace, package))?;
 
-        let response = client
-            .get(url)
-            .send()
-            .await?;
+        let response = client.get(url).send().await?;
 
         response
             .status()
@@ -391,5 +388,41 @@ impl RegistryClient {
             .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
 
         Ok(response.json::<VersionRecord>().await?)
+    }
+
+    /// List packages and versions.
+    pub async fn list<T: DeserializeOwned>(
+        server: Url,
+        namespace: Namespace,
+        package: Option<PackageName>,
+        pager: Pager,
+    ) -> Result<T> {
+        let client = Client::new();
+        let url = if let Some(package) = package {
+            server.join(&format!("api/package/{}/{}/versions",
+                namespace, package))?
+        } else {
+            server.join(&format!("api/package/{}/packages", namespace))?
+        };
+
+        let query = vec![
+            ("offset", pager.offset.to_string()),
+            ("limit", pager.limit.to_string()),
+            ("sort", pager.sort.to_string()),
+        ];
+
+        let response = client
+            .get(url)
+            .query(&query)
+            .send()
+            .await?;
+
+        response
+            .status()
+            .is_success()
+            .then_some(())
+            .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
+
+        Ok(response.json::<T>().await?)
     }
 }

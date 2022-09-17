@@ -8,7 +8,9 @@ pub use package::PackageModel;
 pub use publisher::PublisherModel;
 
 use serde::Deserialize;
-use std::fmt;
+use std::{fmt, str::FromStr};
+
+use crate::Error;
 
 /// Default limit for pagination.
 pub fn default_limit() -> i64 {
@@ -64,6 +66,20 @@ impl SortOrder {
 
 impl fmt::Display for SortOrder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_str())
+        write!(f, "{}", self.as_str().to_lowercase())
+    }
+}
+
+impl FromStr for SortOrder {
+    type Err = Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        if s.to_lowercase() == "asc" {
+            Ok(Self::Asc)
+        } else if s.to_lowercase() == "desc" {
+            Ok(Self::Desc)
+        } else {
+            Err(Error::InvalidSortOrder(s.to_owned()))
+        }
     }
 }
