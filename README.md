@@ -156,10 +156,13 @@ Download the package to a file:
 ipkg fetch mock-namespace/mock-package/1.0.0 sandbox/package.tgz
 ```
 
-Get information about the package version:
+Get information about a namespace, package or version:
 
 ```
+ipkg get mock-namespace
+ipkg get mock-namespace/mock-package
 ipkg get mock-namespace/mock-package/1.0.0
+ipkg get /ipfs/QmSYVWjXh5GCZpxhCSHMa89X9VHnPpaxafkBAR9rjfCenb
 ```
 
 ## Environment
@@ -324,7 +327,7 @@ mock-namespace/mock-package/1.0.0
 ### List packages
 
 ```
-GET /api/package/:namespace
+GET /api/package/:namespace/packages
 ```
 
 List the packages for a namespace.
@@ -357,7 +360,7 @@ List the packages for a namespace.
 ### List versions
 
 ```
-GET /api/package/:namespace/:package
+GET /api/package/:namespace/:package/versions
 ```
 
 List the versions of a package.

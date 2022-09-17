@@ -67,6 +67,18 @@ impl NamespaceHandler {
         }
     }
 
+    /// Get a namespace record.
+    pub(crate) async fn get_namespace(
+        Extension(state): Extension<ServerState>,
+        Path(namespace): Path<Namespace>,
+    ) -> std::result::Result<Json<NamespaceRecord>, StatusCode> {
+        let namespace_record = NamespaceModel::find_by_name(&state.pool, &namespace)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .ok_or(StatusCode::NOT_FOUND)?;
+        Ok(Json(namespace_record))
+    }
+
     /// Add a user to a namespace.
     pub(crate) async fn add_user(
         Extension(state): Extension<ServerState>,

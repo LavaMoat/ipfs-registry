@@ -14,7 +14,7 @@ use ipfs_registry_core::{
 };
 
 use ipfs_registry_database::{
-    NamespaceRecord, PublisherRecord, VersionRecord,
+    NamespaceRecord, PublisherRecord, VersionRecord, PackageRecord,
 };
 
 use crate::{Error, Result};
@@ -33,7 +33,7 @@ impl RegistryClient {
         let sign_bytes = &signature;
 
         let client = Client::new();
-        let url = server.join("api/publisher")?;
+        let url = server.join("api/signup")?;
 
         let response = client
             .post(url)
@@ -62,7 +62,7 @@ impl RegistryClient {
         let sign_bytes = &signature;
 
         let client = Client::new();
-        let url = server.join(&format!("api/namespace/{}", namespace))?;
+        let url = server.join(&format!("api/register/{}", namespace))?;
 
         let response = client
             .post(url)
@@ -325,6 +325,51 @@ impl RegistryClient {
         Ok(())
     }
 
+    /// Get a namepsace record.
+    pub async fn get_namespace(
+        server: Url,
+        namespace: Namespace,
+    ) -> Result<NamespaceRecord> {
+        let client = Client::new();
+        let url = server.join(&format!("api/package/{}", namespace))?;
+
+        let response = client
+            .get(url)
+            .send()
+            .await?;
+
+        response
+            .status()
+            .is_success()
+            .then_some(())
+            .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
+
+        Ok(response.json::<NamespaceRecord>().await?)
+    }
+
+    /// Get a package record.
+    pub async fn get_package(
+        server: Url,
+        namespace: Namespace,
+        package: PackageName,
+    ) -> Result<PackageRecord> {
+        let client = Client::new();
+        let url = server.join(&format!("api/package/{}/{}", namespace, package))?;
+
+        let response = client
+            .get(url)
+            .send()
+            .await?;
+
+        response
+            .status()
+            .is_success()
+            .then_some(())
+            .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
+
+        Ok(response.json::<PackageRecord>().await?)
+    }
+
     /// Get an exact version.
     pub async fn exact_version(
         server: Url,
@@ -345,7 +390,6 @@ impl RegistryClient {
             .then_some(())
             .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
 
-        let doc: VersionRecord = response.json().await?;
-        Ok(doc)
+        Ok(response.json::<VersionRecord>().await?)
     }
 }

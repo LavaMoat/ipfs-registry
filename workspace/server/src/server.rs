@@ -179,9 +179,9 @@ impl Server {
 
         let app = Router::new()
             .route("/api", get(ApiHandler::get))
-            .route("/api/publisher", post(PublisherHandler::signup))
+            .route("/api/signup", post(PublisherHandler::signup))
             .route(
-                "/api/namespace/:namespace",
+                "/api/register/:namespace",
                 post(NamespaceHandler::register),
             )
             .route(
@@ -198,10 +198,18 @@ impl Server {
             .route(
                 "/api/package/:namespace",
                 post(PackageHandler::publish)
-                    .get(PackageHandler::list_packages),
+                    .get(NamespaceHandler::get_namespace),
+            )
+            .route(
+                "/api/package/:namespace/packages",
+                get(PackageHandler::list_packages),
             )
             .route(
                 "/api/package/:namespace/:package",
+                get(PackageHandler::get_package),
+            )
+            .route(
+                "/api/package/:namespace/:package/versions",
                 get(PackageHandler::list_versions),
             )
             .route(

@@ -26,6 +26,15 @@ pub struct ResultSet<T> {
     pub count: i64,
 }
 
+impl<T> Default for ResultSet<T> {
+    fn default() -> Self {
+        Self {
+            records: Vec::new(),
+            count: 0,
+        }
+    }
+}
+
 impl<T> ResultSet<T> {
     pub fn len(&self) -> usize {
         self.records.len()
@@ -286,7 +295,7 @@ pub struct PackageRecord {
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
     /// Collection of versions.
-    #[serde(skip_serializing_if = "ResultSet::is_zero")]
+    #[serde(skip_serializing_if = "ResultSet::is_zero", default)]
     pub versions: ResultSet<VersionRecord>,
     /// Count of total rows.
     #[serde(skip)]

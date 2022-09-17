@@ -477,12 +477,25 @@ impl NamespaceModel {
     ) -> Result<Option<NamespaceRecord>> {
         let mut args: SqliteArguments = Default::default();
         args.add(namespace_id);
+
         let record = sqlx::query_as_with::<_, NamespaceRecord, _>(
-            r#"SELECT * FROM namespaces WHERE namespace_id = ?"#,
+            r#"
+                SELECT
+                    namespaces.namespace_id,
+                    namespaces.name,
+                    namespaces.publisher_id,
+                    namespaces.created_at,
+                    publishers.address
+                FROM namespaces
+                LEFT JOIN publishers
+                ON (namespaces.publisher_id = publishers.publisher_id)
+                WHERE namespace_id = ?
+            "#,
             args,
         )
         .fetch_optional(pool)
         .await?;
+
         Ok(record)
     }
 }

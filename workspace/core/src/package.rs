@@ -19,7 +19,79 @@ use crate::{
 
 const IPFS_DELIMITER: &str = "/ipfs/";
 
-/// Reference to a namespace, package or package version.
+/// Attempt to parse an IPFS CID.
+fn parse_ipfs_cid(s: &str) -> Option<Cid> {
+    let hash = match s.find(IPFS_DELIMITER) {
+        Some(index) => {
+            if index == 0 {
+                Some(&s[IPFS_DELIMITER.len()..])
+            } else {
+                None
+            }
+        }
+        None => None,
+    };
+    if let Some(hash) = hash {
+        let cid: Option<Cid> = hash.try_into().ok();
+        cid
+    } else {
+        None
+    }
+}
+
+/// Loose reference to a namespace, package or version that
+/// also allows CID references.
+#[derive(Debug)]
+pub enum AnyRef {
+    /// Reference to an exact version.
+    Key(PackageKey),
+    /// Loose path reference.
+    Path(PathRef),
+}
+
+impl AnyRef {
+    /// Determine if this reference should locate
+    /// an exact version of a package.
+    pub fn is_exact_version(&self) -> bool {
+        match self {
+            Self::Key(_) => true,
+            Self::Path(path) => path.version().is_some(),
+        }
+    }
+}
+
+impl TryFrom<AnyRef> for PackageKey {
+    type Error = Error;
+    fn try_from(value: AnyRef) -> Result<Self> {
+        match value {
+            AnyRef::Key(key) => Ok(key),
+            AnyRef::Path(mut path) => {
+                if let (Some(package), Some(version)) =
+                    (path.1.take(), path.2.take())
+                {
+                    Ok(PackageKey::Pointer(path.0, package, version))
+                } else {
+                    Err(Error::VersionComponent)
+                }
+            }
+        }
+    }
+}
+
+impl FromStr for AnyRef {
+    type Err = Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        if let Some(cid) = parse_ipfs_cid(s) {
+            Ok(Self::Key(PackageKey::Cid(cid)))
+        } else {
+            let path: PathRef = s.parse()?;
+            Ok(Self::Path(path))
+        }
+    }
+}
+
+/// Reference to a namespace, package or version.
 #[derive(Debug)]
 pub struct PathRef(Namespace, Option<PackageName>, Option<Version>);
 
@@ -171,7 +243,7 @@ pub type Namespace = Identifier;
 /// Package name identifier.
 pub type PackageName = Identifier;
 
-/// Reference to a package artifact.
+/// Reference to an exact package version.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PackageKey {
     /// Direct artifact reference using an IPFS content identifier.
@@ -195,19 +267,8 @@ impl FromStr for PackageKey {
     type Err = Error;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let hash = match s.find(IPFS_DELIMITER) {
-            Some(index) => {
-                if index == 0 {
-                    Some(&s[IPFS_DELIMITER.len()..])
-                } else {
-                    None
-                }
-            }
-            None => None,
-        };
-
-        if let Some(hash) = hash {
-            let cid: Cid = hash.try_into()?;
+        let cid = parse_ipfs_cid(s);
+        if let Some(cid) = cid {
             Ok(Self::Cid(cid))
         } else {
             let mut parts: Vec<&str> = s.split('/').collect();
@@ -495,14 +556,8 @@ mod tests {
         );
 
         let (ns, pkg): (Namespace, PackageName) = any_ns_pkg.try_into()?;
-        assert_eq!(
-            Namespace::new_unchecked("mock-namespace"),
-           ns
-        );
-        assert_eq!(
-            PackageName::new_unchecked("mock-package"),
-            pkg
-        );
+        assert_eq!(Namespace::new_unchecked("mock-namespace"), ns);
+        assert_eq!(PackageName::new_unchecked("mock-package"), pkg);
 
         let any: PathRef = "mock-namespace/mock-package/1.0.0".parse()?;
         assert_eq!(
@@ -515,19 +570,11 @@ mod tests {
         );
         assert_eq!(Some(&Version::new(1, 0, 0)), any.version());
 
-        let (ns, pkg, ver): (Namespace, PackageName, Version) = any.try_into()?;
-        assert_eq!(
-            Namespace::new_unchecked("mock-namespace"),
-           ns
-        );
-        assert_eq!(
-            PackageName::new_unchecked("mock-package"),
-            pkg
-        );
-        assert_eq!(
-            Version::new(1, 0, 0),
-            ver
-        );
+        let (ns, pkg, ver): (Namespace, PackageName, Version) =
+            any.try_into()?;
+        assert_eq!(Namespace::new_unchecked("mock-namespace"), ns);
+        assert_eq!(PackageName::new_unchecked("mock-package"), pkg);
+        assert_eq!(Version::new(1, 0, 0), ver);
 
         Ok(())
     }

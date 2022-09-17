@@ -90,6 +90,25 @@ pub struct LatestQuery {
 pub(crate) struct PackageHandler;
 
 impl PackageHandler {
+    /// Get a package record.
+    pub(crate) async fn get_package(
+        Extension(state): Extension<ServerState>,
+        Path((namespace, package)): Path<(Namespace, PackageName)>,
+    ) -> std::result::Result<Json<PackageRecord>, StatusCode> {
+        let namespace_record = NamespaceModel::find_by_name(&state.pool, &namespace)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .ok_or(StatusCode::NOT_FOUND)?;
+
+        let package_record = PackageModel::find_by_name(
+            &state.pool, namespace_record.namespace_id, &package)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .ok_or(StatusCode::NOT_FOUND)?;
+
+        Ok(Json(package_record))
+    }
+
     /// List packages for a namespace.
     pub(crate) async fn list_packages(
         Extension(state): Extension<ServerState>,

@@ -5,9 +5,9 @@ mod validate;
 
 pub use error::Error;
 pub use package::{
-    Artifact, Definition, Namespace, ObjectKey, PackageKey, PackageMeta,
-    PackageName, PackageReader, PackageSignature, Pointer, Receipt,
-    RegistryKind, PathRef,
+    AnyRef, Artifact, Definition, Namespace, ObjectKey, PackageKey,
+    PackageMeta, PackageName, PackageReader, PackageSignature, PathRef,
+    Pointer, Receipt, RegistryKind,
 };
 pub use validate::{confusable_skeleton, validate_id};
 

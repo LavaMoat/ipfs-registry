@@ -8,7 +8,9 @@ use url::Url;
 use web3_address::ethereum::Address;
 
 use ipfs_registry::Result;
-use ipfs_registry_core::{Namespace, PackageKey, PackageName, PathRef};
+use ipfs_registry_core::{
+    AnyRef, Namespace, PackageKey, PackageName, PathRef,
+};
 
 /// Print an ok response to stdout.
 fn ok_response() -> Result<()> {
@@ -163,8 +165,8 @@ enum Command {
         #[clap(short, long, default_value = "http://127.0.0.1:9060")]
         server: Url,
 
-        /// Package identifier.
-        id: PackageKey,
+        /// Identifier for a namespace, package or version.
+        target: AnyRef,
     },
     /// Start a server.
     Server {
@@ -400,15 +402,17 @@ async fn run() -> Result<()> {
             path,
             message,
         } => {
-            let (namespace, package): (Namespace, PackageName)
-                = path.try_into()?;
+            let (namespace, package): (Namespace, PackageName) =
+                path.try_into()?;
             let message = message.unwrap_or(String::new());
             ipfs_registry_client::deprecate(
-                server, key, namespace, package, message).await?;
+                server, key, namespace, package, message,
+            )
+            .await?;
             ok_response()?;
         }
-        Command::Get { server, id } => {
-            let doc = ipfs_registry_client::get(server, id).await?;
+        Command::Get { server, target } => {
+            let doc = ipfs_registry_client::get(server, target).await?;
             serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
         }
         Command::Server { bind, config } => {

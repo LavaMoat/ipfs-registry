@@ -1,5 +1,6 @@
 use k256::ecdsa::SigningKey;
 use mime::Mime;
+use serde::{Deserialize, Serialize};
 
 use secrecy::ExposeSecret;
 use std::path::PathBuf;
@@ -7,12 +8,22 @@ use url::Url;
 use web3_address::ethereum::Address;
 use web3_keystore::encrypt;
 
-use ipfs_registry_core::{Namespace, PackageKey, PackageName, Receipt};
+use ipfs_registry_core::{
+    AnyRef, Namespace, PackageKey, PackageName, Receipt,
+};
 use ipfs_registry_database::{
-    NamespaceRecord, PublisherRecord, VersionRecord,
+    NamespaceRecord, PackageRecord, PublisherRecord, VersionRecord,
 };
 
 use crate::{helpers, input, Error, RegistryClient, Result};
+
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum GetRecord {
+    Namespace(NamespaceRecord),
+    Package(PackageRecord),
+    Version(VersionRecord),
+}
 
 /// Publish a package.
 pub async fn publish(
@@ -114,8 +125,30 @@ pub async fn deprecate(
 }
 
 /// Get a package.
-pub async fn get(server: Url, id: PackageKey) -> Result<VersionRecord> {
-    RegistryClient::exact_version(server, id).await
+pub async fn get(server: Url, target: AnyRef) -> Result<GetRecord> {
+    if target.is_exact_version() {
+        let id: PackageKey = target.try_into()?;
+        RegistryClient::exact_version(server, id)
+            .await
+            .map(GetRecord::Version)
+    } else {
+        match target {
+            AnyRef::Path(path) => {
+                if let Some(package) = path.package() {
+                    RegistryClient::get_package(
+                        server, path.namespace().clone(), package.clone())
+                        .await.map(GetRecord::Package)
+                } else {
+                    RegistryClient::get_namespace(
+                        server, path.namespace().clone())
+                        .await.map(GetRecord::Namespace)
+                }
+            }
+            AnyRef::Key(id) => RegistryClient::exact_version(server, id)
+                .await
+                .map(GetRecord::Version),
+        }
+    }
 }
 
 /// Add a user.
