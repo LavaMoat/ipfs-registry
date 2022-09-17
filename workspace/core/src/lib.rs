@@ -9,7 +9,7 @@ pub use package::{
     PackageMeta, PackageName, PackageReader, PackageSignature, PathRef,
     Pointer, Receipt, RegistryKind,
 };
-pub use validate::{confusable_skeleton, validate_id};
+pub use validate::validate_id;
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 

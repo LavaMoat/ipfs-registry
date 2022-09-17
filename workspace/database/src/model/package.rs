@@ -6,7 +6,7 @@ use sqlx::{
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
-    confusable_skeleton, Namespace, ObjectKey, PackageKey, PackageName,
+    Namespace, ObjectKey, PackageKey, PackageName,
     Pointer,
 };
 
@@ -235,7 +235,7 @@ impl PackageModel {
         namespace_id: i64,
         name: &PackageName,
     ) -> Result<Option<PackageRecord>> {
-        let skeleton = confusable_skeleton(name.as_str());
+        let skeleton = name.skeleton();
         let mut args: SqliteArguments = Default::default();
         args.add(namespace_id);
         args.add(&skeleton);
@@ -656,7 +656,7 @@ impl PackageModel {
                 "#,
             );
 
-            let skeleton = confusable_skeleton(name.as_str());
+            let skeleton = name.skeleton();
             let mut separated = builder.separated(", ");
             separated.push_bind(namespace_id);
             separated.push_bind(name.as_str());

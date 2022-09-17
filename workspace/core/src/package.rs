@@ -13,6 +13,7 @@ use std::{fmt, str::FromStr};
 use web3_address::ethereum::Address;
 
 use crate::{
+    validate::confusable_skeleton,
     tarball::{decompress, read_cargo_package, read_npm_package},
     validate_id, Error, Result,
 };
@@ -204,9 +205,9 @@ impl fmt::Display for RegistryKind {
 pub struct Identifier(String);
 
 impl Identifier {
-    /// Create a new namespace without checking the source is valid.
-    pub fn new_unchecked(s: &str) -> Self {
-        Self(s.to_owned())
+    /// Create a new identifier without checking the source is valid.
+    pub fn new_unchecked(source: &str) -> Self {
+        Self(source.to_owned())
     }
 
     /// Get a reference to the underlying string.
@@ -217,6 +218,11 @@ impl Identifier {
     /// Get a reference to the underlying bytes.
     pub fn as_bytes(&self) -> &[u8] {
         self.0.as_bytes()
+    }
+
+    /// Compute the confusable skeleton for this identifier.
+    pub fn skeleton(&self) -> String {
+        confusable_skeleton(&self.0)
     }
 }
 

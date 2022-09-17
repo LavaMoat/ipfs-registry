@@ -8,7 +8,7 @@ use unicode_security::{
 const MIN_LEN: usize = 3;
 
 /// Get the confusable skeleton of an identifier.
-pub fn confusable_skeleton(s: &str) -> String {
+pub(crate) fn confusable_skeleton(s: &str) -> String {
     let mut e = String::new();
     for c in skeleton(s) {
         e.push(c);

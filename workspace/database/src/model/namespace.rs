@@ -1,7 +1,7 @@
 use sqlx::{sqlite::SqliteArguments, Arguments, QueryBuilder, SqlitePool};
 use web3_address::ethereum::Address;
 
-use ipfs_registry_core::{confusable_skeleton, Namespace, PackageName};
+use ipfs_registry_core::{Namespace, PackageName};
 
 use crate::{
     error::NotFound,
@@ -25,7 +25,7 @@ impl NamespaceModel {
                 VALUES (
             "#,
         );
-        let skeleton = confusable_skeleton(name.as_str());
+        let skeleton = name.skeleton();
         let mut separated = builder.separated(", ");
         separated.push_bind(name.as_str());
         separated.push_bind(&skeleton);
@@ -413,7 +413,7 @@ impl NamespaceModel {
         pool: &SqlitePool,
         name: &Namespace,
     ) -> Result<Option<NamespaceRecord>> {
-        let skeleton = confusable_skeleton(name.as_str());
+        let skeleton = name.skeleton();
         let mut args: SqliteArguments = Default::default();
         args.add(skeleton);
 
