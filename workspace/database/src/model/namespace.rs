@@ -1,3 +1,4 @@
+//! Model for namespaces.
 use sqlx::{sqlite::SqliteArguments, Arguments, QueryBuilder, SqlitePool};
 use web3_address::ethereum::Address;
 
@@ -10,6 +11,7 @@ use crate::{
     Error, Result,
 };
 
+/// Manage registry namespaces.
 pub struct NamespaceModel;
 
 impl NamespaceModel {

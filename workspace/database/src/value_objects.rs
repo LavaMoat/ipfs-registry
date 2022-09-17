@@ -1,3 +1,4 @@
+//! Value objects.
 use semver::{BuildMetadata, Prerelease, Version};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -22,7 +23,9 @@ pub(crate) fn parse_date_time(date_time: &str) -> Result<OffsetDateTime> {
 /// Collection of records with associated total row count.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ResultSet<T> {
+    /// The underlying records.
     pub records: Vec<T>,
+    /// The total number of available records.
     pub count: i64,
 }
 
@@ -36,14 +39,17 @@ impl<T> Default for ResultSet<T> {
 }
 
 impl<T> ResultSet<T> {
+    /// Get the number of records.
     pub fn len(&self) -> usize {
         self.records.len()
     }
 
+    /// Determine if the result set is empty.
     pub fn is_empty(&self) -> bool {
         self.records.is_empty()
     }
 
+    /// Determine if the result set contains zero records.
     pub fn is_zero(&self) -> bool {
         self.is_empty() && self.count == 0
     }
@@ -51,6 +57,7 @@ impl<T> ResultSet<T> {
 
 /// Convert into a result set.
 pub trait IntoResultSet<T, R> {
+    /// Convert into a result set.
     fn into_result_set(self) -> ResultSet<R>;
 }
 
@@ -82,6 +89,7 @@ impl IntoResultSet<Vec<VersionRecord>, VersionRecord> for Vec<VersionRecord> {
     }
 }
 
+/// Record for a single publisher.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PublisherRecord {
     /// Publisher primary key.
@@ -117,6 +125,7 @@ impl FromRow<'_, SqliteRow> for PublisherRecord {
     }
 }
 
+/// Package accesss restriction applied to a user of a namespace.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AccessRestriction {
     /// Publisher foreign key.
@@ -138,8 +147,7 @@ impl FromRow<'_, SqliteRow> for AccessRestriction {
     }
 }
 
-/// User given permission to publish to a namespace by the
-/// namespace owner.
+/// User that has access to a namespace.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserRecord {
     /// Namespace foreign key.
@@ -198,6 +206,7 @@ impl FromRow<'_, SqliteRow> for UserRecord {
     }
 }
 
+/// Record for a single namespace.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NamespaceRecord {
     /// Namespace primary key.
@@ -278,6 +287,7 @@ impl NamespaceRecord {
     }
 }
 
+/// Record for a single package.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PackageRecord {
     /// Namespace foreign key.
@@ -337,6 +347,7 @@ impl FromRow<'_, SqliteRow> for PackageRecord {
     }
 }
 
+/// Record for a single package version.
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VersionRecord {

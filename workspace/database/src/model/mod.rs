@@ -21,8 +21,10 @@ pub fn default_limit() -> i64 {
 #[derive(Default, Debug, Deserialize, Copy, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum VersionIncludes {
+    /// Do not include any versions.
     #[default]
     None,
+    /// Fetch the latest version.
     Latest,
 }
 
@@ -57,8 +59,11 @@ impl FromStr for VersionIncludes {
 #[derive(Debug, Deserialize)]
 #[serde(default)]
 pub struct Pager {
+    /// Offset for pagination.
     pub offset: i64,
+    /// Limit per page.
     pub limit: i64,
+    /// Sort order.
     pub sort: SortOrder,
 }
 
@@ -72,12 +77,14 @@ impl Default for Pager {
     }
 }
 
-/// Represents an order by direction.
+/// Represents a sort order.
 #[derive(Debug, Default, Deserialize, Copy, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum SortOrder {
+    /// Sort ascending.
     #[default]
     Asc,
+    /// Sort descending.
     Desc,
 }
 

@@ -1,3 +1,4 @@
+//! Model for packages.
 use semver::{Op, Version, VersionReq};
 
 use sqlx::{
@@ -16,6 +17,7 @@ use crate::{
     Error, Result,
 };
 
+/// Manage registry packages.
 pub struct PackageModel;
 
 impl PackageModel {
@@ -673,9 +675,6 @@ impl PackageModel {
     }
 
     /// Add a package version to a namespace.
-    ///
-    /// If a package already exists for the given name
-    /// and version return `None`.
     pub async fn insert(
         pool: &SqlitePool,
         publisher_record: &PublisherRecord,

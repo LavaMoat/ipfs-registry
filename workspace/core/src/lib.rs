@@ -1,5 +1,6 @@
 //! Common types and functions for the client and server.
 #![deny(missing_docs)]
+#![forbid(unsafe_code)]
 
 mod error;
 mod package;

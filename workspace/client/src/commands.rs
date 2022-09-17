@@ -19,14 +19,19 @@ use ipfs_registry_database::{
 
 use crate::{helpers, input, Error, RegistryClient, Result};
 
+/// Enumeration of types for a get operation.
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum GetRecord {
+    /// Get a namespace result.
     Namespace(NamespaceRecord),
+    /// Get a package result.
     Package(PackageRecord),
+    /// Get a version result.
     Version(VersionRecord),
 }
 
+/// Enumeration of types for a list operation.
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ListRecord {
@@ -45,7 +50,7 @@ pub async fn publish(
     file: PathBuf,
 ) -> Result<Receipt> {
     let signing_key = helpers::read_keystore_file(key)?;
-    RegistryClient::publish_file(server, namespace, mime, signing_key, file)
+    RegistryClient::publish_file(server, signing_key, namespace, mime, file)
         .await
 }
 

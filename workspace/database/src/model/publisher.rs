@@ -1,9 +1,11 @@
+//! Model for publishers.
 use sqlx::{sqlite::SqliteArguments, Arguments, QueryBuilder, SqlitePool};
 
 use web3_address::ethereum::Address;
 
 use crate::{value_objects::*, Error, Result};
 
+/// Manage registry publishers.
 pub struct PublisherModel;
 
 impl PublisherModel {

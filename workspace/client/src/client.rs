@@ -119,9 +119,9 @@ impl RegistryClient {
     /// Publish a package file with the given signing key.
     pub async fn publish_file(
         server: Url,
+        signing_key: SigningKey,
         namespace: Namespace,
         mime: Mime,
-        signing_key: SigningKey,
         file: PathBuf,
     ) -> Result<Receipt> {
         if !file.is_file() {

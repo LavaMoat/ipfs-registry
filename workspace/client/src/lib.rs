@@ -1,3 +1,7 @@
+//! Client implementation and commands.
+#![deny(missing_docs)]
+#![forbid(unsafe_code)]
+
 mod client;
 mod commands;
 mod error;
