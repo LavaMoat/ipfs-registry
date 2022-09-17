@@ -6,8 +6,7 @@ use sqlx::{
 use web3_address::ethereum::Address;
 
 use ipfs_registry_core::{
-    Namespace, ObjectKey, PackageKey, PackageName,
-    Pointer,
+    Namespace, ObjectKey, PackageKey, PackageName, Pointer,
 };
 
 use crate::{

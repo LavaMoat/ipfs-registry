@@ -28,10 +28,14 @@ pub enum VersionIncludes {
 
 impl fmt::Display for VersionIncludes {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            Self::None => "none",
-            Self::Latest => "latest",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::None => "none",
+                Self::Latest => "latest",
+            }
+        )
     }
 }
 

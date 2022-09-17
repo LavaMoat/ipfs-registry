@@ -13,8 +13,8 @@ use std::{fmt, str::FromStr};
 use web3_address::ethereum::Address;
 
 use crate::{
-    validate::confusable_skeleton,
     tarball::{decompress, read_cargo_package, read_npm_package},
+    validate::confusable_skeleton,
     validate_id, Error, Result,
 };
 
@@ -50,17 +50,7 @@ pub enum AnyRef {
     Path(PathRef),
 }
 
-impl AnyRef {
-    /// Determine if this reference should locate
-    /// an exact version of a package.
-    pub fn is_exact_version(&self) -> bool {
-        match self {
-            Self::Key(_) => true,
-            Self::Path(path) => path.version().is_some(),
-        }
-    }
-}
-
+/*
 impl TryFrom<AnyRef> for PackageKey {
     type Error = Error;
     fn try_from(value: AnyRef) -> Result<Self> {
@@ -78,6 +68,7 @@ impl TryFrom<AnyRef> for PackageKey {
         }
     }
 }
+*/
 
 impl FromStr for AnyRef {
     type Err = Error;

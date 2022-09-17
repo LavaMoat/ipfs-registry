@@ -2,17 +2,19 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use mime::Mime;
+use semver::VersionReq;
 use serde_json::json;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use url::Url;
 use web3_address::ethereum::Address;
-use semver::VersionReq;
 
 use ipfs_registry::Result;
 use ipfs_registry_core::{
     AnyRef, Namespace, PackageKey, PackageName, PathRef,
 };
-use ipfs_registry_database::{Pager, SortOrder, default_limit, VersionIncludes};
+use ipfs_registry_database::{
+    default_limit, Pager, SortOrder, VersionIncludes,
+};
 
 /// Print an ok response to stdout.
 fn ok_response() -> Result<()> {
@@ -166,6 +168,10 @@ enum Command {
         /// Server URL.
         #[clap(short, long, default_value = "http://127.0.0.1:9060")]
         server: Url,
+
+        /// Fetch the latest version when target is a package.
+        #[clap(long)]
+        latest: bool,
 
         /// Identifier for a namespace, package or version.
         target: AnyRef,
@@ -443,8 +449,13 @@ async fn run() -> Result<()> {
             .await?;
             ok_response()?;
         }
-        Command::Get { server, target } => {
-            let doc = ipfs_registry_client::get(server, target).await?;
+        Command::Get {
+            server,
+            latest,
+            target,
+        } => {
+            let doc =
+                ipfs_registry_client::get(server, target, latest).await?;
             serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
         }
         Command::List {
@@ -458,12 +469,14 @@ async fn run() -> Result<()> {
         } => {
             if latest && path.package().is_some() {
                 tracing::warn!(
-                    "argument --latest is ignored when listing versions");
+                    "argument --latest is ignored when listing versions"
+                );
             }
 
             if range.is_some() && path.package().is_none() {
                 tracing::warn!(
-                    "argument --range is ignored when listing packages");
+                    "argument --range is ignored when listing packages"
+                );
             }
 
             let pager = Pager {
@@ -472,7 +485,10 @@ async fn run() -> Result<()> {
                 sort: sort.unwrap_or_default(),
             };
             let include = latest.then_some(VersionIncludes::Latest);
-            let doc = ipfs_registry_client::list(server, path, pager, include, range).await?;
+            let doc = ipfs_registry_client::list(
+                server, path, pager, include, range,
+            )
+            .await?;
             serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
         }
         Command::Server { bind, config } => {

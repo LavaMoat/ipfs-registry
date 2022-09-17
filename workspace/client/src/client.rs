@@ -1,6 +1,6 @@
-use std::{borrow::BorrowMut, path::PathBuf};
-use serde::de::DeserializeOwned;
 use semver::VersionReq;
+use serde::de::DeserializeOwned;
+use std::{borrow::BorrowMut, path::PathBuf};
 
 use k256::ecdsa::{recoverable, signature::Signer, SigningKey};
 use mime::Mime;
@@ -16,8 +16,8 @@ use ipfs_registry_core::{
 };
 
 use ipfs_registry_database::{
-    NamespaceRecord, PackageRecord, Pager, PublisherRecord,
-    VersionRecord, VersionIncludes,
+    NamespaceRecord, PackageRecord, Pager, PublisherRecord, VersionIncludes,
+    VersionRecord,
 };
 
 use crate::{Error, Result};
@@ -402,8 +402,10 @@ impl RegistryClient {
     ) -> Result<T> {
         let client = Client::new();
         let url = if let Some(package) = &package {
-            server.join(&format!("api/package/{}/{}/versions",
-                namespace, package))?
+            server.join(&format!(
+                "api/package/{}/{}/versions",
+                namespace, package
+            ))?
         } else {
             server.join(&format!("api/package/{}/packages", namespace))?
         };
@@ -422,11 +424,7 @@ impl RegistryClient {
             query.push(("range", range.to_string()));
         }
 
-        let response = client
-            .get(url)
-            .query(&query)
-            .send()
-            .await?;
+        let response = client.get(url).query(&query).send().await?;
 
         response
             .status()
@@ -435,5 +433,23 @@ impl RegistryClient {
             .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
 
         Ok(response.json::<T>().await?)
+    }
+
+    /// Get the latest version for a package.
+    pub async fn latest_version(
+        server: Url,
+        namespace: Namespace,
+        package: PackageName,
+    ) -> Result<VersionRecord> {
+        let client = Client::new();
+        let url = server
+            .join(&format!("api/package/{}/{}/latest", namespace, package))?;
+        let response = client.get(url).send().await?;
+        response
+            .status()
+            .is_success()
+            .then_some(())
+            .ok_or_else(|| Error::ResponseCode(response.status().into()))?;
+        Ok(response.json::<VersionRecord>().await?)
     }
 }

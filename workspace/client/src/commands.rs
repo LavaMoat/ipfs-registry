@@ -1,7 +1,7 @@
 use k256::ecdsa::SigningKey;
 use mime::Mime;
-use serde::{Deserialize, Serialize};
 use semver::VersionReq;
+use serde::{Deserialize, Serialize};
 
 use secrecy::ExposeSecret;
 use std::path::PathBuf;
@@ -13,7 +13,8 @@ use ipfs_registry_core::{
     AnyRef, Namespace, PackageKey, PackageName, PathRef, Receipt,
 };
 use ipfs_registry_database::{
-    NamespaceRecord, PackageRecord, Pager, PublisherRecord, VersionRecord, ResultSet, VersionIncludes,
+    NamespaceRecord, PackageRecord, Pager, PublisherRecord, ResultSet,
+    VersionIncludes, VersionRecord,
 };
 
 use crate::{helpers, input, Error, RegistryClient, Result};
@@ -135,16 +136,23 @@ pub async fn deprecate(
 }
 
 /// Get a namespace, package or version.
-pub async fn get(server: Url, target: AnyRef) -> Result<GetRecord> {
-    if target.is_exact_version() {
-        let id: PackageKey = target.try_into()?;
-        RegistryClient::exact_version(server, id)
-            .await
-            .map(GetRecord::Version)
-    } else {
-        match target {
-            AnyRef::Path(path) => {
-                if let Some(package) = path.package() {
+pub async fn get(
+    server: Url,
+    target: AnyRef,
+    latest: bool,
+) -> Result<GetRecord> {
+    match target {
+        AnyRef::Path(path) => {
+            if let Some(package) = path.package() {
+                if latest {
+                    RegistryClient::latest_version(
+                        server,
+                        path.namespace().clone(),
+                        package.clone(),
+                    )
+                    .await
+                    .map(GetRecord::Version)
+                } else {
                     RegistryClient::get_package(
                         server,
                         path.namespace().clone(),
@@ -152,19 +160,19 @@ pub async fn get(server: Url, target: AnyRef) -> Result<GetRecord> {
                     )
                     .await
                     .map(GetRecord::Package)
-                } else {
-                    RegistryClient::get_namespace(
-                        server,
-                        path.namespace().clone(),
-                    )
-                    .await
-                    .map(GetRecord::Namespace)
                 }
-            }
-            AnyRef::Key(id) => RegistryClient::exact_version(server, id)
+            } else {
+                RegistryClient::get_namespace(
+                    server,
+                    path.namespace().clone(),
+                )
                 .await
-                .map(GetRecord::Version),
+                .map(GetRecord::Namespace)
+            }
         }
+        AnyRef::Key(id) => RegistryClient::exact_version(server, id)
+            .await
+            .map(GetRecord::Version),
     }
 }
 
@@ -176,18 +184,21 @@ pub async fn list(
     include: Option<VersionIncludes>,
     range: Option<VersionReq>,
 ) -> Result<ListRecord> {
-
     let namespace = path.namespace().clone();
     let package = path.package().map(|v| v.clone());
 
     if package.is_some() {
-        RegistryClient::list::<ResultSet<VersionRecord>>(server, namespace, package, pager, include, range)
-            .await
-            .map(ListRecord::Versions)
+        RegistryClient::list::<ResultSet<VersionRecord>>(
+            server, namespace, package, pager, include, range,
+        )
+        .await
+        .map(ListRecord::Versions)
     } else {
-        RegistryClient::list::<ResultSet<PackageRecord>>(server, namespace, package, pager, include, range)
-            .await
-            .map(ListRecord::Packages)
+        RegistryClient::list::<ResultSet<PackageRecord>>(
+            server, namespace, package, pager, include, range,
+        )
+        .await
+        .map(ListRecord::Packages)
     }
 }
 
