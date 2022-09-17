@@ -26,6 +26,29 @@ pub enum VersionIncludes {
     Latest,
 }
 
+impl fmt::Display for VersionIncludes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", match self {
+            Self::None => "none",
+            Self::Latest => "latest",
+        })
+    }
+}
+
+impl FromStr for VersionIncludes {
+    type Err = Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        if s.to_lowercase() == "none" {
+            Ok(Self::None)
+        } else if s.to_lowercase() == "latest" {
+            Ok(Self::Latest)
+        } else {
+            Err(Error::InvalidVersionIncludes(s.to_owned()))
+        }
+    }
+}
+
 /// Defines parameters for paginating list queries.
 #[derive(Debug, Deserialize)]
 #[serde(default)]

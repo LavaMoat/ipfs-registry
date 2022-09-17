@@ -351,7 +351,7 @@ List the packages for a namespace.
 
 #### Query
 
-* `versions`: Fetch versions for each package, either `none` or  `latest`. Default is `none`.
+* `include`: Fetch versions for each package, either `none` or  `latest`. Default is `none`.
 * `limit`: Limit per page.
 * `offset`: Offset for pagination.
 * `sort`: Sort order, either `asc` or `desc`.

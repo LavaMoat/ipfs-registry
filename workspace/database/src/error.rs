@@ -64,6 +64,9 @@ pub enum Error {
     #[error("invalid sort order {0}")]
     InvalidSortOrder(String),
 
+    #[error("invalid version includes {0}")]
+    InvalidVersionIncludes(String),
+
     #[error("could not find a version for a package")]
     NoPackageVersion,
 

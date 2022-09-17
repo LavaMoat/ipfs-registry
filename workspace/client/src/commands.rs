@@ -12,7 +12,7 @@ use ipfs_registry_core::{
     AnyRef, Namespace, PackageKey, PackageName, PathRef, Receipt,
 };
 use ipfs_registry_database::{
-    NamespaceRecord, PackageRecord, Pager, PublisherRecord, VersionRecord, ResultSet,
+    NamespaceRecord, PackageRecord, Pager, PublisherRecord, VersionRecord, ResultSet, VersionIncludes,
 };
 
 use crate::{helpers, input, Error, RegistryClient, Result};
@@ -172,17 +172,18 @@ pub async fn list(
     server: Url,
     path: PathRef,
     pager: Pager,
+    include: Option<VersionIncludes>,
 ) -> Result<ListRecord> {
 
     let namespace = path.namespace().clone();
     let package = path.package().map(|v| v.clone());
 
     if package.is_some() {
-        RegistryClient::list::<ResultSet<VersionRecord>>(server, namespace, package, pager)
+        RegistryClient::list::<ResultSet<VersionRecord>>(server, namespace, package, pager, include)
             .await
             .map(ListRecord::Versions)
     } else {
-        RegistryClient::list::<ResultSet<PackageRecord>>(server, namespace, package, pager)
+        RegistryClient::list::<ResultSet<PackageRecord>>(server, namespace, package, pager, include)
             .await
             .map(ListRecord::Packages)
     }

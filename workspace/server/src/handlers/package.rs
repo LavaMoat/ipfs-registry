@@ -42,7 +42,7 @@ pub struct PackageQuery {
 #[derive(Default, Debug, Deserialize)]
 #[serde(default)]
 pub struct ListPackagesQuery {
-    versions: VersionIncludes,
+    include: VersionIncludes,
     // NOTE: cannot use #[serde(flatten)]
     // SEE: https://github.com/tokio-rs/axum/issues/1366
     offset: i64,
@@ -125,7 +125,7 @@ impl PackageHandler {
             &state.pool,
             &namespace,
             &pager,
-            query.versions,
+            query.include,
         )
         .await
         {

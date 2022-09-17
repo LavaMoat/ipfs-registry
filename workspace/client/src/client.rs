@@ -16,7 +16,7 @@ use ipfs_registry_core::{
 
 use ipfs_registry_database::{
     NamespaceRecord, PackageRecord, Pager, PublisherRecord,
-    VersionRecord,
+    VersionRecord, VersionIncludes,
 };
 
 use crate::{Error, Result};
@@ -396,6 +396,7 @@ impl RegistryClient {
         namespace: Namespace,
         package: Option<PackageName>,
         pager: Pager,
+        include: Option<VersionIncludes>,
     ) -> Result<T> {
         let client = Client::new();
         let url = if let Some(package) = package {
@@ -405,11 +406,16 @@ impl RegistryClient {
             server.join(&format!("api/package/{}/packages", namespace))?
         };
 
-        let query = vec![
+        let mut query = vec![
             ("offset", pager.offset.to_string()),
             ("limit", pager.limit.to_string()),
             ("sort", pager.sort.to_string()),
         ];
+
+        if let Some(include) = include {
+            query.push(("include", include.to_string()));
+        }
+
 
         let response = client
             .get(url)

@@ -11,7 +11,7 @@ use ipfs_registry::Result;
 use ipfs_registry_core::{
     AnyRef, Namespace, PackageKey, PackageName, PathRef,
 };
-use ipfs_registry_database::{Pager, SortOrder, default_limit};
+use ipfs_registry_database::{Pager, SortOrder, default_limit, VersionIncludes};
 
 /// Print an ok response to stdout.
 fn ok_response() -> Result<()> {
@@ -176,14 +176,21 @@ enum Command {
         #[clap(short, long, default_value = "http://127.0.0.1:9060")]
         server: Url,
 
+        /// Offset for pagination.
         #[clap(short, long)]
         offset: Option<i64>,
 
+        /// Number of records per page.
         #[clap(short, long)]
         limit: Option<i64>,
 
-        #[clap(short = 'S', long)]
+        /// Sort order.
+        #[clap(long)]
         sort: Option<SortOrder>,
+
+        /// For each package fetch the latest version.
+        #[clap(long)]
+        latest: bool,
 
         /// Path to a namespace or package.
         path: PathRef,
@@ -441,13 +448,15 @@ async fn run() -> Result<()> {
             offset,
             limit,
             sort,
+            latest,
         } => {
             let pager = Pager {
                 offset: offset.unwrap_or_default(),
                 limit: limit.unwrap_or_else(default_limit),
                 sort: sort.unwrap_or_default(),
             };
-            let doc = ipfs_registry_client::list(server, path, pager).await?;
+            let include = latest.then_some(VersionIncludes::Latest);
+            let doc = ipfs_registry_client::list(server, path, pager, include).await?;
             serde_json::to_writer_pretty(std::io::stdout(), &doc)?;
         }
         Command::Server { bind, config } => {
