@@ -80,6 +80,7 @@ pub struct ServerInfo {
     pub version: String,
 }
 
+/// Server implementation.
 #[derive(Default)]
 pub struct Server;
 

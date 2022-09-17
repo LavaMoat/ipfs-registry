@@ -3,6 +3,7 @@ name = "ipfs-registry"
 version = "0.1.0"
 edition = "2021"
 description = "Signed package registry backed by IPFS"
+publish = false
 
 [workspace]
 members = [

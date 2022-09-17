@@ -1,3 +1,4 @@
+//! Configuration types.
 use indexmap::set::IndexSet;
 use k256::ecdsa::SigningKey;
 use serde::Deserialize;
@@ -14,6 +15,7 @@ use ipfs_registry_core::RegistryKind;
 
 const KEYSTORE_PASSWORD_ENV: &str = "IPKG_WEBHOOK_KEYSTORE_PASSWORD";
 
+/// Configuration for the server.
 #[derive(Deserialize)]
 pub struct ServerConfig {
     /// Configuration for the database.
@@ -140,7 +142,7 @@ impl ServerConfig {
     }
 }
 
-/// Storage configuration.
+/// Configuration for the storage layers.
 #[derive(Debug, Deserialize)]
 pub struct StorageConfig {
     /// Collection of storage layers.
@@ -163,6 +165,7 @@ impl From<LayerConfig> for StorageConfig {
     }
 }
 
+/// Configuration for the database connection.
 #[derive(Debug, Deserialize)]
 pub struct DatabaseConfig {
     /// URL for database connections.
@@ -186,6 +189,7 @@ fn default_mime() -> String {
     String::from("application/gzip")
 }
 
+/// Configuration for the registry.
 #[derive(Debug, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
 pub struct RegistryConfig {
@@ -223,6 +227,7 @@ fn backoff_seconds() -> u64 {
     30
 }
 
+/// Configuration for webhooks.
 #[derive(Debug, Default, Clone, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct WebHookConfig {
@@ -233,6 +238,7 @@ pub struct WebHookConfig {
     /// Number of times to retry a webhook.
     #[serde(default = "retry_limit")]
     pub retry_limit: u64,
+    /// Number of seconds for initial backoff interval.
     #[serde(default = "backoff_seconds")]
     pub backoff_seconds: u64,
     /// Signing key decrypted from the keystore.
@@ -240,6 +246,9 @@ pub struct WebHookConfig {
     pub(crate) signing_key: Option<SigningKey>,
 }
 
+/// Configuration for TLS.
+///
+/// Required to run the server using SSL.
 #[derive(Debug, Default, Clone, Deserialize)]
 pub struct TlsConfig {
     /// Path to the certificate.
@@ -248,23 +257,27 @@ pub struct TlsConfig {
     pub key: PathBuf,
 }
 
+/// Configuration for CORS.
 #[derive(Debug, Default, Deserialize)]
 pub struct CorsConfig {
     /// List of additional CORS origins for the server.
     pub origins: Vec<Url>,
 }
 
+/// Configuration for a storage layer.
 #[derive(Debug, Clone, Deserialize, Hash, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum LayerConfig {
+    /// Storage layer backed by IPFS.
     Ipfs {
         /// URL for the IPFS node.
         url: Url,
     },
+    /// Storage layer backed by AWS S3.
     Aws {
         /// Profile for authentication.
         profile: String,
-        // Region of the bucket.
+        /// Region of the bucket.
         region: String,
         /// Bucket name.
         bucket: String,
@@ -272,10 +285,14 @@ pub enum LayerConfig {
         #[serde(default)]
         prefix: String,
     },
+    /// Storage layer backed by memory.
     Memory {
+        /// Flag to indicate this is a memory layer.
         memory: bool,
     },
+    /// Storage layer backed by files on disc.
     File {
+        /// Directory for the file storage layer.
         directory: PathBuf,
     },
 }

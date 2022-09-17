@@ -1,3 +1,7 @@
+//! Package registry server.
+#![deny(missing_docs)]
+#![forbid(unsafe_code)]
+
 use axum_server::Handle;
 use std::{net::SocketAddr, path::PathBuf, str::FromStr, sync::Arc};
 
@@ -8,6 +12,7 @@ mod headers;
 mod layer;
 mod server;
 
+/// Result type for the server library.
 pub type Result<T> = std::result::Result<T, error::Error>;
 
 pub use error::Error;

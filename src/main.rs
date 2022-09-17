@@ -30,6 +30,7 @@ struct Cli {
     command: Command,
 }
 
+/// Program commands.
 #[derive(Subcommand, Debug)]
 enum Command {
     /// Generate a signing key.
@@ -218,6 +219,7 @@ enum Command {
     },
 }
 
+/// Subcommands for users.
 #[derive(Subcommand, Debug)]
 enum User {
     /// Add user access to a namespace.
@@ -331,6 +333,7 @@ enum User {
     },
 }
 
+/// Run the program.
 async fn run() -> Result<()> {
     let args = Cli::parse();
 
@@ -499,6 +502,7 @@ async fn run() -> Result<()> {
     Ok(())
 }
 
+/// Main entry point.
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::registry()
