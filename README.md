@@ -106,6 +106,12 @@ To support these use cases the server implements webhooks allowing registry oper
 
 ## Getting Started
 
+If you already have rust installed you may need to update the stable channel first if you don't already have `>= 1.63.0`:
+
+```
+rustup update stable
+```
+
 Install the binary:
 
 ```
