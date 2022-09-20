@@ -29,9 +29,9 @@ async fn integration_fetch_pointer() -> Result<()> {
 
     let receipt = RegistryClient::publish_file(
         server_url.clone(),
+        signing_key,
         namespace,
         mime,
-        signing_key,
         file,
     )
     .await?;

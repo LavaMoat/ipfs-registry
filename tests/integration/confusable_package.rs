@@ -30,9 +30,9 @@ async fn integration_confusable_package() -> Result<()> {
     // Publish the legitimate package
     RegistryClient::publish_file(
         server_url.clone(),
+        signing_key.clone(),
         namespace.clone(),
         mime.clone(),
-        signing_key.clone(),
         file,
     )
     .await?;
@@ -46,9 +46,9 @@ async fn integration_confusable_package() -> Result<()> {
     // Try to publis the confusable package
     let result = RegistryClient::publish_file(
         server_url,
+        signing_key,
         namespace,
         mime,
-        signing_key,
         file,
     )
     .await;

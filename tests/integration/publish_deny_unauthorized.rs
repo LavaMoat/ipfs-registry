@@ -39,9 +39,9 @@ async fn integration_publish_deny_unauthorized() -> Result<()> {
 
     let result = RegistryClient::publish_file(
         server_url,
+        signing_key,
         namespace,
         mime,
-        signing_key,
         file,
     )
     .await;

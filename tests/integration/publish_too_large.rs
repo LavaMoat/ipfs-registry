@@ -32,9 +32,9 @@ async fn integration_publish_too_large() -> Result<()> {
 
     let result = RegistryClient::publish_file(
         server_url,
+        signing_key,
         namespace,
         mime,
-        signing_key,
         file,
     )
     .await;

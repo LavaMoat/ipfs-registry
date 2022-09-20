@@ -32,9 +32,9 @@ async fn integration_yank() -> Result<()> {
 
     let _ = RegistryClient::publish_file(
         server_url.clone(),
+        signing_key.clone(),
         namespace.clone(),
         mime,
-        signing_key.clone(),
         file,
     )
     .await?;

@@ -29,9 +29,9 @@ async fn integration_publish_conflict() -> Result<()> {
 
     let receipt = RegistryClient::publish_file(
         server_url.clone(),
+        signing_key.clone(),
         namespace.clone(),
         mime.clone(),
-        signing_key.clone(),
         file.clone(),
     )
     .await?;
@@ -44,9 +44,9 @@ async fn integration_publish_conflict() -> Result<()> {
 
     let result = RegistryClient::publish_file(
         server_url,
+        signing_key,
         namespace,
         mime,
-        signing_key,
         file,
     )
     .await;
